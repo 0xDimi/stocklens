@@ -214,6 +214,7 @@ export async function getQuote(product, deployment, amount) {
     return {
       id,
       issuer: product.issuer,
+      issuerName: product.issuerName,
       symbol: product.symbol,
       chain: deployment.chain,
       chainLabel: chain?.label || deployment.chain,
@@ -252,6 +253,7 @@ export async function getQuote(product, deployment, amount) {
   const base = {
     id,
     issuer: product.issuer,
+    issuerName: product.issuerName,
     symbol: product.symbol,
     chain: deployment.chain,
     chainLabel: chain.label,

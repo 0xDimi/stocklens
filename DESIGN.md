@@ -1,9 +1,9 @@
-# Stocklens design
+# Stocklens Terminal
 
-Mode: Operate. A daylight research workspace with generous whitespace, an off-white page, white working surface, ink typography, and a restrained deep-teal accent. System sans-serif, tabular numerals for financial values.
+Mode: Operate. The user explicitly requested a terminal. Replace the old spacious comparison page with a full-viewport financial workstation.
 
-The stock comparison table is the primary surface. A left stock selector and a right comparison workspace share a single flat canvas with hairline separators. Avoid decorative charts and dashboard tiles. Distinguish the selected stock and largest fresh equivalent exposure with subtle accent washes. Product terms expand inline rather than interrupting the task.
+Charcoal surfaces #0b0e12 / #10151b / #151c24; dividers #28313d; text #e2e7ed; secondary #9da9b8; amber #eeb65c for selected commands/navigation; green #52caa4 and red #f38189 for signed market changes. No glowing borders or decorative gradients. Numeric data uses SFMono/Menlo/Consolas; interface text uses system sans. Compact 11–13px rows, visible focus, functional hairlines and near-square controls.
 
-Tokens: page #f7f8fa, surface #ffffff, ink #172b32, muted #596970, line #e4e9eb, accent #126851, accent wash #edf6f1. Radius 10px for inputs; no nested cards. Body 14px, page heading 36px. Motion: short row reveal and disclosure expansion; respect reduced-motion preferences.
+Desktop composition: 52px masthead + market tape; 264px universe rail; flexible chart/table center; 258px inspector. Chart is persistent, pool source/units and time range visible. Comparison tabs sit below chart. Panels scroll independently on wide displays, document stacks on small displays. No marketing hero or decorative cards. At ≤1250px inspector becomes a bottom section; at ≤760px universe is collapsible and workspace stacks. Preserve every value and control on phones.
 
-On phones the stock selector becomes a horizontal strip and the table becomes a compact row list. Preserve all essential values and accessible labels; avoid page-wide horizontal scrolling. Native inputs, buttons, details, selects, focus outlines, and accessible dialog semantics.
+Interactions: fast selected-row highlight, crosshair/tooltip on actual candle data, focus-managed command palette, subtle data refresh indicator. Respect reduced motion. Unknown/stale prices are shown explicitly. Market aggregates and token-unit pool prices never share an unlabeled scale.

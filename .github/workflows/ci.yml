@@ -1,0 +1,37 @@
+name: verify
+on:
+  push:
+  pull_request:
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test
+      - run: node scripts/production-smoke.mjs
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t stocklens:test .
+      - name: Exercise non-root image, health and static boundary
+        shell: bash
+        run: |
+          docker run -d --name stocklens --read-only --tmpfs /app/.cache:uid=1000,gid=1000 -p 127.0.0.1:4173:4173 stocklens:test
+          trap 'docker logs stocklens; docker rm -f stocklens' EXIT
+          test "$(docker exec stocklens id -u)" != 0
+          for attempt in $(seq 1 30); do
+            if curl --fail http://127.0.0.1:4173/api/health; then break; fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:4173/api/health
+          curl --fail http://127.0.0.1:4173/src/app.mjs > /dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4173/.env)" = 404
+          docker stop --time 15 stocklens
+          test "$(docker inspect -f '{{.State.ExitCode}}' stocklens)" = 0

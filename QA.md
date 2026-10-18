@@ -1,47 +1,51 @@
 # Verification — October 19, 2026 (Europe/Athens)
 
-## Real integration
+Release: Stocklens Terminal 0.4.0. Local test evidence is saved under ignored `test-results/`; these measurements describe the observed runs, not guaranteed future coverage.
 
-`npm run integration` ran against the current local server at port 4173. It fetched actual issuer, CoinGecko, GeckoTerminal, RPC and quote responses without fixture substitutions. Final source run timestamp: 2026-10-18T21:26:07.158Z / October 19 in Athens.
+## Actual source integrations
 
-Observed catalog: **1,514 assets**, 12 recognized product families, 18 configured directory chains. NVIDIA: 12 products, 35 deployments, 11 CoinGecko prices, 16 exact-contract search pools, 24 hourly price observations in the selected one-day pool window. Counts describe this run and can change; they do not establish liquidity for every catalog asset.
+`npm run integration` passed at `2026-10-18T21:50:44Z` (October 19 in Athens), using real issuer, CoinGecko, GeckoTerminal, RPC and quote responses. No fixture substitution was used for final integration validation.
 
-| Stock | Deployments | Actual order quotes | Normalized quotes |
+- Catalog: 1,514 securities, 12 recognized issuer/product families, 18 configured chains.
+- NVIDIA: 12 products, 35 deployments, 11 CoinGecko product prices, 16 matching search pools, 24 hourly observations. Native RWA refresh grouped ten products; wrappers remained excluded.
+- 206 issuer records were quarantined because identity mappings were inconsistent or unconfirmed.
+
+| Security | Deployments checked | Actual quoted routes | Verified share conversions |
 | --- | ---: | ---: | ---: |
 | NVIDIA | 35 | 12 | 5 |
 | Apple | 33 | 11 | 5 |
-| Tesla | 34 | 8 | 5 |
+| Tesla | 34 | 7 | 4 |
 
-Integration assertions check broad provider discovery, real market prices, exact catalog-contract membership of pools, positive chronological history observations, actual quote output, normalized arithmetic, ascending rankings, exact external pair addresses, BNB website chain slug and HTTP input validation. Raw report: `test-results/live-integration.json`; log: `test-results/full-integration.log`, both ignored by Git.
+Assertions check actual output, normalized arithmetic/order, contract identity and orientation, exact venue handoff addresses, source coverage, time bounds and input validation. Raw evidence: `live-integration.json` and `terminal-full-integration.log`.
 
-Public native RWA detail initially returned HTTP 429, then recovered. The final real integration refreshed native grouping for ten NVIDIA products; wrapped products remained excluded. Normal discovery also retains conservative catalog mapping and exact issuer-contract joins so the app can work when optional native grouping is limited. Success/persistence, wrapper exclusion and malformed responses are regression-tested.
+`npm run integration:terminal` passed at `2026-10-18T21:47:16Z`: a CoinGecko RWA page returned 250 observations, of which 217 matched exact catalog IDs. The other 1,297 catalog assets remained unknown for that page. NVIDIA's xStock returned 35 venue rows spanning 22 exchange identifiers; the selected onchain pool returned 24 real OHLC bars. Selected-ID retrieval and invalid HTTP parameters were checked. Raw evidence: `terminal-integration.json`.
 
-## Actual browser
+An independently reproduced exact-token Ethereum pool failed history validation when token scope was removed. The corrected query returned HTTP 200 with two actual candles in the current one-day window; sparse trading is retained without filled periods.
 
-The running app was exercised in the Codex in-app browser:
+## Browser end-to-end checks
 
-- Products: NVIDIA and Meta show broader issuer products; live prices, token market caps/volumes, timestamps and older-observation labels appear. Exact bStocks filtering produces one row; expanding it reveals primary terms, contract and handoffs.
-- Exact-token Markets link opens BNB bStocks pools. Twenty exact-token pools returned, with separate token/base orientation and liquidity/volume. A selected pool loaded 24 hourly observations for 1D and 168 for 7D. Stock-wide Meta markets also returned seven matching pools and a real Solana chart.
-- Issuer terms tab shows the selected provider's sourced terms. Unreviewed issuers use explicit unreviewed notes.
-- Order quotes: NVIDIA returns 35 deployment rows. Sorting by issuer keeps the true lowest effective-price row as winner; unavailable alphabetically-first issuers do not acquire its badge.
-- Invalid amount 1 removes quote rows and disables CSV. A valid preset recovers results.
-- Saved NVIDIA survives reload. Stock, amount, chain, view and issuer restore from URL. Saved-only filter shows one result; removing the test favorite produces the saved empty state. Test favorite removed afterward.
-- Real CSV download inspected from Downloads: one filtered NVIDIA/xStocks/Solana quote, correct equivalent shares/status, source columns and legal fields. Copy-link reports success.
-- ETF search returns S&P fund matches; unmatched search gives a useful empty state. Rapid Apple → Tesla → NVIDIA selection ends on NVIDIA without an older response replacing it.
-- Desktop, 390px and 320px checked. Document scroll width equals viewport content width. Responsive market rows, controls, tabs and disclosures remain usable. Viewport override reset afterward.
+Actual in-app browser against the running service:
 
-External Raydium terms gate and correct Kyber BNB pair were verified in the previous release; those handoff paths are preserved. The new quote renderer retains expiry and refresh controls.
+- Desktop workstation at 1440 × 1000; mobile at 390 × 844. Mobile document/body scroll width was 375px within a 390px viewport (15px browser scrollbar), with no horizontal page overflow.
+- Company/ticker command search, keyboard selection, linked security heading, persistent chart across table changes and local watchlist toggling/reload. A real watchlist JSON export/import round trip matched the catalog and preserved the saved set.
+- Three-product shortlist logic and actual two-product side-by-side issuer comparison, including rights, dividends, source documents and exit conditions.
+- Exchange product observations, source links, spread/depth fields and a real CSV download. Downloaded NVIDIA exchange CSV contains price, volume, exchange, pair, depth, timestamps, flags and observation status.
+- Hourly candle keyboard inspection; range request and source failure handling. A public GeckoTerminal rate limit occurred during exploration and was shown as an outage with a retry action. Subsequent real hourly charts recovered. Same-pool refresh failures retain the previous chart and label its retained range/time.
+- Apple quotes: 11/33 routes quoted and five normalized in the observed browser run. Tesla Solana filter: one normalized quote from four deployments. Invalid budget input, table switching, expired quote state and source disclosures were inspected.
+- Mobile universe expand/search, Tesla selection, automatic collapse, linked chart and quote panel.
 
-## Automated and independent review
+Screenshots: `terminal-desktop.png`, `terminal-mobile.png`. Browser viewport override is reset at handoff. Quote observations expire; screenshots are not current executable prices.
 
-**39 unit/API tests pass.** Coverage includes decimal precision, malformed budgets, unknown conversion units, paused tokens/oracles, CSV parsing, ambiguous identity and wrapped-token exclusions, same-contract joins, native grouping scope/persistence/wrapper exclusion, exact pool identity/orientation, elapsed history bounds, source-wide 429 cooldown, sorting-independent winner selection, HTML escaping, spreadsheet formula escaping, endpoint validation, private-file allowlist and security headers.
+## Automated checks and review
 
-Independent whole-change code review found four material issues: winner depended on display order, enrichment was response-local, sparse history could exceed the chosen range, and cooldown was path-local. Each reproduced in a failing test and now passes after the corresponding fix; the complete suite passes. The reviewer also checked exact-contract market-ID attachment without a material finding.
+**72 tests pass on Node 22.23.3**, including actual local HTTP and runtime subprocess boundaries. Coverage includes exact identity joins, conservative conversion qualification, BigInt precision, paused multipliers/oracles, stale/expired exclusion, CSV/HTML escaping, OHLC geometry and gaps, retained token scope, loaded-page polling, stale screener notices, source queues/deadlines/coalescing/cooldowns, unwritable cache handling, proxy spoofing, security headers, readiness and private-file boundaries.
 
-## Limits
+The Node 22 production subprocess smoke passed with actual catalog readiness HTTP 200. It verifies assigned-port binding, all client modules, headers, secret/static boundaries, rate identity, invalid startup config, clean SIGTERM drain and forced deadline shutdown with an incomplete real HTTP connection. Logs: `node22-tests.log`, `node22-production-smoke.log`.
 
-No financial transaction was submitted, terms accepted, or wallet connected. CoinGecko/GeckoTerminal prices are market observations, not underlying exchange reference prices or order fills. Quotes have five-chain adapter coverage; public APIs, missing conversions and source catalog quality limit availability. The tool reports gaps rather than inventing values or guaranteeing globally cheapest execution. Public distribution/hosting remains separate from this local application.
+Independent code review identified exact-token chart scope, venue CSV schema, hidden chart source failures, incomplete loaded-page polling and hidden stale screener fallback. Each was corrected with regressions or real endpoint reproduction. The UI detector ran once and reported no findings. Final visual review required larger chart data/source text; chart values now use at least 11px and source metadata 12px, with wrapping on mobile. Final visual review is recorded in `docs/progress.md`.
 
-Final accessibility/UX review confirmed the existing visual system and phone layout. Its two material findings were fixed: quote summary names now include exposure, price, units and availability; expanded quote details repeat the swap-gas estimate on phones. Browser confirmation showed 4.7082 equivalent shares at 212.40 USDC per share and a separately labeled gas estimate on the tested Ethereum row (point-in-time values, not a recommendation). Quote expiry/refresh and final console checks completed separately below.
+## Deployment boundary
 
-Final actual expiry check: an Ethereum quote changed to “Quotes stale · refresh,” its purchase href was removed, and the winner badge was hidden. Refresh restored a current quote and exact-token purchase link. Final browser warning/error log was empty. The viewport override was reset and the app was left on NVIDIA Products with all chains/issuers.
+Production runtime, non-root Dockerfile, Compose, Render manifest, CI and operations instructions are supplied. No public service was created. Docker is unavailable on this computer, so the image and Compose have not been executed locally; CI Node 24 and container jobs are configured but have not run. Node 22 is validated locally. HTTPS termination and trusted proxy addresses must be configured for the chosen host as described in DEPLOY.md.
+
+Public APIs can be delayed, partial, rate-limited or unavailable. Market-source observations live in process memory and disappear at restart; catalog snapshots persist. Unverified share ratios stay unranked. This release opens external venues and does not submit trades, custody assets, determine eligibility or provide a stock-exchange reference-price feed.

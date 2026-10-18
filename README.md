@@ -1,74 +1,67 @@
-# Stocklens
+# Stocklens Terminal
 
-A local comparison workspace for tokenized stocks and ETFs. CoinGecko supplies broader product discovery and token market observations; GeckoTerminal supplies exact-contract pools and historical prices; issuer and onchain sources support share conversions and order quotes.
+A financial workstation for tokenized stocks and ETFs. Start with a company, then inspect its issuer products, onchain pools, exchange markets and share-normalized order quotes.
 
-Node.js 22+, zero runtime dependencies, no build step.
+**Node.js 22+ · zero runtime dependencies · no build step.**
 
 ```sh
-cd /Users/dpechli/Desktop/Codex/Stocklens
 npm start
 ```
 
-Open [Stocklens](http://127.0.0.1:4173). The server listens on localhost. Public sources work without a key where available. Optional RPC and CoinGecko settings are in `.env.example`; keep credentials in `.env`, which is ignored and never served.
+Open [Stocklens](http://127.0.0.1:4173). Optional source settings live in `.env.example`. Public sources work without a key where the provider permits access. Credentials belong in the server environment or ignored `.env` file.
 
-## Use
+## The workspace
 
-1. Search a company, ticker, token symbol or ISIN. Filter stocks/ETFs or saved assets.
-2. **Products:** compare issuers, token-unit prices, 24h changes, volumes, caps and deployments. Expand for exact contracts, sources, terms and market/quote links.
-3. **Order quotes:** set a USDC budget and compare equivalent-share output where conversion is verified. Choose a chain/issuer, inspect raw source responses, and open the exact token pair at the external venue.
-4. **Markets:** inspect exact-contract pools, USD/token prices, pool reserve liquidity and 24h volume. Open an hourly chart for a rolling 1D/7D range or follow the pool link.
-5. **Issuer terms:** compare source-linked structure, rights, dividend and exit notes. Unreviewed terms are explicitly labeled. Copy the current comparison URL or export visible rows to CSV.
+- **Universe and tape:** search companies, tickers, tokens and ISINs; sort reference price, change or volume; filter stocks/ETFs; save, import and export a local watchlist. Market observations come from loaded CoinGecko RWA pages. Load more pages at the bottom of the universe. Missing prices stay unknown.
+- **Persistent chart:** exact-contract hourly OHLC candles and USD volume from GeckoTerminal. Select a pool and rolling 1D/7D window. Move across the chart or use its left/right arrows to inspect candles. Real gaps remain gaps. The chart has its own pool selection; chain/issuer filters below it apply to the active table.
+- **Products:** token-unit price, change, volume, market cap and deployments. Expand a row for contracts, source documents, exit conditions and exact market/quote links. Use `+` to shortlist up to three products, then compare issuer rights, dividends and exit terms side by side.
+- **Order quotes:** choose a USDC budget, chain and issuer. Compare equivalent-share output only where the share conversion is verified. Missing conversion ratios remain unranked. Expand for costs, quoted units and source responses. External venues re-quote before purchase.
+- **Pools:** exact-contract prices, reserve liquidity and volume; link a pool into the persistent chart or open its source page.
+- **Exchanges:** select an issuer token; compare CoinGecko venue observations, spreads, reported ±2% depth, timestamps and stale/anomaly flags. Venue data is token-wide. Chain selection restricts eligible products, not the exchange's networks.
+- **Issuer terms:** source-linked structure, rights, dividend and exit notes. Unreviewed terms are explicitly labeled.
 
-Favorites persist in the browser; no account or database is needed. Tabs, chain, issuer, stock and amount are shareable. Export includes source timestamps and separates raw token observations from normalized order values.
+`⌘/Ctrl K` or `/` opens security search. `1`–`5` switch panels; `W` toggles the watchlist; `R` refreshes the table and current chart. Shortcuts leave text-entry fields alone. The URL preserves stock, table, amount, chain and issuer. CSV exports preserve units, sources and timestamps. Watchlists stay in the current browser; JSON import/export provides a portable list of asset IDs; import merges matching catalog IDs with the current watchlist.
+
+Markets poll every 90 seconds and charts every 180 seconds while the page is visible. All loaded screener pages refresh. Order quotes expire after 30 seconds and require an explicit refresh; expired purchase links are disabled. Cached source fallbacks are labeled, retain their original timestamps and never become executable quotes.
 
 ## Data and identity
 
-- [CoinGecko RWA list](https://docs.coingecko.com/demo/reference/rwas-list), [coin platform registry](https://docs.coingecko.com/demo/reference/coins-list), [market observations](https://docs.coingecko.com/demo/reference/coins-markets).
-- [GeckoTerminal public API](https://api.geckoterminal.com/docs/index.html): pools, reserves, volumes and hourly OHLCV.
-- [xStocks public API](https://docs.xstocks.fi/developers/quickstart), [conversion-unit documentation](https://docs.xstocks.fi/developers/multipliers).
-- Ondo's official CSV from [contract addresses](https://docs.ondo.finance/addresses#ondo-stocks); onchain synthetic-shares oracles where registered.
+Primary integrations:
 
-Discovery recognizes 12 product families in current CoinGecko records: xStocks, Ondo, bStocks, Coinbase, Dinari, Robinhood, Backpack, Anchored, rStocks, Reality, ST0x and Stove. Native CoinGecko RWA grouping can be refreshed from Sources & coverage. It returned rate-limit errors initially and later recovered; ordinary discovery also uses conservative underlying ID/name and token-symbol corroboration. This is catalog mapping, not a legal identity guarantee. Wrapped and ambiguous products are excluded. A matching issuer, symbol and exact contract connects issuer products to CoinGecko IDs when names differ. ISIN URLs remain stable; no ticker-only merge assigns a security ID.
+- CoinGecko [RWA catalog](https://docs.coingecko.com/demo/reference/rwas-list), [tokenized market reference](https://docs.coingecko.com/demo/reference/rwas-markets), [token markets](https://docs.coingecko.com/demo/reference/coins-markets) and [exchange tickers](https://docs.coingecko.com/demo/reference/coins-id-tickers).
+- [GeckoTerminal public API](https://api.geckoterminal.com/docs/index.html): exact-contract pools, reserve values, volumes and OHLCV history.
+- [xStocks public API](https://docs.xstocks.fi/developers/quickstart) and [multiplier documentation](https://docs.xstocks.fi/developers/multipliers).
+- Ondo's official CSV from its [contract registry](https://docs.ondo.finance/addresses#ondo-stocks), plus registered onchain conversion oracles.
+- Raydium and KyberSwap size-specific quotes; public chain RPCs for supported conversion mechanics.
 
-Ondo CSV rows that conflict with independent identity mappings are quarantined. The current catalog contains more assets than have active liquidity. Source counts are observations from the dated integration report, not exhaustive market coverage.
+The October 19, 2026 Athens integration observed 1,514 securities and 12 recognized product families. The configured directory covers 18 chains; quote adapters cover Solana, Ethereum, BNB Chain, Base and Arbitrum. Counts and available routes change. See [QA.md](QA.md) for the measured run and limits.
 
-Contract registry covers 18 configured chains. Size-specific quote adapters cover Solana, Ethereum, BNB Chain, Base and Arbitrum. Other chains remain browsable and show an explicit unavailable quote state. GeckoTerminal search returns its first page filtered to known contracts; exact-token Markets links query that deployment's top pools. These are not all pools or all centralized exchanges.
+Canonical identifiers come from issuer records and corroborated CoinGecko underlying identity, symbols and contracts. A ticker alone does not assign an ISIN. Conflicting issuer mappings are quarantined. Wrapped products and ambiguous matches are excluded. This mapping does not establish legal equivalence between products.
 
-## Financial units and freshness
+## Units and coverage
 
-**Order ranking:** nominal USDC input / equivalent underlying shares received. Output incorporates provider swap fees and impact. Gas, approvals, account creation, funding, bridging, tax and future exit costs are excluded. BNB uses Binance-Peg USDC. Funds are assumed already available on the destination chain; stablecoin/bridge risks are not priced.
+- The screener is an **aggregated tokenized market reference**, not the underlying stock's NASDAQ/NYSE price. Product, exchange and pool prices are USD per **token unit**. They cannot establish the cheapest share exposure by themselves.
+- Order ranking is `USDC input ÷ verified equivalent shares received`. Output reflects quote fees and price impact. Network costs, approvals, account creation, funding, bridging, taxes and future exit costs are separate. USDC is assumed available on each destination chain; BNB uses Binance-Peg USDC.
+- xStocks EVM quote output is already adjusted. Solana conversions use the active multiplier. Other issuers do not inherit these assumptions. Conversion gaps are shown directly.
+- GeckoTerminal stock-wide coverage is a filtered first search page; exact-token links query that deployment's top pools. Exchange tickers are paginated provider observations, not a complete executable order book. Pool reserves and reported depth do not guarantee fill size or slippage.
+- Direct exchange links are shown only for validated supported hosts. Other market rows link to CoinGecko's markets page. This avoids incorrectly cased DEX contract URLs supplied by third-party tickers.
+- Public API limits and provider outages can constrain coverage. Last-good market observations are process-local; catalog snapshots persist to disk. No account database, wallet, custody or transaction submission is included. Issuers and venues determine product eligibility.
 
-Solana xStocks/Ondo use verified issuer or onchain multipliers. EVM xStocks amounts are already adjusted. Other issuers do not inherit these conversions; missing ratios stay unranked even if a token quote exists. bStocks and Robinhood documentation explicitly describes reinvested dividends, so assuming a permanent 1:1 ratio would misstate exposure.
+## Deploy and verify
 
-CoinGecko and GeckoTerminal observations are USD per source token unit. They are not the stock's NASDAQ/NYSE price and do not predict order execution. Volume/cap refer to tokens; pool reserve liquidity is not a maximum order or slippage guarantee. Historical charts use actual hourly observations within the selected rolling window, preserve gaps and do not fabricate empty periods.
+[DEPLOY.md](DEPLOY.md) covers production configuration, HTTPS/proxy setup, cache persistence, Docker/Compose and the Render manifest. A production process accepts the platform's assigned port:
 
-Swap quotes expire 30 seconds after local request start. Expired quotes lose the winner badge and purchase href. Market observations retain provider timestamps; older CoinGecko observations are labeled. Refresh respects upstream cache windows rather than inventing a new source timestamp.
-
-## Resilience and API
-
-Public metadata is cached locally for 12 hours; an outage may retain a labeled catalog snapshot up to 72 hours. Quotes are cached 10 seconds, token prices 60 seconds, pools 90 seconds, and history 5 minutes. Source calls are paced and coalesced. HTTP 429 triggers a source-wide cooldown; failures appear as partial data with recovery messages. No research fixtures or synthetic prices are used as runtime fallbacks.
-
-Same-origin JSON endpoints:
-
-- `GET /api/catalog`
-- `GET /api/products?stock=NVDA&chain=all` (`enrich=true` refreshes native RWA mapping)
-- `GET /api/compare?stock=NVDA&amount=1000&chain=all`
-- `GET /api/markets?stock=NVDA&chain=all` (optional exact catalog `token` + chain)
-- `GET /api/history?stock=NVDA&pool=<listed-row-id>&range=1d` (or `7d`)
-- `GET /api/health`
-
-History only accepts pools obtained for the selected stock. The server cannot proxy arbitrary URLs/contracts. API validation, response bounds, security headers, static allowlist and local rate limits remain enabled. Keys stay on the server.
-
-## Code and validation
-
-`server/coingecko.mjs` owns discovery/market mapping; `server/gecko.mjs` owns pool orientation/history; `server/catalog.mjs` joins identity and retained enrichment; `server/providers.mjs` owns quotes/conversions; `server/source-client.mjs` owns public-service pacing, cooldown and metadata persistence. `src/views.mjs` contains pure table/chart/CSV rendering; `src/app.mjs` coordinates state, requests and interactions.
+```sh
+NODE_ENV=production HOST=0.0.0.0 PORT=4173 npm start
+```
 
 ```sh
 npm test
-# With the app running: actual issuer / CoinGecko / GeckoTerminal / RPC / quote integrations
 npm run integration
+npm run integration:terminal
+npm run smoke:production
 ```
 
-The live script writes `test-results/live-integration.json`; real browser checks are recorded in `QA.md`. Public source availability and limits affect coverage.
+The integration scripts contact real sources; live availability can cause a check to fail. `STOCKLENS_URL` selects an already running instance. The production smoke starts and stops its own production process and requires an actual usable catalog. CI covers Node 22/24 and a container job; local execution evidence is in QA.md.
 
-Purchases happen on external venues and obtain a new quote there. No custody, wallet connection, order submission, jurisdiction screening or issuer-risk scoring is implemented. Public hosting, commercial data licensing/capacity, and distribution review remain deployment work; this deliverable runs locally.
+Modules remain small in purpose: `server/` owns catalog identity, providers, source resilience and HTTP boundaries; `src/model.mjs` owns numeric/search logic; `src/views.mjs` owns escaped rendering and exports; `src/chart.mjs` owns chart geometry/inspection; `src/terminal.mjs` owns linked workstation panels; `src/app.mjs` coordinates the selected security and table requests.

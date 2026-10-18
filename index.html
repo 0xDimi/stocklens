@@ -1,277 +1,385 @@
 <!doctype html>
-<!-- THESIS: Stock-first comparison with separate market observations and order quotes.
-OWN-WORLD: Existing daylight white/ink/teal workspace, flat tables, system typography.
-STORY: Find a security, inspect representations, compare terms, then open its market.
-FIRST VIEWPORT: Compact purpose heading, searchable left rail, product workspace with tabs.
-FORM: Local extension of the accepted comparison desk; no replacement visual world. -->
+<!-- Stocklens terminal: canonical securities, source-labelled observations, size-specific execution. -->
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f7f8fa" />
+    <meta name="theme-color" content="#0b0e12" />
     <meta
       name="description"
-      content="Compare tokenized stocks and ETFs across issuers, chains and markets. CoinGecko data, GeckoTerminal liquidity and live swap quotes."
+      content="A market terminal for tokenized stocks. Compare issuer products, exchange markets, onchain liquidity and share-normalized order quotes."
     />
-    <title>Stocklens — Compare tokenized stocks</title>
+    <title>Stocklens | Tokenized stock terminal</title>
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23126851'/%3E%3Cpath d='M10 26V14h12v12H10Zm8-4V10h12v12H18Z' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0e12'/%3E%3Cpath d='M8 8h16v6H14v4h10v6H8v-6h10v-4H8z' fill='%23eeb65c'/%3E%3C/svg%3E"
     />
     <link rel="stylesheet" href="/src/styles.css" />
     <script type="module" src="/src/app.mjs"></script>
   </head>
   <body>
-    <a class="skip-link" href="#comparison">Skip to comparison</a>
-    <header class="header">
+    <a class="skip-link" href="#comparison">Skip to workspace</a>
+    <header class="masthead">
       <a class="brand" href="/" aria-label="Stocklens home"
-        ><span class="brand-mark" aria-hidden="true"><i></i><i></i></span
-        >stocklens<span class="brand-dot">.</span></a
-      >
-      <nav aria-label="Main navigation">
-        <span class="nav-current">Explore</span
-        ><button class="text-button" id="how-it-works">How it works ↗</button>
-      </nav>
-      <span class="demo-badge live-badge"
-        ><span aria-hidden="true"></span>Public market data</span
-      >
+        ><span class="brand-mark">S</span>STOCKLENS <small>TERMINAL</small></a
+      ><button id="command-open" class="command-open">
+        <span>⌕</span> Find a security, ticker or token <kbd>⌘ K</kbd>
+      </button>
+      <div class="session">
+        <span class="status-dot"></span
+        ><span id="market-status">Connecting to sources</span>
+      </div>
+      <button id="how-it-works" title="Methodology">Methodology ↗</button>
     </header>
-    <main>
-      <section class="page-intro">
-        <div>
-          <h1>Compare tokenized stocks.</h1>
-          <p class="intro-copy">
-            Compare issuers, chains and markets for one underlying asset.
-          </p>
+    <div class="tape-wrap">
+      <span class="tape-label">TOKENIZED<br />REFERENCE USD</span>
+      <div
+        id="market-tape"
+        class="market-tape"
+        aria-label="Tokenized market observations"
+      >
+        <span class="tape-empty">Connecting to public market feeds…</span>
+      </div>
+    </div>
+    <main class="terminal-layout">
+      <aside class="stock-rail" aria-label="Security universe">
+        <div class="rail-heading">
+          <h1>MARKET UNIVERSE</h1>
+          <span>01</span>
         </div>
-        <div class="coverage-note">
-          <span>CoinGecko · GeckoTerminal · issuers</span
-          ><strong id="coverage">Connecting…</strong>
+        <label class="search-field"
+          ><span aria-hidden="true">⌕</span
+          ><input
+            id="search"
+            type="search"
+            placeholder="Search securities…"
+            aria-label="Search stocks"
+            autocomplete="off"
+            disabled
+        /></label>
+        <div class="rail-filters">
+          <button id="all-stocks" aria-pressed="true">All assets</button
+          ><button id="saved-stocks" aria-pressed="false">
+            Watchlist <span id="saved-count">0</span></button
+          ><button
+            id="watchlist-import"
+            aria-label="Import watchlist"
+            title="Import watchlist"
+          >
+            ↑</button
+          ><input
+            id="watchlist-file"
+            type="file"
+            accept="application/json,.json"
+            hidden
+          /><button
+            id="watchlist-export"
+            aria-label="Export watchlist"
+            title="Export watchlist"
+          >
+            ↓
+          </button>
         </div>
-      </section>
-      <div class="workspace">
-        <aside class="stock-rail" aria-label="Choose an asset">
-          <label class="search-field"
-            ><svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="10.5" cy="10.5" r="6.5" />
-              <path d="m15.5 15.5 5 5" /></svg
-            ><input
-              id="search"
-              type="search"
-              placeholder="Company, ticker, token…"
-              aria-label="Search stocks"
-              autocomplete="off"
-              disabled
-          /></label>
-          <label class="asset-type-label"
-            >Asset type<select id="asset-type" aria-label="Asset type">
+        <div class="universe-filters">
+          <label
+            ><span class="sr-only">Asset type</span
+            ><select id="asset-type" aria-label="Asset type">
               <option value="all">Stocks & ETFs</option>
               <option value="Stock">Stocks</option>
               <option value="ETF">ETFs</option>
             </select></label
+          ><label
+            ><span class="sr-only">Universe sort</span
+            ><select id="universe-sort" aria-label="Universe sort">
+              <option value="volume">Volume ↓</option>
+              <option value="change">24h change ↓</option>
+              <option value="price">Price ↑</option>
+              <option value="name">Ticker A–Z</option>
+            </select></label
           >
-          <div class="rail-filters" aria-label="Asset list">
-            <button id="all-stocks" aria-pressed="true">All assets</button
-            ><button id="saved-stocks" aria-pressed="false">
-              Saved <span id="saved-count">0</span>
-            </button>
-          </div>
-          <div id="stock-list" class="stock-list">
-            <p class="empty-search">Loading source catalogs…</p>
-          </div>
-          <p id="list-status" class="list-status"></p>
-          <div class="rail-bottom">
-            <span class="tiny-mark" aria-hidden="true">↗</span>
-            <p>Find the stock.<br />Compare its onchain forms.</p>
-          </div>
-        </aside>
-        <section
-          id="comparison"
-          class="comparison"
-          aria-label="Asset comparison"
-        >
-          <div id="stock-heading" class="stock-heading">
-            <p class="loading-message">Connecting to market sources…</p>
-          </div>
-          <div class="view-tabs" role="tablist" aria-label="Comparison views">
-            <button
-              role="tab"
-              id="tab-products"
-              data-view="products"
-              aria-selected="true"
-              aria-controls="view-panel"
-            >
-              Products</button
-            ><button
-              role="tab"
-              id="tab-quotes"
-              data-view="quotes"
-              aria-selected="false"
-              aria-controls="view-panel"
-              tabindex="-1"
-            >
-              Order quotes</button
-            ><button
-              role="tab"
-              id="tab-markets"
-              data-view="markets"
-              aria-selected="false"
-              aria-controls="view-panel"
-              tabindex="-1"
-            >
-              Markets</button
-            ><button
-              role="tab"
-              id="tab-terms"
-              data-view="terms"
-              aria-selected="false"
-              aria-controls="view-panel"
-              tabindex="-1"
-            >
-              Issuer terms
-            </button>
-          </div>
-          <div class="view-filters">
-            <label
-              >Chain<select id="chain" aria-label="Chain">
-                <option value="all">All chains</option>
-              </select></label
-            ><label
-              >Issuer<select id="issuer" aria-label="Issuer">
-                <option value="all">All issuers</option>
-              </select></label
-            ><label
-              >Sort by<select id="sort" aria-label="Sort by">
-                <option value="volume">24h volume</option>
-                <option value="price">Token price</option>
-                <option value="cap">Market cap</option>
-                <option value="name">Issuer name</option>
-              </select></label
-            >
-          </div>
-          <div id="quote-controls" class="controls" hidden>
-            <div class="budget-control">
-              <label for="budget">I want to spend</label>
-              <div class="budget-input">
-                <input
-                  id="budget"
-                  type="number"
-                  value="1000"
-                  min="10"
-                  max="1000000"
-                  step="0.01"
-                  inputmode="decimal"
-                  aria-describedby="budget-error"
-                /><span>USDC</span>
-              </div>
-            </div>
-            <div class="presets" aria-label="Budget presets">
-              <button data-budget="100">100</button
-              ><button data-budget="1000" aria-pressed="true">1,000</button
-              ><button data-budget="10000">10,000</button>
-            </div>
-          </div>
-          <p id="budget-error" class="field-error" hidden>
-            Enter 10–1,000,000 USDC, with at most two decimal places.
-          </p>
-          <div class="data-notice">
-            <span class="notice-icon" aria-hidden="true">i</span>
-            <p id="basis-note">
-              Market prices are USD per token unit. Use Order quotes to compare
-              equivalent shares for your budget.
-            </p>
-            <button id="methodology">Cost basis ↗</button>
-          </div>
-          <div id="view-panel" role="tabpanel" aria-labelledby="tab-products">
-            <div class="result-toolbar">
-              <h2 id="view-heading">
-                Products <span id="result-count">—</span>
-              </h2>
-              <div class="quote-actions">
-                <span id="freshness" class="sort-label">Waiting for data</span
-                ><button id="export" class="refresh-button" disabled>
-                  Export CSV</button
-                ><button id="refresh" class="refresh-button" disabled>
-                  ↻ Refresh
-                </button>
-              </div>
-            </div>
-            <p
-              id="comparison-status"
-              class="comparison-status"
-              role="status"
-            ></p>
-            <div id="chart-panel" class="chart-panel" hidden>
-              <div class="chart-toolbar">
-                <label
-                  >Pool history<select
-                    id="chart-pool"
-                    aria-label="Pool history"
-                  ></select
-                ></label>
-                <div class="chart-range" aria-label="Chart range">
-                  <button data-range="1d" aria-pressed="true">1D</button
-                  ><button data-range="7d" aria-pressed="false">7D</button>
-                </div>
-                <button id="close-chart" aria-label="Close chart">×</button>
-              </div>
-              <div id="chart-content"></div>
-            </div>
-            <div id="results" aria-live="polite" aria-atomic="false">
-              <div class="empty-results">Loading the asset catalog…</div>
-            </div>
-            <p id="view-footnote" class="view-footnote"></p>
-          </div>
-          <details class="source-panel">
-            <summary>
-              Sources & coverage <span id="source-summary"></span>
-            </summary>
-            <div id="source-details"><p>Waiting for catalog sources.</p></div>
-            <button id="enrich" class="text-button">
-              Refresh CoinGecko RWA mapping ↗
-            </button>
-          </details>
-        </section>
-      </div>
-    </main>
-    <footer>
-      <span
-        >stocklens<span class="brand-dot">.</span
-        ><span class="footer-divider">/</span>Tokenized stocks, in focus.</span
+        </div>
+        <div class="universe-columns">
+          <span>SECURITY</span><span>REF. USD / 24H</span>
+        </div>
+        <div id="stock-list" class="stock-list">
+          <p class="empty-search">Loading source catalogs…</p>
+        </div>
+        <div class="rail-bottom">
+          <span id="watchlist-status" role="status"></span
+          ><span id="list-status"></span
+          ><button id="load-markets" hidden>Load next market page</button
+          ><small id="coverage">Catalog connecting…</small>
+        </div>
+      </aside>
+      <section
+        id="comparison"
+        class="comparison"
+        aria-label="Security workspace"
       >
+        <div class="workspace-label">
+          <span>SECURITY WORKSPACE</span
+          ><button id="toggle-universe" aria-expanded="false">
+            ☰ Universe</button
+          ><span>PUBLIC MARKET DATA</span>
+        </div>
+        <div id="stock-heading" class="stock-heading">
+          <p>Loading security…</p>
+        </div>
+        <div id="asset-metrics" class="asset-metrics"></div>
+        <section
+          id="chart-panel"
+          class="chart-panel"
+          aria-label="Pool candlestick chart"
+        >
+          <div class="chart-toolbar">
+            <div>
+              <span class="panel-number">02</span
+              ><label for="chart-pool">POOL CHART</label
+              ><select
+                id="chart-pool"
+                aria-label="Pool history"
+                disabled
+              ></select>
+            </div>
+            <div class="chart-range" aria-label="Chart range">
+              <button data-range="1d" aria-pressed="true">1D</button
+              ><button data-range="7d" aria-pressed="false">7D</button>
+            </div>
+          </div>
+          <div id="chart-caption" class="chart-caption">
+            EXACT-CONTRACT POOL / USD PER TOKEN
+          </div>
+          <div id="chart-content">
+            <div class="chart-empty">
+              <strong>Connecting to pool history…</strong
+              ><span>Hourly candles · USD per token</span>
+            </div>
+          </div>
+        </section>
+        <div class="view-tabs" role="tablist" aria-label="Comparison views">
+          <button
+            role="tab"
+            id="tab-products"
+            data-view="products"
+            aria-selected="true"
+            aria-controls="view-panel"
+          >
+            <kbd>1</kbd>Products</button
+          ><button
+            role="tab"
+            id="tab-quotes"
+            data-view="quotes"
+            aria-selected="false"
+            aria-controls="view-panel"
+            tabindex="-1"
+          >
+            <kbd>2</kbd>Order quotes</button
+          ><button
+            role="tab"
+            id="tab-markets"
+            data-view="markets"
+            aria-selected="false"
+            aria-controls="view-panel"
+            tabindex="-1"
+          >
+            <kbd>3</kbd>Pools</button
+          ><button
+            role="tab"
+            id="tab-venues"
+            data-view="venues"
+            aria-selected="false"
+            aria-controls="view-panel"
+            tabindex="-1"
+          >
+            <kbd>4</kbd>Exchanges</button
+          ><button
+            role="tab"
+            id="tab-terms"
+            data-view="terms"
+            aria-selected="false"
+            aria-controls="view-panel"
+            tabindex="-1"
+          >
+            <kbd>5</kbd>Issuer terms
+          </button>
+        </div>
+        <div class="view-filters">
+          <label
+            >Chain<select id="chain" aria-label="Chain">
+              <option value="all">All chains</option>
+            </select></label
+          ><label
+            >Issuer<select id="issuer" aria-label="Issuer">
+              <option value="all">All issuers</option>
+            </select></label
+          ><label
+            >Sort<select id="sort" aria-label="Sort by">
+              <option value="volume">24h volume</option>
+            </select></label
+          ><label id="venue-control" hidden
+            >Token<select
+              id="venue-product"
+              aria-label="Exchange token"
+            ></select
+          ></label>
+        </div>
+        <div id="quote-controls" class="controls" hidden>
+          <div class="budget-control">
+            <label for="budget">ORDER SIZE</label>
+            <div class="budget-input">
+              <input
+                id="budget"
+                type="number"
+                value="1000"
+                min="10"
+                max="1000000"
+                step="0.01"
+                inputmode="decimal"
+                aria-describedby="budget-error"
+              /><span>USDC</span>
+            </div>
+          </div>
+          <div class="presets" aria-label="Budget presets">
+            <button data-budget="100">100</button
+            ><button data-budget="1000" aria-pressed="true">1,000</button
+            ><button data-budget="10000">10,000</button>
+          </div>
+          <small>Funds on destination chain</small>
+        </div>
+        <p id="budget-error" class="field-error" hidden>
+          Enter 10–1,000,000 USDC, with at most two decimal places.
+        </p>
+        <div class="data-notice">
+          <p id="basis-note">Market observations in USD per token unit.</p>
+          <button id="methodology">Cost basis ↗</button>
+        </div>
+        <div id="view-panel" role="tabpanel" aria-labelledby="tab-products">
+          <div class="result-toolbar">
+            <h2 id="view-heading">Products <span id="result-count">—</span></h2>
+            <div class="quote-actions">
+              <span id="freshness">Waiting for data</span
+              ><button id="export" disabled>↓ CSV</button
+              ><button id="refresh" disabled>↻ Refresh</button>
+            </div>
+          </div>
+          <p id="comparison-status" class="comparison-status" role="status"></p>
+          <div id="results" aria-live="polite" aria-atomic="false">
+            <p class="empty-results">Loading the asset catalog…</p>
+          </div>
+          <p id="view-footnote" class="view-footnote"></p>
+        </div>
+        <details class="source-panel">
+          <summary>
+            Sources & coverage <span id="source-summary"></span>
+          </summary>
+          <div id="source-details"></div>
+          <button id="enrich">Refresh CoinGecko RWA mapping ↗</button>
+        </details>
+      </section>
+      <aside class="inspector" aria-label="Security inspector">
+        <div class="rail-heading">
+          <h2>SECURITY INTELLIGENCE</h2>
+          <span>03</span>
+        </div>
+        <section id="security-profile"></section>
+        <section class="compare-box">
+          <div class="inspector-title">
+            <span>PRODUCT SHORTLIST</span><b id="compare-count">0/3</b>
+          </div>
+          <div id="compare-list"><p>Select products to compare.</p></div>
+          <button id="compare-open" disabled>Compare side by side ↗</button>
+        </section>
+        <section id="execution-summary"></section>
+        <section class="desk-sources">
+          <div class="inspector-title">
+            <span>SOURCE MONITOR</span><span class="status-dot"></span>
+          </div>
+          <div id="desk-source-state"></div>
+        </section>
+        <div class="inspector-end">
+          One security.<br /><strong>Every representation in focus.</strong>
+        </div>
+      </aside>
+    </main>
+    <footer class="statusbar">
       <div>
-        <button id="share" class="text-button">Copy comparison link ↗</button
+        <span class="status-dot"></span><span id="session-time">STOCKLENS</span
+        ><span class="footer-divider">|</span
+        ><span class="keyboard-hints"
+          ><kbd>/</kbd> Search <kbd>1–5</kbd> Views <kbd>W</kbd> Watch
+          <kbd>R</kbd> Refresh</span
+        >
+      </div>
+      <div>
+        <button id="share">Copy workspace link ↗</button
         ><span id="share-status" role="status"></span>
       </div>
-      <p class="attribution">
-        Market data by
+      <span class="attribution"
+        >Data:
         <a
           href="https://www.coingecko.com/"
           target="_blank"
           rel="noopener noreferrer"
           >CoinGecko</a
         >
-        and
+        /
         <a
           href="https://www.geckoterminal.com/"
           target="_blank"
           rel="noopener noreferrer"
           >GeckoTerminal</a
-        >.
-      </p>
+        ></span
+      >
     </footer>
+    <dialog
+      id="command-dialog"
+      class="command-dialog"
+      aria-label="Find a security"
+    >
+      <div class="command-top">
+        <span>⌕</span
+        ><input
+          id="command-input"
+          role="combobox"
+          aria-label="Find security"
+          aria-controls="command-results"
+          aria-expanded="true"
+          aria-autocomplete="list"
+          autocomplete="off"
+          placeholder="Company, ticker, token or ISIN…"
+        />
+        <form method="dialog">
+          <button aria-label="Close search">ESC</button>
+        </form>
+      </div>
+      <div class="command-label">SECURITIES</div>
+      <div
+        id="command-results"
+        role="listbox"
+        aria-label="Matching securities"
+      ></div>
+      <div class="command-footer">
+        <span>↑ ↓ to navigate</span><span>↵ open security</span>
+      </div>
+    </dialog>
+    <dialog id="compare-dialog" aria-label="Product comparison">
+      <form method="dialog">
+        <button class="close-dialog" aria-label="Close comparison">×</button>
+      </form>
+      <div id="compare-content"></div>
+    </dialog>
     <dialog id="info-dialog" aria-labelledby="dialog-title">
       <form method="dialog">
         <button class="close-dialog" aria-label="Close explanation">×</button>
       </form>
-      <h2 id="dialog-title">Same asset. Different products.</h2>
-      <h3>Products and markets</h3>
+      <h2 id="dialog-title">Know the unit. Compare the output.</h2>
+      <h3>Market observations</h3>
       <p>
-        CoinGecko provides token listings and aggregate token prices.
-        GeckoTerminal provides exact-contract pool prices, volume, liquidity and
-        historical closes. These observations are not the underlying stock’s
-        exchange price and do not predict what your order will receive. Pool
-        liquidity is not a slippage guarantee.
+        CoinGecko provides aggregate token prices, tokenized reference markets
+        and exchange tickers. GeckoTerminal provides exact-contract pool prices,
+        volume, reserves and hourly candles. These are observations, not the
+        underlying stock’s exchange price or a size-specific order quote. Pool
+        reserves and reported exchange depth do not guarantee slippage.
       </p>
       <h3>Order quotes</h3>
       <div class="formula">
@@ -294,26 +402,23 @@ FORM: Local extension of the accepted comparison desk; no replacement visual wor
       </p>
       <p>
         Issuer security identifiers and corroborated CoinGecko underlying names,
-        IDs, token symbols and addresses connect products. Wrapped tokens and
-        ambiguous matches are excluded from discovery. Source labels distinguish
-        issuer records from CoinGecko catalog mapping. The native RWA grouping
-        can be refreshed in Sources & coverage.
+        IDs, symbols and addresses connect products. Wrapped tokens and
+        ambiguous matches are excluded. Native RWA grouping can be refreshed in
+        Sources & coverage.
       </p>
       <h3>Freshness and access</h3>
       <p>
-        Market observations show source timestamps. Quotes expire after 30
-        seconds and must be refreshed; the venue re-quotes before a purchase.
-        Public APIs can return partial coverage, access errors or rate limits.
-        Missing data stays missing.
+        Quotes expire after 30 seconds. The venue re-quotes before purchase.
+        Market feeds may be cached or partial. Universe observations cover the
+        loaded CoinGecko market pages; missing values remain unknown. Exchange
+        tickers cover the selected token across venues, regardless of its chain
+        filter.
       </p>
       <p>
-        Terms summaries link primary documents. Unreviewed rights are labeled.
-        Check product-specific terms and jurisdiction restrictions with the
-        issuer and venue.
-      </p>
-      <p class="dialog-end">
-        Stocklens does not hold funds, connect a wallet, or submit trades.
-        Purchase links open external venues.
+        Terms summaries link issuer documents. Unreviewed rights are labeled.
+        Check product-specific terms, venue access and jurisdiction
+        restrictions. Stocklens opens external markets and does not hold funds
+        or submit trades.
       </p>
     </dialog>
   </body>

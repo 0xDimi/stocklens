@@ -1,0 +1,16 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+.cache
+node_modules
+research
+test-results
+tests
+scripts
+docs
+*.log
+*.md
+compose.yaml
+render.yaml

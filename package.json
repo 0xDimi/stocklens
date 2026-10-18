@@ -1,12 +1,14 @@
 {
   "name": "stocklens",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test tests/*.test.mjs",
-    "integration": "node scripts/integration.mjs"
+    "integration": "node scripts/integration.mjs",
+    "integration:terminal": "node scripts/terminal-integration.mjs",
+    "smoke:production": "node scripts/production-smoke.mjs --require-ready"
   },
   "engines": {
     "node": ">=22"

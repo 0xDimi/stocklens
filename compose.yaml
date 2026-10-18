@@ -1,0 +1,27 @@
+services:
+  stocklens:
+    build: .
+    ports:
+      - "127.0.0.1:4173:4173"
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "4173"
+      CACHE_DIR: /app/.cache
+      COINGECKO_PLAN: ${COINGECKO_PLAN:-demo}
+      COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
+      TRUST_PROXY: ${TRUST_PROXY:-}
+    volumes:
+      - stocklens-cache:/app/.cache
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    stop_grace_period: 15s
+    restart: unless-stopped
+volumes:
+  stocklens-cache:

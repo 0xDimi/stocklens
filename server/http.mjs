@@ -13,47 +13,83 @@ export async function memo(key, ttl, load) {
     throw error;
   }
 }
+const waiting = [];
+let activeRequests = 0;
+const MAX_ACTIVE_REQUESTS = 16;
+const MAX_WAITING_REQUESTS = 64;
+function acquireRequest(timeout) {
+  if (activeRequests < MAX_ACTIVE_REQUESTS) {
+    activeRequests++;
+    return Promise.resolve();
+  }
+  if (waiting.length >= MAX_WAITING_REQUESTS)
+    return Promise.reject(
+      new Error("Data sources are busy. Please retry shortly."),
+    );
+  return new Promise((resolve, reject) => {
+    const job = { resolve, timer: null };
+    job.timer = setTimeout(() => {
+      const index = waiting.indexOf(job);
+      if (index >= 0) waiting.splice(index, 1);
+      reject(new Error("Data source queue timed out. Please retry shortly."));
+    }, timeout);
+    waiting.push(job);
+  });
+}
+function releaseRequest() {
+  const job = waiting.shift();
+  if (job) {
+    clearTimeout(job.timer);
+    job.resolve();
+  } else activeRequests--;
+}
 export async function request(
   url,
   { json = true, timeout = 12_000, headers = {}, method = "GET", body } = {},
 ) {
-  const response = await fetch(url, {
-    method,
-    body,
-    headers: {
-      "User-Agent": "Stocklens/0.3",
-      Accept: "application/json",
-      ...headers,
-    },
-    signal: AbortSignal.timeout(timeout),
-    redirect: "follow",
-  });
-  if (!response.ok) {
-    const error = new Error(
-      response.status === 429
-        ? "Data provider rate limit reached. Please refresh shortly."
-        : `Data provider returned HTTP ${response.status}.`,
-    );
-    error.status = response.status;
-    throw error;
-  }
-  const reader = response.body.getReader();
-  let length = 0;
-  const chunks = [];
+  const deadline = Date.now() + timeout;
+  await acquireRequest(timeout);
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      length += value.length;
-      if (length > 8_000_000)
-        throw new Error("Data provider response is too large.");
-      chunks.push(value);
+    const response = await fetch(url, {
+      method,
+      body,
+      headers: {
+        "User-Agent": "Stocklens/0.3",
+        Accept: "application/json",
+        ...headers,
+      },
+      signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
+      redirect: "follow",
+    });
+    if (!response.ok) {
+      const error = new Error(
+        response.status === 429
+          ? "Data provider rate limit reached. Please refresh shortly."
+          : `Data provider returned HTTP ${response.status}.`,
+      );
+      error.status = response.status;
+      throw error;
     }
+    const reader = response.body.getReader();
+    let length = 0;
+    const chunks = [];
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        length += value.length;
+        if (length > 8_000_000)
+          throw new Error("Data provider response is too large.");
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    const text = Buffer.concat(chunks).toString("utf8");
+    return json ? JSON.parse(text) : text;
   } finally {
-    reader.releaseLock();
+    releaseRequest();
   }
-  const text = Buffer.concat(chunks).toString("utf8");
-  return json ? JSON.parse(text) : text;
 }
 export async function rpc(url, method, params) {
   const result = await request(url, {

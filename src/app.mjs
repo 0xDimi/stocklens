@@ -9,15 +9,20 @@ import {
   quoteTable,
   marketsTable,
   termsTable,
-  chartMarkup,
+  venuesTable,
   csvText,
+  exportColumns,
 } from "./views.mjs";
+import { createTerminal } from "./terminal.mjs";
+let desk = null;
 const $ = (selector) => document.querySelector(selector);
 const params = new URLSearchParams(location.search);
 let stocks = [],
   chains = [],
   selected = null,
-  view = ["products", "quotes", "markets", "terms"].includes(params.get("view"))
+  view = ["products", "quotes", "markets", "venues", "terms"].includes(
+    params.get("view"),
+  )
     ? params.get("view")
     : "products";
 let snapshot = null,
@@ -27,11 +32,8 @@ let snapshot = null,
   savedOnly = false,
   limit = 80,
   token = params.get("token") || "",
-  range = "1d",
   requestId = 0,
-  chartRequestId = 0,
   controller = null,
-  chartController = null,
   debounce = null;
 let saved = new Set();
 try {
@@ -65,17 +67,8 @@ function renderStocks() {
       (type === "all" || s.category.toLowerCase() === type.toLowerCase()),
   );
   $("#stock-list").innerHTML = found.length
-    ? found
-        .slice(0, limit)
-        .map(
-          (s) =>
-            `<button class="stock-option ${selected?.id === s.id ? "selected" : ""}" data-stock="${escape(s.id)}" aria-pressed="${selected?.id === s.id}"><span class="stock-monogram ${s.ticker === "NVDA" ? "nvidia" : s.ticker === "TSLA" ? "tesla" : "apple"}" aria-hidden="true">${escape(s.name[0])}</span><span class="stock-option-name"><strong>${escape(s.name)}</strong><span>${escape(s.ticker)}${saved.has(s.id) ? " · ★" : ""}</span></span><span class="stock-arrow" aria-hidden="true">↗</span></button>`,
-        )
-        .join("") +
-      (found.length > limit
-        ? '<button id="load-more" class="text-button">Show more assets</button>'
-        : "")
-    : `<p class="empty-search">${savedOnly ? "No saved assets match. Save an asset with the star." : "No matching asset. Try a company, ticker, token or ISIN."}</p>`;
+    ? desk.universe(found, limit, saved)
+    : `<p class="empty-search">${savedOnly ? "No saved assets match. Save an asset with W or the star." : "No matching security. Try a company, ticker, token or ISIN."}</p>`;
   $("#list-status").textContent =
     `${Math.min(found.length, limit).toLocaleString()} of ${found.length.toLocaleString()} assets`;
   $("#saved-count").textContent = saved.size;
@@ -88,7 +81,23 @@ function renderHeading() {
     selected.products.flatMap((p) => p.deployments.map((d) => d.chain)),
   ).size;
   $("#stock-heading").innerHTML =
-    `<div class="company"><span class="stock-monogram large ${selected.ticker === "NVDA" ? "nvidia" : selected.ticker === "TSLA" ? "tesla" : "apple"}" aria-hidden="true">${escape(selected.name[0])}</span><div><div class="company-name"><h2>${escape(selected.name)}</h2><span class="ticker-label">${escape(selected.ticker)}</span><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p>${escape(selected.category)}${selected.exchange ? " · " + escape(selected.exchange) : ""}</p></div></div><div class="reference"><span>${selected.products.length} products · ${new Set(selected.products.map((p) => p.issuer)).size} issuers</span><strong>${chainCount}<small> chains</small></strong></div>`;
+    `<div class="company"><div class="company-name"><h2>${escape(selected.ticker)}</h2><span class="ticker-label">${escape(selected.category)}</span><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p>${escape(selected.name)}${selected.exchange ? " · " + escape(selected.exchange) : ""}</p></div><div class="reference"><span>${selected.products.length} PRODUCTS / ${new Set(selected.products.map((p) => p.issuer)).size} ISSUERS</span><strong>${chainCount} NETWORKS</strong></div>`;
+  const priorCoin = $("#venue-product").value;
+  $("#venue-product").innerHTML = selected.products
+    .filter(
+      (p) =>
+        p.coinId &&
+        ($("#chain").value === "all" ||
+          p.deployments.some((d) => d.chain === $("#chain").value)),
+    )
+    .map(
+      (p) =>
+        `<option value="${escape(p.coinId)}">${escape(p.symbol)} · ${escape(provider(p).name)}</option>`,
+    )
+    .join("");
+  if ([...$("#venue-product").options].some((o) => o.value === priorCoin))
+    $("#venue-product").value = priorCoin;
+  desk?.renderMarket();
   const prior = $("#issuer").value;
   $("#issuer").innerHTML =
     '<option value="all">All issuers</option>' +
@@ -119,6 +128,11 @@ const sortOptions = {
     ["volume", "24h volume"],
     ["price", "Token price"],
   ],
+  venues: [
+    ["volume", "24h volume"],
+    ["price", "Token price"],
+    ["name", "Exchange name"],
+  ],
   terms: [["name", "Issuer name"]],
 };
 function setView(next, fetch = true) {
@@ -134,6 +148,8 @@ function setView(next, fetch = true) {
     .join("");
   if (sortOptions[view].some(([id]) => id === prior)) $("#sort").value = prior;
   $("#quote-controls").hidden = view !== "quotes";
+  $("#venue-control").hidden = view !== "venues";
+  $("#issuer").disabled = view === "venues";
   $("#budget-error").hidden = true;
   $("#basis-note").textContent = {
     products:
@@ -142,6 +158,8 @@ function setView(next, fetch = true) {
       "Same destination-chain USDC input. Gas, bridging and future exit costs are separate.",
     markets:
       "Pool observations from GeckoTerminal. Liquidity is the pool’s total reserve value, not a slippage guarantee.",
+    venues:
+      "CoinGecko exchange observations for the selected token. Venue results are token-wide, regardless of chain. Reported depth is not an executable quote.",
     terms:
       "Read product-specific documents and access rules. Unreviewed terms remain explicitly labeled.",
   }[view];
@@ -149,32 +167,34 @@ function setView(next, fetch = true) {
     {
       products: "Products",
       quotes: "Order quotes",
-      markets: "Markets",
+      markets: "Pools",
+      venues: "Exchanges",
       terms: "Issuer terms",
     }[view] + ' <span id="result-count">—</span>';
-  $("#chart-panel").hidden = true;
-  chartController?.abort();
-  chartRequestId++;
   if (view !== "markets") token = "";
   if (fetch) loadView();
 }
 function filters(rows) {
   const issuer = $("#issuer").value,
     sort = $("#sort").value;
-  const filtered = rows.filter((r) => issuer === "all" || r.issuer === issuer);
+  const filtered = rows.filter(
+    (r) => view === "venues" || issuer === "all" || r.issuer === issuer,
+  );
   const val = (r) =>
     sort === "liquidity"
       ? r.liquidity
       : sort === "volume"
-        ? (r.market?.volume24h ?? r.volume24h)
+        ? (r.market?.volume24h ?? r.volume24h ?? r.volumeUsd)
         : sort === "cap"
           ? r.market?.marketCap
           : sort === "price"
-            ? (r.market?.price ?? r.price)
+            ? (r.market?.price ?? r.price ?? r.priceUsd)
             : null;
   return filtered.sort((a, b) =>
     sort === "name"
-      ? provider(a).name.localeCompare(provider(b).name)
+      ? (a.exchange || provider(a).name).localeCompare(
+          b.exchange || provider(b).name,
+        )
       : sort === "exposure"
         ? 0
         : sort === "price"
@@ -206,6 +226,10 @@ function renderResults() {
     $("#results").innerHTML = visibleRows.length
       ? marketsTable(visibleRows)
       : `<div class="empty-results"><p>${escape(snapshot.error || "No pools in these results match this asset and filters. Open a product’s exact-token Markets link to search its pools.")}</p>${token ? '<button id="clear-token" class="provider-link">Show stock-wide markets</button>' : ""}</div>`;
+  if (view === "venues")
+    $("#results").innerHTML = visibleRows.length
+      ? venuesTable(visibleRows)
+      : '<p class="empty-results">No exchange observations for this token. Try another product.</p>';
   if (view === "terms")
     $("#results").innerHTML = visibleRows.length
       ? termsTable(visibleRows)
@@ -219,7 +243,9 @@ function renderResults() {
         ? `${quotes} of ${visibleRows.length} routes quoted · ${visibleRows.filter((r) => r.rankable).length} normalized`
         : view === "markets"
           ? `${visibleRows.length} exact-contract pools${token ? " · filtered to one deployment" : ""}`
-          : `${visibleRows.length} issuer ${visibleRows.length === 1 ? "product" : "products"} · source documents linked below`;
+          : view === "venues"
+            ? `${visibleRows.length} reported venue markets · ${snapshot.coinId || ""}`
+            : `${visibleRows.length} issuer ${visibleRows.length === 1 ? "product" : "products"} · source documents linked below`;
   $("#view-footnote").textContent = {
     products:
       "Token-unit prices are not directly comparable share prices. Volume and market cap describe the token, not the underlying company. Expand a product for contracts and access terms.",
@@ -227,6 +253,8 @@ function renderResults() {
       "Ranked by equivalent shares before network costs. Only source-backed conversions enter ranking. Quote coverage: Raydium on Solana; KyberSwap on Ethereum, BNB Chain, Base and Arbitrum.",
     markets:
       "Pool prices are observations, not size-specific quotes. Search results can omit venues. Check the exact contract, venue access and final trade quote.",
+    venues:
+      "USD prices and reported ±2% market depth come from CoinGecko. Anomaly and stale flags are preserved. Exchange links open provider pages; venue access varies.",
     terms:
       "Summaries are product context. The linked prospectus, final terms and issuer eligibility rules control the actual rights.",
   }[view];
@@ -238,18 +266,17 @@ function renderResults() {
         ? "Source-linked summaries"
         : "No market observation";
   sourceDetails(snapshot);
+  desk?.ingest(view, snapshot);
   tick();
 }
 async function loadView(enrich = false) {
   clearTimeout(debounce);
   controller?.abort();
-  chartController?.abort();
-  chartRequestId++;
   const id = ++requestId;
   snapshot = null;
+  if (view === "quotes") desk?.ingest("quotes", { rows: [] });
   visibleRows = [];
   $("#export").disabled = true;
-  $("#chart-panel").hidden = true;
   if (!selected) return;
   const valid = validBudget($("#budget").value);
   $("#budget-error").hidden = view !== "quotes" || valid;
@@ -286,6 +313,7 @@ async function loadView(enrich = false) {
       products: "Loading CoinGecko product observations…",
       quotes: "Checking units and requesting order quotes…",
       markets: "Finding exact-contract pools on GeckoTerminal…",
+      venues: "Loading exchange prices and depth observations…",
     }[view] +
     "</p>";
   $("#result-count").textContent = "—";
@@ -297,6 +325,8 @@ async function loadView(enrich = false) {
   });
   if (view === "quotes") query.set("amount", $("#budget").value);
   if (view === "markets" && token) query.set("token", token);
+  if (view === "venues" && $("#venue-product").value)
+    query.set("coin", $("#venue-product").value);
   if (enrich) query.set("enrich", "true");
   try {
     const response = await fetch(
@@ -354,51 +384,20 @@ function tick() {
     }
   });
 }
-async function loadChart(poolId) {
-  if (!snapshot || view !== "markets") return;
-  const pool = snapshot.rows.find((p) => p.id === poolId);
-  if (!pool) return;
-  chartController?.abort();
-  chartController = new AbortController();
-  const id = ++chartRequestId;
-  $("#chart-panel").hidden = false;
-  $("#chart-content").innerHTML =
-    '<p class="empty-results">Loading hourly pool prices…</p>';
-  $("#chart-pool").innerHTML = visibleRows
-    .map(
-      (p) =>
-        `<option value="${escape(p.id)}">${escape(p.symbol)} · ${escape(p.chainLabel)} · ${escape(p.dex)} · ${escape(p.pair)} · ${escape(p.poolAddress.slice(0, 8))}</option>`,
-    )
-    .join("");
-  $("#chart-pool").value = poolId;
-  const query = new URLSearchParams({
-    stock: selected.id,
-    pool: poolId,
-    range,
-    chain: pool.chain,
-  });
-  if (token) query.set("token", token);
-  try {
-    const response = await fetch("/api/history?" + query, {
-      signal: chartController.signal,
-    });
-    const data = await response.json();
-    if (id !== chartRequestId) return;
-    if (!response.ok) throw new Error(data.error || "History unavailable.");
-    $("#chart-content").innerHTML = chartMarkup(data);
-  } catch (error) {
-    if (id !== chartRequestId || error.name === "AbortError") return;
-    $("#chart-content").innerHTML =
-      `<p class="empty-results">${escape(error.message)} Try another pool or refresh after the source recovers.</p>`;
-  }
+function loadChart(poolId) {
+  desk.loadPool(poolId, snapshot?.rows || []);
 }
 function selectStock(id) {
   selected = stocks.find((s) => s.id === id);
+  if (!selected) return;
   token = "";
   $("#issuer").value = "all";
   renderHeading();
   renderStocks();
   document.querySelector(`[data-stock="${selected.id}"]`)?.focus();
+  desk.select(selected);
+  document.body.classList.remove("universe-open");
+  $("#toggle-universe").setAttribute("aria-expanded", "false");
   loadView();
 }
 async function initialize() {
@@ -432,6 +431,8 @@ async function initialize() {
     renderStocks();
     setView(view, false);
     sourceDetails();
+    desk.start();
+    desk.select(selected);
     loadView();
   } catch (error) {
     $("#coverage").textContent = "Catalog unavailable";
@@ -466,6 +467,7 @@ $("#stock-heading").addEventListener("click", (e) => {
   } catch {}
   renderStocks();
   renderHeading();
+  desk.renderMarket();
   $("#favorite").focus();
 });
 for (const [id, value] of [
@@ -497,14 +499,13 @@ document.querySelector(".view-tabs").addEventListener("keydown", (e) => {
 });
 $("#chain").addEventListener("change", () => {
   token = "";
+  renderHeading();
   loadView();
 });
+$("#venue-product").addEventListener("change", () => loadView());
 $("#issuer").addEventListener("change", () => {
   updateUrl();
   if (snapshot) renderResults();
-  $("#chart-panel").hidden = true;
-  chartController?.abort();
-  chartRequestId++;
 });
 $("#sort").addEventListener("change", renderResults);
 $("#budget").addEventListener("input", () => {
@@ -525,7 +526,10 @@ document.querySelector(".presets").addEventListener("click", (e) => {
     .forEach((el) => el.setAttribute("aria-pressed", el === b));
   loadView();
 });
-$("#refresh").addEventListener("click", () => loadView());
+$("#refresh").addEventListener("click", () => {
+  loadView();
+  desk.refreshChart();
+});
 $("#enrich").addEventListener("click", () => {
   setView("products", false);
   loadView(true);
@@ -551,23 +555,6 @@ $("#results").addEventListener("click", (e) => {
   }
   if (h) loadChart(h.dataset.history);
 });
-$("#chart-pool").addEventListener("change", () =>
-  loadChart($("#chart-pool").value),
-);
-document.querySelector(".chart-range").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-range]");
-  if (!b) return;
-  range = b.dataset.range;
-  document
-    .querySelectorAll("[data-range]")
-    .forEach((el) => el.setAttribute("aria-pressed", el === b));
-  loadChart($("#chart-pool").value);
-});
-$("#close-chart").addEventListener("click", () => {
-  $("#chart-panel").hidden = true;
-  chartController?.abort();
-  chartRequestId++;
-});
 for (const id of ["how-it-works", "methodology"])
   $("#" + id).addEventListener("click", () => $("#info-dialog").showModal());
 $("#share").addEventListener("click", async () => {
@@ -581,48 +568,7 @@ $("#share").addEventListener("click", async () => {
   setTimeout(() => ($("#share-status").textContent = ""), 4000);
 });
 $("#export").addEventListener("click", () => {
-  const columns = [
-    ["Underlying", () => selected.ticker],
-    ["Security ID", () => selected.id],
-    ["Issuer", (r) => provider(r).name],
-    ["Token", (r) => r.symbol],
-    ["Chain", (r) => r.chain || r.deployments?.map((d) => d.chain).join("; ")],
-    ["USD per token", (r) => r.market?.price ?? r.price],
-    ["24h volume USD", (r) => r.market?.volume24h ?? r.volume24h],
-    ["Pool liquidity USD", (r) => r.liquidity],
-    ["Order USDC", (r) => r.inputQuantity],
-    [
-      "Quote expires at",
-      (r) => (r.expiresAt ? new Date(r.expiresAt).toISOString() : null),
-    ],
-    ["Equivalent shares", (r) => r.equivalentShares],
-    ["USDC per equivalent share", (r) => r.effectivePrice],
-    [
-      "Status",
-      (r) =>
-        (r.status === "quoted" && r.expiresAt <= Date.now()
-          ? "Expired quote"
-          : r.status) ||
-        (view === "terms"
-          ? "Terms summary"
-          : r.market || view === "markets"
-            ? "Market observation"
-            : "No market observation"),
-    ],
-    ["Structure", (r) => provider(r).structure],
-    ["Holder rights", (r) => provider(r).rights],
-    ["Dividend treatment", (r) => provider(r).dividends],
-    ["Exit conditions", (r) => provider(r).exit],
-    ["Terms source", (r) => provider(r).source],
-    [
-      "Source timestamp",
-      (r) =>
-        r.market?.updatedAt ||
-        r.retrievedAt ||
-        (r.fetchedAt ? new Date(r.fetchedAt).toISOString() : r.sourceAt),
-    ],
-    ["Source", (r) => r.market?.source || r.quoteSource || r.source],
-  ];
+  const columns = exportColumns(view, selected);
   const blob = new Blob([csvText(visibleRows, columns)], {
       type: "text/csv;charset=utf-8;",
     }),
@@ -633,5 +579,23 @@ $("#export").addEventListener("click", () => {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
+desk = createTerminal({
+  getState: () => ({ stocks, chains, selected, saved, view, snapshot }),
+  selectStock,
+  setView,
+  refresh: () => {
+    loadView();
+    desk.refreshChart();
+  },
+  onUniverseUpdate: renderStocks,
+  onWatchlistChange: () => {
+    renderStocks();
+    renderHeading();
+  },
+});
 setInterval(tick, 1000);
+setInterval(() => {
+  if (!document.hidden && selected && view !== "quotes" && view !== "terms")
+    loadView();
+}, 90000);
 initialize();

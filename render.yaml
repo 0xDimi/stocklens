@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: stocklens
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: CACHE_DIR
+        value: /app/.cache
+      - key: COINGECKO_PLAN
+        value: demo
+      - key: COINGECKO_API_KEY
+        sync: false
+      - key: TRUST_PROXY
+        value: ""
+    disk:
+      name: stocklens-cache
+      mountPath: /app/.cache
+      sizeGB: 1

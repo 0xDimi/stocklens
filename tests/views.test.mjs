@@ -87,3 +87,30 @@ test("quote accessibility names expose price, share exposure, units and status; 
     /aria-label="[^"]*quote unavailable/,
   );
 });
+
+test("venue CSV exports displayed market fields with observation status", async () => {
+  const { exportColumns, csvText } = await import("../src/views.mjs");
+  const csv = csvText(
+    [
+      {
+        coinId: "nvidia-xstock",
+        exchange: "Kraken",
+        pair: "NVDAx / USD",
+        priceUsd: 212.33,
+        volumeUsd: 1152233,
+        spreadPct: 0.12,
+        depthUpUsd: 30000,
+        depthDownUsd: 25000,
+        sourceAt: "2026-10-18T21:00:00Z",
+        url: "https://www.kraken.com",
+      },
+    ],
+    exportColumns("venues", { ticker: "NVDA", id: "NVDA" }),
+  );
+  assert.match(csv, /212.33/);
+  assert.match(csv, /1152233/);
+  assert.match(csv, /Kraken/);
+  assert.match(csv, /30000/);
+  assert.match(csv, /CoinGecko venue observation/);
+  assert.doesNotMatch(csv, /No market observation/);
+});

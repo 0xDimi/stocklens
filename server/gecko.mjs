@@ -7,7 +7,7 @@ const gt = sourceClient(
   () => ({ Accept: "application/json;version=20230203" }),
 );
 const numeric = (v) =>
-  v != null && v !== "" && Number.isFinite(Number(v)) && Number(v) >= 0
+  v != null && v !== "" && typeof v !== "boolean" && Number.isFinite(Number(v)) && Number(v) >= 0
     ? Number(v)
     : null;
 const addrKey = (chain, address) =>
@@ -99,6 +99,9 @@ export async function getPools(stock, chain = "all", deployment = null) {
       (p) => chain === "all" || p.chain === chain,
     ),
     retrievedAt: result.retrievedAt,
+    stale: result.stale === true,
+    warning: result.warning || null,
+    lastAttemptAt: result.lastAttemptAt || null,
     source: "GeckoTerminal",
     coverage: deployment
       ? "Top pools for this exact token"
@@ -118,10 +121,16 @@ export function parseHistory(
         Array.isArray(r) &&
         Number.isFinite(r[0]) &&
         r[0] > 0 &&
-        numeric(r[4]) > 0,
+        [r[1], r[2], r[3], r[4]].every((value) => numeric(value) > 0) &&
+        Number(r[2]) >= Math.max(Number(r[1]), Number(r[4]), Number(r[3])) &&
+        Number(r[3]) <= Math.min(Number(r[1]), Number(r[4])),
     )
     .map((r) => ({
       time: r[0] * 1000,
+      open: Number(r[1]),
+      high: Number(r[2]),
+      low: Number(r[3]),
+      close: Number(r[4]),
       price: Number(r[4]),
       volume: numeric(r[5]),
     }))
@@ -143,6 +152,7 @@ export async function getHistory(stock, poolId, range, deployment = null) {
         aggregate: "1",
         limit: range === "7d" ? "168" : "24",
         currency: "usd",
+        include_empty_intervals: "false",
         token: pool.orientation,
       }),
     300_000,
@@ -155,6 +165,9 @@ export async function getHistory(stock, poolId, range, deployment = null) {
     pool,
     range,
     retrievedAt: result.retrievedAt,
+    stale: result.stale === true || pools.stale === true,
+    warning: result.warning || pools.warning || null,
+    lastAttemptAt: result.lastAttemptAt || null,
     unit: "USD per token unit",
     source: pool.source,
   };

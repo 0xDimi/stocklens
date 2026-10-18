@@ -78,7 +78,7 @@ export function productsTable(rows, chains, chain) {
         const stale =
           m?.updatedAt &&
           Date.now() - new Date(m.updatedAt).getTime() > 300_000;
-        return `<details class="product-row"><summary><span class="token-cell">${mark(p)}<span><strong>${escape(p.symbol)}</strong><small>${escape(info.name)}</small></span></span><span data-label="USD / token"><strong>${usd(m?.price)}</strong>${stale ? "<small>older observation</small>" : ""}</span><span data-label="24h">${change(m?.change24h)}</span><span data-label="24h volume">${compact(m?.volume24h)}</span><span data-label="Market cap">${compact(m?.marketCap)}</span><span class="deployment-count">${p.deployments.length}<small>chains</small><i aria-hidden="true">⌄</i></span></summary><div class="product-summary"><p>${escape(p.name || p.symbol)} · ${escape(p.mapping || "Issuer security identifier")}<br>Market observation: ${stamp(m?.updatedAt)} · Catalog: ${stamp(p.sourceAt)}</p>${external(p.marketSource || p.source, "Product source")}</div>${termsDetails(p)}<div class="deployments"><h4>Contracts & markets</h4>${p.deployments
+        return `<details class="product-row"><summary><span class="token-cell">${mark(p)}<span><strong>${escape(p.symbol)}</strong><small>${escape(info.name)}</small></span></span><span data-label="USD / token"><strong>${usd(m?.price)}</strong>${stale ? "<small>older observation</small>" : ""}</span><span data-label="24h">${change(m?.change24h)}</span><span data-label="24h volume">${compact(m?.volume24h)}</span><span data-label="Market cap">${compact(m?.marketCap)}</span><span class="deployment-count">${p.deployments.length}<small>chains</small><button class="compare-toggle" data-compare="${escape(p.coinId || `${p.issuer}:${p.symbol}`)}" aria-label="Compare ${escape(p.symbol)}" aria-pressed="false">+</button><i aria-hidden="true">⌄</i></span></summary><div class="product-summary"><p>${escape(p.name || p.symbol)} · ${escape(p.mapping || "Issuer security identifier")}<br>Market observation: ${stamp(m?.updatedAt)} · Catalog: ${stamp(p.sourceAt)}</p><div><button data-compare="${escape(p.coinId || `${p.issuer}:${p.symbol}`)}" aria-pressed="false">+ Compare</button>${external(p.marketSource || p.source, "Product source")}</div></div>${termsDetails(p)}<div class="deployments"><h4>Contracts & markets</h4>${p.deployments
           .filter((d) => chain === "all" || d.chain === chain)
           .map(
             (d) =>
@@ -127,27 +127,6 @@ export function termsTable(rows) {
     })
     .join("")}</div>`;
 }
-export function chartMarkup(data) {
-  const points = data.points;
-  if (points.length < 2)
-    return '<p class="empty-results">Not enough historical observations for this pool.</p>';
-  const width = 800,
-    height = 180,
-    pad = 16,
-    min = Math.min(...points.map((p) => p.price)),
-    max = Math.max(...points.map((p) => p.price)),
-    span = max - min || max * 0.01 || 1;
-  const first = points[0],
-    last = points.at(-1),
-    duration = last.time - first.time || 1;
-  const path = points
-    .map(
-      (p) =>
-        `${pad + ((p.time - first.time) / duration) * (width - pad * 2)},${height - pad - ((p.price - min) / span) * (height - pad * 2)}`,
-    )
-    .join(" ");
-  return `<div class="chart-values"><strong>${usd(last.price)}</strong><span>Observed range ${usd(min)}–${usd(max)}</span><span>${points.length} hourly observations</span></div><svg class="price-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escape(data.pool.symbol)} hourly closing USD price per token unit; ${points.length} observations"><line x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}" class="chart-baseline"/><polyline points="${path}"/>${points.map((p) => `<circle cx="${pad + ((p.time - first.time) / duration) * (width - pad * 2)}" cy="${height - pad - ((p.price - min) / span) * (height - pad * 2)}" r="4"><title>${escape(stamp(p.time))}: ${usd(p.price)}</title></circle>`).join("")}</svg><div class="chart-axis"><span>${stamp(first.time)}</span><span>${stamp(last.time)}</span></div><p class="chart-source">Hourly pool closes · USD per token unit · ${external(data.source, "GeckoTerminal")} · Retrieved ${stamp(data.retrievedAt)}</p>`;
-}
 export function csvText(rows, columns) {
   const cell = (value) => {
     const text = String(value ?? "");
@@ -162,4 +141,81 @@ export function csvText(rows, columns) {
     columns.map((c) => cell(c[0])).join(","),
     ...rows.map((row) => columns.map((c) => cell(c[1](row))).join(",")),
   ].join("\r\n");
+}
+
+export function venuesTable(rows) {
+  return (
+    '<div class="venue-head"><span>Exchange / pair</span><span>USD / token</span><span>24h volume</span><span>Spread</span><span>±2% depth ↑ / ↓</span><span>Market</span></div>' +
+    rows
+      .map(
+        (r) =>
+          `<div class="venue-row"><span><strong>${escape(r.exchange)}</strong><small>${escape(r.pair)}</small></span><span>${usd(r.priceUsd)}<small>${r.isStale ? "Older / stale · " : ""}${r.isAnomaly ? "Anomaly · " : ""}${stamp(r.sourceAt)}</small></span><span>${compact(r.volumeUsd)}</span><span>${Number.isFinite(r.spreadPct) ? number(r.spreadPct) + "%" : "—"}</span><span>${compact(r.depthUpUsd)} / ${compact(r.depthDownUsd)}</span><span>${external(r.url, r.urlKind === "exchange-market" ? "Exchange" : "Source markets")}</span></div>`,
+      )
+      .join("")
+  );
+}
+
+export function exportColumns(view, selected) {
+  const common = [
+    ["Underlying", () => selected.ticker],
+    ["Security ID", () => selected.id],
+  ];
+  if (view === "venues")
+    return [
+      ...common,
+      ["Token ID", (r) => r.coinId],
+      ["Exchange", (r) => r.exchange],
+      ["Pair", (r) => r.pair],
+      ["USD per token", (r) => r.priceUsd],
+      ["24h volume USD", (r) => r.volumeUsd],
+      ["Spread percent", (r) => r.spreadPct],
+      ["Reported +2% depth USD", (r) => r.depthUpUsd],
+      ["Reported -2% depth USD", (r) => r.depthDownUsd],
+      ["Stale", (r) => r.isStale],
+      ["Anomaly", (r) => r.isAnomaly],
+      ["Source timestamp", (r) => r.sourceAt],
+      ["Market URL", (r) => r.url],
+      ["Status", () => "CoinGecko venue observation; not an executable quote"],
+    ];
+  return [
+    ...common,
+    ["Issuer", (r) => provider(r).name],
+    ["Token", (r) => r.symbol],
+    ["Chain", (r) => r.chain || r.deployments?.map((d) => d.chain).join("; ")],
+    ["USD per token", (r) => r.market?.price ?? r.price],
+    ["24h volume USD", (r) => r.market?.volume24h ?? r.volume24h],
+    ["Pool liquidity USD", (r) => r.liquidity],
+    ["Order USDC", (r) => r.inputQuantity],
+    [
+      "Quote expires at",
+      (r) => (r.expiresAt ? new Date(r.expiresAt).toISOString() : null),
+    ],
+    ["Equivalent shares", (r) => r.equivalentShares],
+    ["USDC per equivalent share", (r) => r.effectivePrice],
+    [
+      "Status",
+      (r) =>
+        (r.status === "quoted" && r.expiresAt <= Date.now()
+          ? "Expired quote"
+          : r.status) ||
+        (view === "terms"
+          ? "Terms summary"
+          : r.market || view === "markets"
+            ? "Market observation"
+            : "No market observation"),
+    ],
+    ["Structure", (r) => provider(r).structure],
+    ["Holder rights", (r) => provider(r).rights],
+    ["Dividend treatment", (r) => provider(r).dividends],
+    ["Exit conditions", (r) => provider(r).exit],
+    ["Terms source", (r) => provider(r).source],
+    [
+      "Source timestamp",
+      (r) =>
+        r.market?.updatedAt ||
+        r.retrievedAt ||
+        (r.fetchedAt ? new Date(r.fetchedAt).toISOString() : r.sourceAt),
+    ],
+    ["Source", (r) => r.market?.source || r.quoteSource || r.source],
+  ];
 }

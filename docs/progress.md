@@ -47,3 +47,13 @@ Public deployment, transaction execution, more issuers/venues, exchange referenc
 
 - Visual/UX finish review: accepted workspace retained; material screen-reader quote naming and mobile gas-disclosure gaps fixed through regression and actual browser verification. No deferred material findings. Final checks:39 tests green; real integration passed; detector empty; whitespace/syntax checks clean.
 - Final browser pass: actual expired quote lost href and visible winner; refresh recovered;39-test release, public source integration, accessible labels/mobile gas and exported CSV verified. Final console empty. Server healthy v0.3.0 at127.0.0.1:4173.
+
+## Terminal release — base50cf799
+User explicitly requested a terminal and deployment readiness; replacing prior visual direction is authorized. Implement directly, preserve data boundaries and local checkout, prepare deployment without public publishing. Spec/plan:2026-10-19-terminal-release.md. Verified probes: public RWA markets250 observations and NVIDIAx venue47 tickers returned real data. Docker/Podman are absent locally; verify production Node artifact with real subprocess smoke tests and provide container configuration without claiming a local image build.
+
+
+## Terminal 0.4.0 completion — October 19, 2026
+
+Rebuilt the comparison desk as a linked charcoal terminal: sortable RWA universe/tape, persistent responsive OHLC/volume chart, five table views, live venue observations, keyboard command search, shortlist matrix and portable local watchlists. Real source integrations and browser flows passed. Independent code review findings (token-scoped history, exchange CSV fields, provider failures/stale state, loaded-page refresh) were fixed. Final visual reviewer confirmed the terminal direction and requested larger chart text; data is now ≥11px and source explanation 12px, wrapping on phones. Detector ran once with no findings.
+
+Node22.23.3 tests and strict production subprocess smoke passed. Non-root Docker/Compose, Render manifest, CI and DEPLOY.md supplied. No public deployment. Docker/Compose and remote CI were not run locally; local Node22 validation is the execution evidence. Full dated measurements and limits: QA.md.

@@ -18,6 +18,7 @@ const cg = sourceClient(
         }
       : {},
 );
+export const cgRequest = (path, ttl = 60_000) => cg(path, ttl);
 export const cleanName = (value) =>
   String(value)
     .toLowerCase()

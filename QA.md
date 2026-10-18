@@ -1,5 +1,15 @@
 # Verification — October 19, 2026 (Europe/Athens)
 
+## Current comparison interface
+
+The user preferred the previous, intuitive comparison layout over a terminal. The current interface restores daylight/teal surfaces, normal page scrolling and a two-column asset finder/comparison. Price per token, 24h volume, issuer structure and networks are visible in product rows. Buy comparison leads with fresh verified share exposure, equivalent-share cost and the exclusion of network costs. Charts and source detail are opened on demand.
+
+Validation for this UI change: **74 tests pass on Node 22**, including two new red→green regressions for fresh/verified-only purchase summaries and visible product structure. Strict production subprocess smoke passed with actual catalog readiness 200. The data adapters and deployment configuration are preserved.
+
+Actual browser checks used the running service and real source data: NVIDIA's 12 products and 35 deployment routes; a buy comparison with 12 successful quotes and five verified conversions; selected-pool history retained the chosen pool and returned 24 actual hourly candles. Desktop and mobile checks cover product metrics, the primary compare action, summary state, exact-pool chart access and progressive disclosure. Mobile document/body width remained within the viewport. Secondary sorting/export controls moved into More; actual mobile sorting and CSV download passed. Mobile omits the repeated buy CTA because Buy comparison is already a visible tab. The complete first NVIDIA product row occupied y634–843 within an 844px viewport. The independent reviewer confirmed the mobile finding resolved. Independent code review found no material regression. The UI detector ran once with no findings.
+
+Evidence: `test-results/comparison-redesign-node22.log`, `comparison-redesign-smoke.log`, `comparison-desktop.png`, `comparison-mobile.png`. Earlier terminal evidence below is retained as historical context; its visual layout is superseded.
+
 Release: Stocklens Terminal 0.4.0. Local test evidence is saved under ignored `test-results/`; these measurements describe the observed runs, not guaranteed future coverage.
 
 ## Actual source integrations

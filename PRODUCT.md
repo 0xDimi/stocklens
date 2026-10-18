@@ -11,10 +11,10 @@ Compare tokenized representations of an underlying stock or ETF across issuers, 
 People researching tokenized securities. Product access and jurisdiction eligibility are checked with issuers and venues.
 
 ## Capabilities and Constraints
-CoinGecko discovery and market prices, GeckoTerminal pools and hourly charts, direct xStocks/Ondo catalogs, RPC-backed conversion and Raydium/KyberSwap quotes. Current configured directory spans 18 chains and recognizes 12 product families. Quotes cover five chains; unverified conversions stay unranked. Five views, a linked market screener, persistent OHLC chart and volume, command palette, three-product comparison, source disclosures, filters, search, local favorites, URL state, CSV export and mobile layouts. No synthetic fallback, wallet, custody, transaction execution, underlying exchange-price feed, eligibility screening, invented issuer-risk score or exhaustive market coverage.
+CoinGecko discovery and market prices, GeckoTerminal pools and hourly charts, direct xStocks/Ondo catalogs, RPC-backed conversion and Raydium/KyberSwap quotes. Current configured directory spans 18 chains and recognizes 12 product families. Quotes cover five chains; unverified conversions stay unranked. Five views, a linked market screener, on-demand OHLC chart and volume, command palette, three-product comparison, source disclosures, filters, search, local favorites, URL state, CSV export and mobile layouts. No synthetic fallback, wallet, custody, transaction execution, underlying exchange-price feed, eligibility screening, invented issuer-risk score or exhaustive market coverage.
 
 ## Brand Commitments
-Less is more. Clean code. User requested a dense financial terminal. Charcoal workstation, amber commands, linked panels, mono numeric columns. Stocklens remains a working name.
+Less is more. Clean code. The user prefers the earlier comparison interface: daylight surfaces, readable tables, clear primary metrics and progressive disclosure. Prioritize first-time users over terminal density. Stocklens remains a working name.
 
 ## Evidence on Hand
 Live issuer/CoinGecko/GeckoTerminal/RPC/quote integrations and actual browser checks on October 19, 2026 (Athens). Raw live checks retained locally. Source limits and run instructions in README.md; evidence in QA.md. Unreviewed issuer terms are labeled.

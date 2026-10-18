@@ -57,3 +57,10 @@ User explicitly requested a terminal and deployment readiness; replacing prior v
 Rebuilt the comparison desk as a linked charcoal terminal: sortable RWA universe/tape, persistent responsive OHLC/volume chart, five table views, live venue observations, keyboard command search, shortlist matrix and portable local watchlists. Real source integrations and browser flows passed. Independent code review findings (token-scoped history, exchange CSV fields, provider failures/stale state, loaded-page refresh) were fixed. Final visual reviewer confirmed the terminal direction and requested larger chart text; data is now ≥11px and source explanation 12px, wrapping on phones. Detector ran once with no findings.
 
 Node22.23.3 tests and strict production subprocess smoke passed. Non-root Docker/Compose, Render manifest, CI and DEPLOY.md supplied. No public deployment. Docker/Compose and remote CI were not run locally; local Node22 validation is the execution evidence. Full dated measurements and limits: QA.md.
+
+
+## Comparison-first interface — October 19, 2026
+
+User preferred the earlier intuitive comparison workspace over the terminal. Restored the daylight/teal two-column layout, normal page scrolling and readable product rows. Price/token, volume, issuer structure and networks are visible before expansion. Buy comparison leads with the fresh verified share-exposure winner and the cost boundary. Removed tape, right inspector, counters and persistent chart from the main flow. Chart and source details load/open on demand. Backend sources, venue comparison, saved lists, imports/exports and deployment support remain intact.
+
+Added summary expiry/unverified exclusion and visible-structure regressions, observed red then green. Independent code review found no material regressions; real browser checks and source integration recorded in QA.md.

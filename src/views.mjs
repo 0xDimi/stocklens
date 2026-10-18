@@ -70,34 +70,47 @@ export function termsDetails(p) {
 }
 export function productsTable(rows, chains, chain) {
   return (
-    `<div class="product-table-head"><span>Token / issuer</span><span>USD / token</span><span>24h</span><span>24h volume</span><span>Market cap</span><span>Chains</span></div>` +
+    `<div class="product-table-head"><span>Token / issuer</span><span>Price per token</span><span>24h volume</span><span>Structure</span><span>Networks / compare</span></div>` +
     rows
       .map((p) => {
         const m = p.market,
-          info = provider(p);
-        const stale =
-          m?.updatedAt &&
-          Date.now() - new Date(m.updatedAt).getTime() > 300_000;
-        return `<details class="product-row"><summary><span class="token-cell">${mark(p)}<span><strong>${escape(p.symbol)}</strong><small>${escape(info.name)}</small></span></span><span data-label="USD / token"><strong>${usd(m?.price)}</strong>${stale ? "<small>older observation</small>" : ""}</span><span data-label="24h">${change(m?.change24h)}</span><span data-label="24h volume">${compact(m?.volume24h)}</span><span data-label="Market cap">${compact(m?.marketCap)}</span><span class="deployment-count">${p.deployments.length}<small>chains</small><button class="compare-toggle" data-compare="${escape(p.coinId || `${p.issuer}:${p.symbol}`)}" aria-label="Compare ${escape(p.symbol)}" aria-pressed="false">+</button><i aria-hidden="true">⌄</i></span></summary><div class="product-summary"><p>${escape(p.name || p.symbol)} · ${escape(p.mapping || "Issuer security identifier")}<br>Market observation: ${stamp(m?.updatedAt)} · Catalog: ${stamp(p.sourceAt)}</p><div><button data-compare="${escape(p.coinId || `${p.issuer}:${p.symbol}`)}" aria-pressed="false">+ Compare</button>${external(p.marketSource || p.source, "Product source")}</div></div>${termsDetails(p)}<div class="deployments"><h4>Contracts & markets</h4>${p.deployments
-          .filter((d) => chain === "all" || d.chain === chain)
-          .map(
-            (d) =>
-              `<div class="deployment"><strong>${escape(chains.find((c) => c.id === d.chain)?.label || d.chain)}</strong>${external(chains.find((c) => c.id === d.chain)?.explorer + d.address, d.address, "contract-address")}<button data-markets-token="${escape(d.address)}" data-chain="${d.chain}">Markets ↗</button><button data-quote-issuer="${escape(p.issuer)}" data-chain="${d.chain}">Get quote ↗</button></div>`,
-          )
-          .join("")}</div></details>`;
+          info = provider(p),
+          stale =
+            m?.updatedAt &&
+            Date.now() - new Date(m.updatedAt).getTime() > 300000;
+        const networks = p.deployments.filter(
+          (d) => chain === "all" || d.chain === chain,
+        );
+        return `<details class="product-row"><summary><span class="token-cell">${mark(p)}<span><strong>${escape(p.symbol)}</strong><small>${escape(info.name)}</small></span></span><span data-label="Price per token"><strong>${usd(m?.price)}</strong><small>${stale ? "Older observation" : change(m?.change24h)}</small></span><span data-label="24h volume">${compact(m?.volume24h)}</span><span class="structure-cell" data-label="Structure">${escape(info.structure)}</span><span class="deployment-count"><span>${networks.length} <small>${networks.length === 1 ? "network" : "networks"}</small></span><button class="compare-toggle" data-compare="${escape(p.coinId || `${p.issuer}:${p.symbol}`)}" aria-label="Compare ${escape(p.symbol)}" aria-pressed="false">Compare</button><i aria-hidden="true">⌄</i></span></summary><div class="product-summary"><p>${escape(p.name || p.symbol)} · ${escape(p.mapping || "Issuer security identifier")}<br>Price observed ${stamp(m?.updatedAt)} · Token market cap ${compact(m?.marketCap)}</p><div>${external(p.marketSource || p.source, "Product source")}</div></div>${termsDetails(p)}<div class="deployments"><h4>Contracts & markets</h4>${networks.map((d) => `<div class="deployment"><strong>${escape(chains.find((c) => c.id === d.chain)?.label || d.chain)}</strong>${external(chains.find((c) => c.id === d.chain)?.explorer + d.address, d.address, "contract-address")}<button data-markets-token="${escape(d.address)}" data-chain="${d.chain}">View liquidity ↗</button><button data-quote-issuer="${escape(p.issuer)}" data-chain="${d.chain}">Get buy quote ↗</button></div>`).join("")}</div></details>`;
       })
       .join("")
   );
 }
-export function quoteTable(rows) {
-  const best = rows
-    .filter((r) => r.rankable && r.expiresAt > Date.now())
+export function bestQuote(rows, now = Date.now()) {
+  return rows
+    .filter(
+      (r) =>
+        r.status === "quoted" &&
+        r.rankable &&
+        Number.isFinite(r.effectivePrice) &&
+        Number.isFinite(r.equivalentShares) &&
+        r.expiresAt > now,
+    )
     .reduce(
       (best, r) => (!best || r.effectivePrice < best.effectivePrice ? r : best),
       null,
     );
+}
+export function purchaseSummary(rows) {
+  const best = bestQuote(rows);
+  if (!best)
+    return `<div class="purchase-empty"><strong>No fresh share-normalized quote available.</strong><span>Refresh quotes. Routes with unverified share conversions stay unranked.</span></div>`;
+  return `<div class="purchase-summary"><div class="purchase-choice"><span>Best quoted share exposure</span><strong>${escape(best.symbol)} <small>by ${escape(provider(best).name)}</small></strong><p>${escape(best.chainLabel)} · ${escape(best.venue || "")}</p></div><div><span>You receive</span><strong>${number(best.equivalentShares, 4)}</strong><small>equivalent shares for ${number(best.inputQuantity)} USDC</small></div><div><span>Cost per equivalent share</span><strong>${number(best.effectivePrice)} <small>USDC</small></strong><small>before network costs</small></div></div>`;
+}
+export function quoteTable(rows) {
+  const best = bestQuote(rows);
   return (
-    `<div class="table-header" aria-hidden="true"><span>Token / issuer</span><span>Chain / venue</span><span>USDC / eq. share</span><span>Your exposure</span><span>Swap gas est.</span><span></span></div>` +
+    `<div class="table-header" aria-hidden="true"><span>Token / issuer</span><span>Chain / venue</span><span>USDC per equivalent share</span><span>Share exposure</span><span>Gas estimate</span><span></span></div>` +
     rows
       .map((r) => {
         const p = provider(r),

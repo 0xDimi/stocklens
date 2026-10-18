@@ -1,6 +1,6 @@
-# Stocklens Terminal
+# Stocklens
 
-A financial workstation for tokenized stocks and ETFs. Start with a company, then inspect its issuer products, onchain pools, exchange markets and share-normalized order quotes.
+A comparison tool for tokenized stocks and ETFs. Start with a company, then inspect its issuer products, onchain pools, exchange markets and share-normalized order quotes.
 
 **Node.js 22+ · zero runtime dependencies · no build step.**
 
@@ -12,17 +12,15 @@ Open [Stocklens](http://127.0.0.1:4173). Optional source settings live in `.env.
 
 ## The workspace
 
-- **Universe and tape:** search companies, tickers, tokens and ISINs; sort reference price, change or volume; filter stocks/ETFs; save, import and export a local watchlist. Market observations come from loaded CoinGecko RWA pages. Load more pages at the bottom of the universe. Missing prices stay unknown.
-- **Persistent chart:** exact-contract hourly OHLC candles and USD volume from GeckoTerminal. Select a pool and rolling 1D/7D window. Move across the chart or use its left/right arrows to inspect candles. Real gaps remain gaps. The chart has its own pool selection; chain/issuer filters below it apply to the active table.
-- **Products:** token-unit price, change, volume, market cap and deployments. Expand a row for contracts, source documents, exit conditions and exact market/quote links. Use `+` to shortlist up to three products, then compare issuer rights, dividends and exit terms side by side.
-- **Order quotes:** choose a USDC budget, chain and issuer. Compare equivalent-share output only where the share conversion is verified. Missing conversion ratios remain unranked. Expand for costs, quoted units and source responses. External venues re-quote before purchase.
-- **Pools:** exact-contract prices, reserve liquidity and volume; link a pool into the persistent chart or open its source page.
-- **Exchanges:** select an issuer token; compare CoinGecko venue observations, spreads, reported ±2% depth, timestamps and stale/anomaly flags. Venue data is token-wide. Chain selection restricts eligible products, not the exchange's networks.
-- **Issuer terms:** source-linked structure, rights, dividend and exit notes. Unreviewed terms are explicitly labeled.
+- **Find an asset:** search companies, tickers, tokens and ISINs; filter stocks/ETFs or saved assets. Optional reference prices use loaded CoinGecko RWA pages. Missing prices stay unknown. Saved lists support JSON import/export.
+- **Products:** compare issuer/token, price per token, 24h volume, structure and networks before expanding a row. Expand for rights, dividends, exit/access conditions, contracts and exact market/quote links. Select up to three products with Compare, then open the side-by-side terms matrix.
+- **Buy comparison:** choose a USDC budget, network and issuer. The summary highlights the best fresh, verified share exposure and cost per equivalent share before network costs. Unknown conversion ratios stay unranked; expired quotes cannot win. Expand a quote for sources, costs and exact venue handoff.
+- **Liquidity and exchanges:** inspect exact-contract pool reserves/volume or choose an issuer token for reported exchange prices, spreads, depth and timestamps. These are market observations, not fill guarantees. Exchange observations are token-wide even when the product selector is network-filtered.
+- **History and detail:** Price history is collapsed below the comparison until requested. Explore hourly OHLC/volume for an exact-contract pool over a rolling 1D/7D window. A pool’s Chart action opens its history directly. Issuer terms and source/coverage details remain available without filling the first screen.
 
-`⌘/Ctrl K` or `/` opens security search. `1`–`5` switch panels; `W` toggles the watchlist; `R` refreshes the table and current chart. Shortcuts leave text-entry fields alone. The URL preserves stock, table, amount, chain and issuer. CSV exports preserve units, sources and timestamps. Watchlists stay in the current browser; JSON import/export provides a portable list of asset IDs; import merges matching catalog IDs with the current watchlist.
+`⌘/Ctrl K` or `/` opens security search. `1`–`5` switch panels; `W` toggles the watchlist; `R` refreshes the table and current chart. Shortcuts leave text-entry fields alone. The URL preserves stock, table, amount, chain and issuer. Sorting and CSV export are under More beside Refresh. CSV exports preserve units, sources and timestamps. Watchlists stay in the current browser; JSON import/export provides a portable list of asset IDs; import merges matching catalog IDs with the current watchlist.
 
-Markets poll every 90 seconds and charts every 180 seconds while the page is visible. All loaded screener pages refresh. Order quotes expire after 30 seconds and require an explicit refresh; expired purchase links are disabled. Cached source fallbacks are labeled, retain their original timestamps and never become executable quotes.
+Markets poll every 90 seconds while the page is visible. Charts load on demand and refresh every 180 seconds while their section is open and the page is visible. All loaded screener pages refresh. Buy quotes expire after 30 seconds and require an explicit refresh; expired purchase links are disabled. Cached source fallbacks are labeled, retain their original timestamps and never become executable quotes.
 
 ## Data and identity
 
@@ -64,4 +62,4 @@ npm run smoke:production
 
 The integration scripts contact real sources; live availability can cause a check to fail. `STOCKLENS_URL` selects an already running instance. The production smoke starts and stops its own production process and requires an actual usable catalog. CI covers Node 22/24 and a container job; local execution evidence is in QA.md.
 
-Modules remain small in purpose: `server/` owns catalog identity, providers, source resilience and HTTP boundaries; `src/model.mjs` owns numeric/search logic; `src/views.mjs` owns escaped rendering and exports; `src/chart.mjs` owns chart geometry/inspection; `src/terminal.mjs` owns linked workstation panels; `src/app.mjs` coordinates the selected security and table requests.
+Modules remain small in purpose: `server/` owns catalog identity, providers, source resilience and HTTP boundaries; `src/model.mjs` owns numeric/search logic; `src/views.mjs` owns escaped rendering and exports; `src/chart.mjs` owns chart geometry/inspection; `src/terminal.mjs` owns comparison navigation and optional chart panels; `src/app.mjs` coordinates the selected security and table requests.

@@ -114,3 +114,56 @@ test("venue CSV exports displayed market fields with observation status", async 
   assert.match(csv, /CoinGecko venue observation/);
   assert.doesNotMatch(csv, /No market observation/);
 });
+
+test("purchase summary highlights only fresh verified share exposure and names the cost boundary", async () => {
+  const { purchaseSummary } = await import("../src/views.mjs");
+  const now = Date.now(),
+    base = {
+      status: "quoted",
+      rankable: true,
+      expiresAt: now + 30000,
+      inputQuantity: 1000,
+      issuer: "xstocks",
+      symbol: "NVDAx",
+      chainLabel: "Solana",
+      equivalentShares: 5,
+      effectivePrice: 200,
+    };
+  const html = purchaseSummary([
+    base,
+    {
+      ...base,
+      issuer: "ondo",
+      symbol: "NVDAon",
+      equivalentShares: 4,
+      effectivePrice: 250,
+    },
+    { ...base, symbol: "UNVERIFIED", rankable: false, effectivePrice: 1 },
+    { ...base, symbol: "EXPIRED", expiresAt: now - 1, effectivePrice: 1 },
+  ]);
+  assert.match(html, /NVDAx/);
+  assert.match(html, /5.0000/);
+  assert.match(html, /200.00/);
+  assert.match(html, /before network costs/i);
+  assert.doesNotMatch(html, /UNVERIFIED|EXPIRED/);
+  assert.match(purchaseSummary([{ ...base, expiresAt: now - 1 }]), /Refresh/);
+});
+test("product overview exposes issuer structure next to market data before expansion", () => {
+  const html = productsTable(
+    [
+      {
+        issuer: "xstocks",
+        symbol: "NVDAx",
+        source: "https://xstocks.com",
+        deployments: [],
+        market: { price: 200, volume24h: 1000 },
+      },
+    ],
+    [],
+    "all",
+  );
+  const summary = html.match(/<summary>(.*?)<\/summary>/s)?.[1];
+  assert.match(summary, /Tracker certificate/);
+  assert.match(summary, /200.00/);
+  assert.match(summary, /Compare/);
+});

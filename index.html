@@ -1,335 +1,333 @@
 <!doctype html>
-<!-- Stocklens terminal: canonical securities, source-labelled observations, size-specific execution. -->
+<!-- Compare the same underlying security across issuer products and execution routes. -->
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b0e12" />
+    <meta name="theme-color" content="#f7f8fa" />
     <meta
       name="description"
-      content="A market terminal for tokenized stocks. Compare issuer products, exchange markets, onchain liquidity and share-normalized order quotes."
+      content="Compare tokenized stocks by issuer, price, liquidity and structure. Find verified share exposure for your budget."
     />
-    <title>Stocklens | Tokenized stock terminal</title>
+    <title>Stocklens — Compare tokenized stocks</title>
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0e12'/%3E%3Cpath d='M8 8h16v6H14v4h10v6H8v-6h10v-4H8z' fill='%23eeb65c'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23126851'/%3E%3Cpath d='M8 8h16v6H14v4h10v6H8v-6h10v-4H8z' fill='white'/%3E%3C/svg%3E"
     />
     <link rel="stylesheet" href="/src/styles.css" />
     <script type="module" src="/src/app.mjs"></script>
   </head>
   <body>
-    <a class="skip-link" href="#comparison">Skip to workspace</a>
-    <header class="masthead">
+    <a class="skip-link" href="#comparison">Skip to comparison</a>
+    <header class="header">
       <a class="brand" href="/" aria-label="Stocklens home"
-        ><span class="brand-mark">S</span>STOCKLENS <small>TERMINAL</small></a
-      ><button id="command-open" class="command-open">
-        <span>⌕</span> Find a security, ticker or token <kbd>⌘ K</kbd>
-      </button>
-      <div class="session">
-        <span class="status-dot"></span
-        ><span id="market-status">Connecting to sources</span>
-      </div>
-      <button id="how-it-works" title="Methodology">Methodology ↗</button>
+        ><span class="brand-mark" aria-hidden="true">s</span>stocklens<span
+          class="brand-dot"
+          >.</span
+        ></a
+      ><span class="header-caption">Tokenized stocks, compared.</span>
+      <nav>
+        <button id="command-open" class="text-button">
+          Quick search <kbd>⌘ K</kbd></button
+        ><button id="how-it-works" class="text-button">How it works ↗</button>
+      </nav>
     </header>
-    <div class="tape-wrap">
-      <span class="tape-label">TOKENIZED<br />REFERENCE USD</span>
-      <div
-        id="market-tape"
-        class="market-tape"
-        aria-label="Tokenized market observations"
-      >
-        <span class="tape-empty">Connecting to public market feeds…</span>
-      </div>
-    </div>
-    <main class="terminal-layout">
-      <aside class="stock-rail" aria-label="Security universe">
-        <div class="rail-heading">
-          <h1>MARKET UNIVERSE</h1>
-          <span>01</span>
+    <main class="page">
+      <section class="page-intro">
+        <div>
+          <h1>Compare tokenized stocks.</h1>
+          <p>Find a company. Compare its tokens, issuers and markets.</p>
         </div>
-        <label class="search-field"
-          ><span aria-hidden="true">⌕</span
-          ><input
-            id="search"
-            type="search"
-            placeholder="Search securities…"
-            aria-label="Search stocks"
-            autocomplete="off"
-            disabled
-        /></label>
-        <div class="rail-filters">
-          <button id="all-stocks" aria-pressed="true">All assets</button
-          ><button id="saved-stocks" aria-pressed="false">
-            Watchlist <span id="saved-count">0</span></button
-          ><button
-            id="watchlist-import"
-            aria-label="Import watchlist"
-            title="Import watchlist"
-          >
-            ↑</button
-          ><input
-            id="watchlist-file"
-            type="file"
-            accept="application/json,.json"
-            hidden
-          /><button
-            id="watchlist-export"
-            aria-label="Export watchlist"
-            title="Export watchlist"
-          >
-            ↓
-          </button>
-        </div>
-        <div class="universe-filters">
-          <label
-            ><span class="sr-only">Asset type</span
-            ><select id="asset-type" aria-label="Asset type">
-              <option value="all">Stocks & ETFs</option>
-              <option value="Stock">Stocks</option>
-              <option value="ETF">ETFs</option>
-            </select></label
-          ><label
-            ><span class="sr-only">Universe sort</span
-            ><select id="universe-sort" aria-label="Universe sort">
-              <option value="volume">Volume ↓</option>
-              <option value="change">24h change ↓</option>
-              <option value="price">Price ↑</option>
-              <option value="name">Ticker A–Z</option>
-            </select></label
+        <div class="coverage-note">
+          <span id="coverage">Loading the asset catalog…</span
+          ><small id="market-status"
+            >CoinGecko · GeckoTerminal · issuer data</small
           >
         </div>
-        <div class="universe-columns">
-          <span>SECURITY</span><span>REF. USD / 24H</span>
-        </div>
-        <div id="stock-list" class="stock-list">
-          <p class="empty-search">Loading source catalogs…</p>
-        </div>
-        <div class="rail-bottom">
-          <span id="watchlist-status" role="status"></span
-          ><span id="list-status"></span
-          ><button id="load-markets" hidden>Load next market page</button
-          ><small id="coverage">Catalog connecting…</small>
-        </div>
-      </aside>
-      <section
-        id="comparison"
-        class="comparison"
-        aria-label="Security workspace"
-      >
-        <div class="workspace-label">
-          <span>SECURITY WORKSPACE</span
-          ><button id="toggle-universe" aria-expanded="false">
-            ☰ Universe</button
-          ><span>PUBLIC MARKET DATA</span>
-        </div>
-        <div id="stock-heading" class="stock-heading">
-          <p>Loading security…</p>
-        </div>
-        <div id="asset-metrics" class="asset-metrics"></div>
-        <section
-          id="chart-panel"
-          class="chart-panel"
-          aria-label="Pool candlestick chart"
-        >
-          <div class="chart-toolbar">
-            <div>
-              <span class="panel-number">02</span
-              ><label for="chart-pool">POOL CHART</label
-              ><select
-                id="chart-pool"
-                aria-label="Pool history"
-                disabled
-              ></select>
-            </div>
-            <div class="chart-range" aria-label="Chart range">
-              <button data-range="1d" aria-pressed="true">1D</button
-              ><button data-range="7d" aria-pressed="false">7D</button>
-            </div>
-          </div>
-          <div id="chart-caption" class="chart-caption">
-            EXACT-CONTRACT POOL / USD PER TOKEN
-          </div>
-          <div id="chart-content">
-            <div class="chart-empty">
-              <strong>Connecting to pool history…</strong
-              ><span>Hourly candles · USD per token</span>
-            </div>
-          </div>
-        </section>
-        <div class="view-tabs" role="tablist" aria-label="Comparison views">
-          <button
-            role="tab"
-            id="tab-products"
-            data-view="products"
-            aria-selected="true"
-            aria-controls="view-panel"
-          >
-            <kbd>1</kbd>Products</button
-          ><button
-            role="tab"
-            id="tab-quotes"
-            data-view="quotes"
-            aria-selected="false"
-            aria-controls="view-panel"
-            tabindex="-1"
-          >
-            <kbd>2</kbd>Order quotes</button
-          ><button
-            role="tab"
-            id="tab-markets"
-            data-view="markets"
-            aria-selected="false"
-            aria-controls="view-panel"
-            tabindex="-1"
-          >
-            <kbd>3</kbd>Pools</button
-          ><button
-            role="tab"
-            id="tab-venues"
-            data-view="venues"
-            aria-selected="false"
-            aria-controls="view-panel"
-            tabindex="-1"
-          >
-            <kbd>4</kbd>Exchanges</button
-          ><button
-            role="tab"
-            id="tab-terms"
-            data-view="terms"
-            aria-selected="false"
-            aria-controls="view-panel"
-            tabindex="-1"
-          >
-            <kbd>5</kbd>Issuer terms
-          </button>
-        </div>
-        <div class="view-filters">
-          <label
-            >Chain<select id="chain" aria-label="Chain">
-              <option value="all">All chains</option>
-            </select></label
-          ><label
-            >Issuer<select id="issuer" aria-label="Issuer">
-              <option value="all">All issuers</option>
-            </select></label
-          ><label
-            >Sort<select id="sort" aria-label="Sort by">
-              <option value="volume">24h volume</option>
-            </select></label
-          ><label id="venue-control" hidden
-            >Token<select
-              id="venue-product"
-              aria-label="Exchange token"
-            ></select
-          ></label>
-        </div>
-        <div id="quote-controls" class="controls" hidden>
-          <div class="budget-control">
-            <label for="budget">ORDER SIZE</label>
-            <div class="budget-input">
-              <input
-                id="budget"
-                type="number"
-                value="1000"
-                min="10"
-                max="1000000"
-                step="0.01"
-                inputmode="decimal"
-                aria-describedby="budget-error"
-              /><span>USDC</span>
-            </div>
-          </div>
-          <div class="presets" aria-label="Budget presets">
-            <button data-budget="100">100</button
-            ><button data-budget="1000" aria-pressed="true">1,000</button
-            ><button data-budget="10000">10,000</button>
-          </div>
-          <small>Funds on destination chain</small>
-        </div>
-        <p id="budget-error" class="field-error" hidden>
-          Enter 10–1,000,000 USDC, with at most two decimal places.
-        </p>
-        <div class="data-notice">
-          <p id="basis-note">Market observations in USD per token unit.</p>
-          <button id="methodology">Cost basis ↗</button>
-        </div>
-        <div id="view-panel" role="tabpanel" aria-labelledby="tab-products">
-          <div class="result-toolbar">
-            <h2 id="view-heading">Products <span id="result-count">—</span></h2>
-            <div class="quote-actions">
-              <span id="freshness">Waiting for data</span
-              ><button id="export" disabled>↓ CSV</button
-              ><button id="refresh" disabled>↻ Refresh</button>
-            </div>
-          </div>
-          <p id="comparison-status" class="comparison-status" role="status"></p>
-          <div id="results" aria-live="polite" aria-atomic="false">
-            <p class="empty-results">Loading the asset catalog…</p>
-          </div>
-          <p id="view-footnote" class="view-footnote"></p>
-        </div>
-        <details class="source-panel">
-          <summary>
-            Sources & coverage <span id="source-summary"></span>
-          </summary>
-          <div id="source-details"></div>
-          <button id="enrich">Refresh CoinGecko RWA mapping ↗</button>
-        </details>
       </section>
-      <aside class="inspector" aria-label="Security inspector">
-        <div class="rail-heading">
-          <h2>SECURITY INTELLIGENCE</h2>
-          <span>03</span>
-        </div>
-        <section id="security-profile"></section>
-        <section class="compare-box">
-          <div class="inspector-title">
-            <span>PRODUCT SHORTLIST</span><b id="compare-count">0/3</b>
+      <div class="workspace">
+        <aside class="stock-rail" aria-label="Choose a stock">
+          <div class="rail-heading">
+            <h2>Find an asset</h2>
+            <button id="toggle-universe" aria-expanded="false">
+              Browse assets ↓
+            </button>
           </div>
-          <div id="compare-list"><p>Select products to compare.</p></div>
-          <button id="compare-open" disabled>Compare side by side ↗</button>
-        </section>
-        <section id="execution-summary"></section>
-        <section class="desk-sources">
-          <div class="inspector-title">
-            <span>SOURCE MONITOR</span><span class="status-dot"></span>
+          <div class="universe-content">
+            <label class="search-field"
+              ><span aria-hidden="true">⌕</span
+              ><input
+                id="search"
+                type="search"
+                placeholder="Company, ticker or token…"
+                aria-label="Search stocks"
+                autocomplete="off"
+                disabled
+            /></label>
+            <div class="rail-filters">
+              <button id="all-stocks" aria-pressed="true">All assets</button
+              ><button id="saved-stocks" aria-pressed="false">
+                Saved <span id="saved-count">0</span>
+              </button>
+            </div>
+            <div class="universe-filters">
+              <label
+                ><span class="sr-only">Asset type</span
+                ><select id="asset-type" aria-label="Asset type">
+                  <option value="all">Stocks & ETFs</option>
+                  <option value="Stock">Stocks</option>
+                  <option value="ETF">ETFs</option>
+                </select></label
+              ><label
+                ><span class="sr-only">Asset order</span
+                ><select id="universe-sort" aria-label="Universe sort">
+                  <option value="volume">Most traded</option>
+                  <option value="name">Name A–Z</option>
+                  <option value="change">24h change</option>
+                  <option value="price">Reference price</option>
+                </select></label
+              >
+            </div>
+            <div id="stock-list" class="stock-list">
+              <p class="empty-search">Loading source catalogs…</p>
+            </div>
+            <div class="rail-bottom">
+              <span id="list-status"></span
+              ><button id="load-markets" hidden>Load more market data</button>
+              <details class="watchlist-tools">
+                <summary>Saved list tools</summary>
+                <button id="watchlist-import">Import JSON</button
+                ><input
+                  id="watchlist-file"
+                  type="file"
+                  accept="application/json,.json"
+                  hidden
+                /><button id="watchlist-export">Export JSON</button>
+              </details>
+              <span id="watchlist-status" role="status"></span
+              ><small
+                >Reference prices describe the tokenized market, not the listed
+                stock.</small
+              >
+            </div>
           </div>
-          <div id="desk-source-state"></div>
-        </section>
-        <div class="inspector-end">
-          One security.<br /><strong>Every representation in focus.</strong>
-        </div>
-      </aside>
-    </main>
-    <footer class="statusbar">
-      <div>
-        <span class="status-dot"></span><span id="session-time">STOCKLENS</span
-        ><span class="footer-divider">|</span
-        ><span class="keyboard-hints"
-          ><kbd>/</kbd> Search <kbd>1–5</kbd> Views <kbd>W</kbd> Watch
-          <kbd>R</kbd> Refresh</span
+        </aside>
+        <section
+          id="comparison"
+          class="comparison"
+          aria-label="Asset comparison"
         >
+          <div id="stock-heading" class="stock-heading">
+            <p>Loading company…</p>
+          </div>
+          <div id="asset-metrics" class="asset-metrics"></div>
+          <div class="view-tabs" role="tablist" aria-label="Comparison views">
+            <button
+              role="tab"
+              id="tab-products"
+              data-view="products"
+              aria-selected="true"
+              aria-controls="view-panel"
+            >
+              Products</button
+            ><button
+              role="tab"
+              id="tab-quotes"
+              data-view="quotes"
+              aria-selected="false"
+              aria-controls="view-panel"
+              tabindex="-1"
+            >
+              Buy comparison</button
+            ><button
+              role="tab"
+              id="tab-markets"
+              data-view="markets"
+              aria-selected="false"
+              aria-controls="view-panel"
+              tabindex="-1"
+            >
+              Liquidity</button
+            ><button
+              role="tab"
+              id="tab-venues"
+              data-view="venues"
+              aria-selected="false"
+              aria-controls="view-panel"
+              tabindex="-1"
+            >
+              Exchanges</button
+            ><button
+              role="tab"
+              id="tab-terms"
+              data-view="terms"
+              aria-selected="false"
+              aria-controls="view-panel"
+              tabindex="-1"
+            >
+              Issuer terms
+            </button>
+          </div>
+          <div class="view-filters">
+            <label
+              >Network<select id="chain" aria-label="Chain">
+                <option value="all">All chains</option>
+              </select></label
+            ><label
+              >Issuer<select id="issuer" aria-label="Issuer">
+                <option value="all">All issuers</option>
+              </select></label
+            ><label id="venue-control" hidden
+              >Token<select
+                id="venue-product"
+                aria-label="Exchange token"
+              ></select
+            ></label>
+          </div>
+          <div id="quote-controls" class="controls" hidden>
+            <div class="budget-control">
+              <label for="budget">I want to spend</label>
+              <div class="budget-input">
+                <input
+                  id="budget"
+                  type="number"
+                  value="1000"
+                  min="10"
+                  max="1000000"
+                  step="0.01"
+                  inputmode="decimal"
+                  aria-describedby="budget-error"
+                /><span>USDC</span>
+              </div>
+            </div>
+            <div class="presets" aria-label="Budget presets">
+              <button data-budget="100">100</button
+              ><button data-budget="1000" aria-pressed="true">1,000</button
+              ><button data-budget="10000">10,000</button>
+            </div>
+            <small>On the destination network</small>
+          </div>
+          <p id="budget-error" class="field-error" hidden>
+            Enter 10–1,000,000 USDC, with at most two decimal places.
+          </p>
+          <div class="data-notice">
+            <span class="notice-icon" aria-hidden="true">i</span>
+            <p id="basis-note">
+              Prices are in USD per token. Compare buy quotes to see equivalent
+              share exposure.
+            </p>
+            <button id="methodology">How prices compare ↗</button>
+          </div>
+          <div id="compare-box" class="compare-box" hidden>
+            <div class="compare-label">
+              Selected <span id="compare-count">0/3</span>
+            </div>
+            <div id="compare-list"></div>
+            <button id="compare-open" disabled>Compare terms ↗</button>
+          </div>
+          <div id="decision-summary" hidden></div>
+          <div id="view-panel" role="tabpanel" aria-labelledby="tab-products">
+            <div class="result-toolbar">
+              <div>
+                <h2 id="view-heading">
+                  Products <span id="result-count">—</span>
+                </h2>
+                <p
+                  id="comparison-status"
+                  class="comparison-status"
+                  role="status"
+                ></p>
+              </div>
+              <div class="quote-actions">
+                <span id="freshness">Waiting for data</span
+                ><button id="refresh" disabled>↻ Refresh</button>
+                <details class="table-options">
+                  <summary>More</summary>
+                  <div class="options-menu">
+                    <label
+                      >Sort by<select id="sort" aria-label="Sort by">
+                        <option value="volume">24h volume</option>
+                      </select></label
+                    ><button id="export" disabled>Export CSV</button>
+                  </div>
+                </details>
+              </div>
+            </div>
+            <div id="results" aria-live="polite" aria-atomic="false">
+              <p class="empty-results">Loading the asset catalog…</p>
+            </div>
+            <p id="view-footnote" class="view-footnote"></p>
+          </div>
+          <details id="chart-disclosure" class="chart-disclosure">
+            <summary>
+              <span>Price history</span
+              ><small>Explore an individual token’s market chart</small
+              ><span aria-hidden="true">⌄</span>
+            </summary>
+            <section
+              id="chart-panel"
+              class="chart-panel"
+              aria-label="Pool candlestick chart"
+            >
+              <div class="chart-toolbar">
+                <div>
+                  <label for="chart-pool">Market pool</label
+                  ><select
+                    id="chart-pool"
+                    aria-label="Pool history"
+                    disabled
+                  ></select>
+                </div>
+                <div class="chart-range" aria-label="Chart range">
+                  <button data-range="1d" aria-pressed="true">1D</button
+                  ><button data-range="7d" aria-pressed="false">7D</button>
+                </div>
+              </div>
+              <div id="chart-caption" class="chart-caption">
+                Hourly prices in USD per token
+              </div>
+              <div id="chart-content">
+                <div class="chart-empty">
+                  <strong>Connecting to pool history…</strong
+                  ><span>Hourly candles · USD per token</span>
+                </div>
+              </div>
+            </section>
+          </details>
+          <details class="source-panel">
+            <summary>
+              Sources, coverage & asset details
+              <span id="source-summary"></span>
+            </summary>
+            <div id="security-profile"></div>
+            <div id="source-details"></div>
+            <div id="desk-source-state"></div>
+            <button id="enrich">Refresh CoinGecko asset mapping ↗</button>
+          </details>
+        </section>
       </div>
-      <div>
-        <button id="share">Copy workspace link ↗</button
-        ><span id="share-status" role="status"></span>
-      </div>
-      <span class="attribution"
-        >Data:
+    </main>
+    <footer class="footer">
+      <span
+        >Market data by
         <a
           href="https://www.coingecko.com/"
           target="_blank"
           rel="noopener noreferrer"
           >CoinGecko</a
         >
-        /
+        and
         <a
           href="https://www.geckoterminal.com/"
           target="_blank"
           rel="noopener noreferrer"
           >GeckoTerminal</a
-        ></span
+        >.</span
       >
+      <div>
+        <button id="share" class="text-button">Copy comparison link ↗</button
+        ><span id="share-status" role="status"></span>
+      </div>
     </footer>
     <dialog
       id="command-dialog"
@@ -381,7 +379,7 @@
         underlying stock’s exchange price or a size-specific order quote. Pool
         reserves and reported exchange depth do not guarantee slippage.
       </p>
-      <h3>Order quotes</h3>
+      <h3>Buy comparison</h3>
       <div class="formula">
         USDC input ÷ equivalent share exposure<br /><strong
           >= price before network costs</strong

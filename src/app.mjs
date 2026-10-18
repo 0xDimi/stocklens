@@ -7,6 +7,7 @@ import {
   external,
   productsTable,
   quoteTable,
+  purchaseSummary,
   marketsTable,
   termsTable,
   venuesTable,
@@ -68,7 +69,7 @@ function renderStocks() {
   );
   $("#stock-list").innerHTML = found.length
     ? desk.universe(found, limit, saved)
-    : `<p class="empty-search">${savedOnly ? "No saved assets match. Save an asset with W or the star." : "No matching security. Try a company, ticker, token or ISIN."}</p>`;
+    : `<p class="empty-search">${savedOnly ? "No saved assets match. Use the star next to a company to save it." : "No matching security. Try a company, ticker, token or ISIN."}</p>`;
   $("#list-status").textContent =
     `${Math.min(found.length, limit).toLocaleString()} of ${found.length.toLocaleString()} assets`;
   $("#saved-count").textContent = saved.size;
@@ -81,7 +82,7 @@ function renderHeading() {
     selected.products.flatMap((p) => p.deployments.map((d) => d.chain)),
   ).size;
   $("#stock-heading").innerHTML =
-    `<div class="company"><div class="company-name"><h2>${escape(selected.ticker)}</h2><span class="ticker-label">${escape(selected.category)}</span><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p>${escape(selected.name)}${selected.exchange ? " · " + escape(selected.exchange) : ""}</p></div><div class="reference"><span>${selected.products.length} PRODUCTS / ${new Set(selected.products.map((p) => p.issuer)).size} ISSUERS</span><strong>${chainCount} NETWORKS</strong></div>`;
+    `<div class="company"><span class="company-symbol" aria-hidden="true">${escape(selected.name[0])}</span><div><div class="company-name"><h2>${escape(selected.name)}</h2><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p><b>${escape(selected.ticker)}</b> · ${escape(selected.category)} · ${selected.products.length} ${selected.products.length === 1 ? "product" : "products"} · ${new Set(selected.products.map((p) => p.issuer)).size} ${new Set(selected.products.map((p) => p.issuer)).size === 1 ? "issuer" : "issuers"} · ${chainCount} networks</p></div></div><button class="primary-button" data-action="quotes" ${view === "quotes" ? "hidden" : ""}>Compare buy quotes <span aria-hidden="true">→</span></button>`;
   const priorCoin = $("#venue-product").value;
   $("#venue-product").innerHTML = selected.products
     .filter(
@@ -147,15 +148,21 @@ function setView(next, fetch = true) {
     .map(([id, name]) => `<option value="${id}">${name}</option>`)
     .join("");
   if (sortOptions[view].some(([id]) => id === prior)) $("#sort").value = prior;
+  $("#stock-heading [data-action=quotes]")?.toggleAttribute(
+    "hidden",
+    view === "quotes",
+  );
   $("#quote-controls").hidden = view !== "quotes";
+  $("#decision-summary").hidden = view !== "quotes";
+  $("#decision-summary").innerHTML = "";
   $("#venue-control").hidden = view !== "venues";
   $("#issuer").disabled = view === "venues";
   $("#budget-error").hidden = true;
   $("#basis-note").textContent = {
     products:
-      "Market prices are USD per token unit. Use Order quotes to compare equivalent shares for your budget.",
+      "Prices are per token. Buy comparison shows verified share exposure.",
     quotes:
-      "Same destination-chain USDC input. Gas, bridging and future exit costs are separate.",
+      "Same budget in destination-network USDC. Gas, bridging and exit costs are separate.",
     markets:
       "Pool observations from GeckoTerminal. Liquidity is the pool’s total reserve value, not a slippage guarantee.",
     venues:
@@ -166,8 +173,8 @@ function setView(next, fetch = true) {
   $("#view-heading").innerHTML =
     {
       products: "Products",
-      quotes: "Order quotes",
-      markets: "Pools",
+      quotes: "Buy comparison",
+      markets: "Onchain liquidity",
       venues: "Exchanges",
       terms: "Issuer terms",
     }[view] + ' <span id="result-count">—</span>';
@@ -265,6 +272,8 @@ function renderResults() {
       : view === "terms"
         ? "Source-linked summaries"
         : "No market observation";
+  $("#decision-summary").innerHTML =
+    view === "quotes" ? purchaseSummary(visibleRows) : "";
   sourceDetails(snapshot);
   desk?.ingest(view, snapshot);
   tick();
@@ -274,6 +283,7 @@ async function loadView(enrich = false) {
   controller?.abort();
   const id = ++requestId;
   snapshot = null;
+  $("#decision-summary").innerHTML = "";
   if (view === "quotes") desk?.ingest("quotes", { rows: [] });
   visibleRows = [];
   $("#export").disabled = true;
@@ -360,6 +370,7 @@ async function loadView(enrich = false) {
 }
 function tick() {
   if (view !== "quotes" || !snapshot) return;
+  $("#decision-summary").innerHTML = purchaseSummary(visibleRows);
   const quotes = snapshot.rows.filter((r) => r.status === "quoted"),
     fresh = quotes.filter((r) => r.expiresAt > Date.now());
   $("#freshness").textContent = !quotes.length
@@ -512,6 +523,7 @@ $("#budget").addEventListener("input", () => {
   controller?.abort();
   requestId++;
   snapshot = null;
+  $("#decision-summary").innerHTML = "";
   $("#results").innerHTML = '<p class="empty-results">Updating amount…</p>';
   $("#freshness").textContent = "";
   clearTimeout(debounce);

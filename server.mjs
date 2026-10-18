@@ -1,6 +1,12 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import {
+  productsView,
+  marketsView,
+  historyView,
+  validateView,
+} from "./server/workspace.mjs";
 import { loadCatalog } from "./server/catalog.mjs";
 import { compareStock, validateComparison } from "./server/quotes.mjs";
 
@@ -11,15 +17,17 @@ try {
 }
 const files = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
-  ...["app.mjs", "data.mjs", "model.mjs", "styles.css"].map((name) => [
-    "/src/" + name,
-    [
-      "src/" + name,
-      name.endsWith(".css")
-        ? "text/css; charset=utf-8"
-        : "text/javascript; charset=utf-8",
+  ...["app.mjs", "data.mjs", "model.mjs", "views.mjs", "styles.css"].map(
+    (name) => [
+      "/src/" + name,
+      [
+        "src/" + name,
+        name.endsWith(".css")
+          ? "text/css; charset=utf-8"
+          : "text/javascript; charset=utf-8",
+      ],
     ],
-  ]),
+  ),
 ]);
 const securityHeaders = {
   "Cache-Control": "no-store",
@@ -31,6 +39,9 @@ const securityHeaders = {
 export function createApp({
   getCatalog = loadCatalog,
   compare = compareStock,
+  products = productsView,
+  markets = marketsView,
+  history = historyView,
 } = {}) {
   const traffic = new Map();
   return createServer(async (request, response) => {
@@ -70,7 +81,7 @@ export function createApp({
           return;
         }
         if (url.pathname === "/api/health") {
-          send(200, { status: "ok", version: "0.2.0" });
+          send(200, { status: "ok", version: "0.3.0" });
           return;
         }
         if (url.pathname === "/api/catalog") {
@@ -78,6 +89,26 @@ export function createApp({
             send(200, await getCatalog());
           } catch (error) {
             send(503, { error: error.message });
+          }
+          return;
+        }
+        const views = {
+          "/api/products": products,
+          "/api/markets": markets,
+          "/api/history": history,
+        };
+        if (views[url.pathname]) {
+          let query;
+          try {
+            query = validateView(url.searchParams);
+          } catch (error) {
+            send(400, { error: error.message });
+            return;
+          }
+          try {
+            send(200, await views[url.pathname](query, url.searchParams));
+          } catch (error) {
+            send(error.status || 503, { error: error.message });
           }
           return;
         }

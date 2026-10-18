@@ -150,3 +150,46 @@ test("Kyber handoff uses website chain slugs, independent of API slugs", async (
     /outputMint=mint/,
   );
 });
+
+test("broader issuer units never inherit xStocks adjustment or Ondo oracle conversion", async () => {
+  const { evmConversion } = await import("../server/providers.mjs");
+  assert.equal(evmConversion("bstocks").outputUnit, "raw-token");
+  assert.equal(evmConversion("bstocks").sharesPerToken, null);
+  assert.equal(evmConversion("xstocks").outputUnit, "adjusted-share");
+  assert.equal(evmConversion("xstocks").sharesPerToken, 1);
+});
+
+test("issuer label alone cannot authorize xStocks or Ondo conversion for wrappers or unrelated products", async () => {
+  const { conversionIssuer } = await import("../server/providers.mjs");
+  assert.equal(
+    conversionIssuer({
+      issuer: "xstocks",
+      name: "Wrapped NVIDIA xStock",
+      symbol: "WNVDAX",
+    }),
+    null,
+  );
+  assert.equal(
+    conversionIssuer({
+      issuer: "xstocks",
+      name: "Backed NVIDIA",
+      symbol: "bNVDA",
+    }),
+    null,
+  );
+  assert.equal(
+    conversionIssuer({
+      issuer: "xstocks",
+      name: "NVIDIA xStock",
+      symbol: "NVDAx",
+    }),
+    "xstocks",
+  );
+  assert.equal(
+    conversionIssuer({
+      issuer: "ondo",
+      source: "https://docs.ondo.finance/addresses#ondo-stocks",
+    }),
+    "ondo",
+  );
+});

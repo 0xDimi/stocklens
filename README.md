@@ -1,54 +1,74 @@
 # Stocklens
 
-Live tokenized-stock comparison with external purchase handoff. Node.js 22+, no runtime dependencies or build step. Uses public sources; no API keys required.
+A local comparison workspace for tokenized stocks and ETFs. CoinGecko supplies broader product discovery and token market observations; GeckoTerminal supplies exact-contract pools and historical prices; issuer and onchain sources support share conversions and order quotes.
+
+Node.js 22+, zero runtime dependencies, no build step.
 
 ```sh
 cd /Users/dpechli/Desktop/Codex/Stocklens
 npm start
 ```
 
-Open [Stocklens](http://127.0.0.1:4173). The server listens on localhost only. Optional `.env` settings are documented in `.env.example`.
+Open [Stocklens](http://127.0.0.1:4173). The server listens on localhost. Public sources work without a key where available. Optional RPC and CoinGecko settings are in `.env.example`; keep credentials in `.env`, which is ignored and never served.
 
-## Working flow
+## Use
 
-Search a company, ticker, token symbol, or ISIN. Enter 10–1,000,000 USDC, select a chain, and compare current quotes. Expand a product for legal documents, conversion sources, contract explorers, and original quote responses. Save favorites locally, copy comparison URLs, refresh prices, or open the exact token pair on its venue.
+1. Search a company, ticker, token symbol or ISIN. Filter stocks/ETFs or saved assets.
+2. **Products:** compare issuers, token-unit prices, 24h changes, volumes, caps and deployments. Expand for exact contracts, sources, terms and market/quote links.
+3. **Order quotes:** set a USDC budget and compare equivalent-share output where conversion is verified. Choose a chain/issuer, inspect raw source responses, and open the exact token pair at the external venue.
+4. **Markets:** inspect exact-contract pools, USD/token prices, pool reserve liquidity and 24h volume. Open an hourly chart for a rolling 1D/7D range or follow the pool link.
+5. **Issuer terms:** compare source-linked structure, rights, dividend and exit notes. Unreviewed terms are explicitly labeled. Copy the current comparison URL or export visible rows to CSV.
 
-## Sources and coverage
+Favorites persist in the browser; no account or database is needed. Tabs, chain, issuer, stock and amount are shareable. Export includes source timestamps and separates raw token observations from normalized order values.
 
-- Canonical securities and xStocks deployments: [public xStocks API](https://docs.xstocks.fi/developers/quickstart).
-- Ondo deployments: official CSV linked from [Ondo addresses](https://docs.ondo.finance/addresses#ondo-stocks).
-- Quotes: Raydium on Solana; KyberSwap on Ethereum and BNB Chain.
-- Conversion: xStocks issuer multipliers / adjusted EVM units; Solana mint extensions; Ondo synthetic-shares oracles where available.
+## Data and identity
 
-The October 18, 2026 integration run returned 1,163 assets. This is catalog coverage, not a claim that every asset has liquidity. The catalog includes ETFs and other listed securities supplied by the issuer. Ondo records join only when both ISIN and ticker corroborate the canonical xStocks record; 206 unconfirmed or inconsistent records were held back in that run. If the canonical identity source fails, the catalog fails closed. Other provider failures appear as partial results with reasons. No synthetic fallback data is used.
+- [CoinGecko RWA list](https://docs.coingecko.com/demo/reference/rwas-list), [coin platform registry](https://docs.coingecko.com/demo/reference/coins-list), [market observations](https://docs.coingecko.com/demo/reference/coins-markets).
+- [GeckoTerminal public API](https://api.geckoterminal.com/docs/index.html): pools, reserves, volumes and hourly OHLCV.
+- [xStocks public API](https://docs.xstocks.fi/developers/quickstart), [conversion-unit documentation](https://docs.xstocks.fi/developers/multipliers).
+- Ondo's official CSV from [contract addresses](https://docs.ondo.finance/addresses#ondo-stocks); onchain synthetic-shares oracles where registered.
 
-## Comparison basis
+Discovery recognizes 12 product families in current CoinGecko records: xStocks, Ondo, bStocks, Coinbase, Dinari, Robinhood, Backpack, Anchored, rStocks, Reality, ST0x and Stove. Native CoinGecko RWA grouping can be refreshed from Sources & coverage. It returned rate-limit errors initially and later recovered; ordinary discovery also uses conservative underlying ID/name and token-symbol corroboration. This is catalog mapping, not a legal identity guarantee. Wrapped and ambiguous products are excluded. A matching issuer, symbol and exact contract connects issuer products to CoinGecko IDs when names differ. ISIN URLs remain stable; no ticker-only merge assigns a security ID.
 
-Effective price = nominal input USDC / equivalent underlying shares received. Provider output already reflects swap fees and price impact. Ranking excludes gas, approvals, account creation, funding, bridging, tax, and future exit/redemption costs. Gas estimates appear separately where supplied. BNB uses **Binance-Peg USDC**; ranking assumes the same nominal USDC budget on the destination chain, without adjusting stablecoin or bridge risk.
+Ondo CSV rows that conflict with independent identity mappings are quarantined. The current catalog contains more assets than have active liquidity. Source counts are observations from the dated integration report, not exhaustive market coverage.
 
-One raw token need not equal one share. Missing conversion data is shown without normalized ranking. xStocks EVM transfer amounts are already adjusted and must not be multiplied twice. Quotes expire after 30 seconds from the local request start; expired rows lose their winner status and purchase links. The venue obtains a new quote before any purchase.
+Contract registry covers 18 configured chains. Size-specific quote adapters cover Solana, Ethereum, BNB Chain, Base and Arbitrum. Other chains remain browsable and show an explicit unavailable quote state. GeckoTerminal search returns its first page filtered to known contracts; exact-token Markets links query that deployment's top pools. These are not all pools or all centralized exchanges.
 
-Coverage is limited to these issuers, chains, and quote providers. The app does not compare against an exchange stock-price feed or claim the globally cheapest execution. Structural notes link original issuer documents; product-specific terms and user eligibility require checking with the issuer/venue. No wallet, custody, in-app trading, jurisdiction screening, or risk scoring is included.
+## Financial units and freshness
 
-## Code
+**Order ranking:** nominal USDC input / equivalent underlying shares received. Output incorporates provider swap fees and impact. Gas, approvals, account creation, funding, bridging, tax and future exit costs are excluded. BNB uses Binance-Peg USDC. Funds are assumed already available on the destination chain; stablecoin/bridge risks are not priced.
 
-- `server/catalog.mjs`: issuer ingestion, identity matching, quarantine.
-- `server/providers.mjs`: quotes, units, conversion sources, purchase URLs.
-- `server/quotes.mjs`: comparison request validation and ranking.
-- `server/http.mjs`: timeouts, bounded responses/cache, RPC, concurrency limits.
-- `src/model.mjs`: pure precision, normalization, freshness, search logic.
-- `src/app.mjs`: async UI, expiry, URL state, local favorites.
-- `src/data.mjs`: sourced structural notes only.
-- `server.mjs`: same-origin API, static allowlist, security headers, local rate limits.
+Solana xStocks/Ondo use verified issuer or onchain multipliers. EVM xStocks amounts are already adjusted. Other issuers do not inherit these conversions; missing ratios stay unranked even if a token quote exists. bStocks and Robinhood documentation explicitly describes reinvested dividends, so assuming a permanent 1:1 ratio would misstate exposure.
+
+CoinGecko and GeckoTerminal observations are USD per source token unit. They are not the stock's NASDAQ/NYSE price and do not predict order execution. Volume/cap refer to tokens; pool reserve liquidity is not a maximum order or slippage guarantee. Historical charts use actual hourly observations within the selected rolling window, preserve gaps and do not fabricate empty periods.
+
+Swap quotes expire 30 seconds after local request start. Expired quotes lose the winner badge and purchase href. Market observations retain provider timestamps; older CoinGecko observations are labeled. Refresh respects upstream cache windows rather than inventing a new source timestamp.
+
+## Resilience and API
+
+Public metadata is cached locally for 12 hours; an outage may retain a labeled catalog snapshot up to 72 hours. Quotes are cached 10 seconds, token prices 60 seconds, pools 90 seconds, and history 5 minutes. Source calls are paced and coalesced. HTTP 429 triggers a source-wide cooldown; failures appear as partial data with recovery messages. No research fixtures or synthetic prices are used as runtime fallbacks.
+
+Same-origin JSON endpoints:
+
+- `GET /api/catalog`
+- `GET /api/products?stock=NVDA&chain=all` (`enrich=true` refreshes native RWA mapping)
+- `GET /api/compare?stock=NVDA&amount=1000&chain=all`
+- `GET /api/markets?stock=NVDA&chain=all` (optional exact catalog `token` + chain)
+- `GET /api/history?stock=NVDA&pool=<listed-row-id>&range=1d` (or `7d`)
+- `GET /api/health`
+
+History only accepts pools obtained for the selected stock. The server cannot proxy arbitrary URLs/contracts. API validation, response bounds, security headers, static allowlist and local rate limits remain enabled. Keys stay on the server.
+
+## Code and validation
+
+`server/coingecko.mjs` owns discovery/market mapping; `server/gecko.mjs` owns pool orientation/history; `server/catalog.mjs` joins identity and retained enrichment; `server/providers.mjs` owns quotes/conversions; `server/source-client.mjs` owns public-service pacing, cooldown and metadata persistence. `src/views.mjs` contains pure table/chart/CSV rendering; `src/app.mjs` coordinates state, requests and interactions.
 
 ```sh
 npm test
-# With npm start running, checks actual issuer/RPC/quote integrations:
+# With the app running: actual issuer / CoinGecko / GeckoTerminal / RPC / quote integrations
 npm run integration
-# Optional alternate server:
-STOCKLENS_URL=http://127.0.0.1:4174 npm run integration
 ```
 
-Live checks depend on upstream availability and write a dated report to `test-results/live-integration.json`. Unit/API tests isolate parsing and failure cases; they are supplementary to the real integration and browser checks recorded in `QA.md`.
+The live script writes `test-results/live-integration.json`; real browser checks are recorded in `QA.md`. Public source availability and limits affect coverage.
 
-Public deployment will need suitable hosting, provider usage review, production RPC capacity, monitoring, and jurisdiction-specific product review. This repository runs locally and keeps no server-side user database.
+Purchases happen on external venues and obtain a new quote there. No custody, wallet connection, order submission, jurisdiction screening or issuer-risk scoring is implemented. Public hosting, commercial data licensing/capacity, and distribution review remain deployment work; this deliverable runs locally.

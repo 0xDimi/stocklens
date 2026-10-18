@@ -1,5 +1,9 @@
 <!doctype html>
-<!-- Stocklens: a flat stock-first comparison desk. Verified catalog, live indicative quotes, explicit cost basis. -->
+<!-- THESIS: Stock-first comparison with separate market observations and order quotes.
+OWN-WORLD: Existing daylight white/ink/teal workspace, flat tables, system typography.
+STORY: Find a security, inspect representations, compare terms, then open its market.
+FIRST VIEWPORT: Compact purpose heading, searchable left rail, product workspace with tabs.
+FORM: Local extension of the accepted comparison desk; no replacement visual world. -->
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -7,9 +11,9 @@
     <meta name="theme-color" content="#f7f8fa" />
     <meta
       name="description"
-      content="Compare tokenized stocks and ETFs across issuers and chains using verified contracts and live swap quotes."
+      content="Compare tokenized stocks and ETFs across issuers, chains and markets. CoinGecko data, GeckoTerminal liquidity and live swap quotes."
     />
-    <title>Stocklens — Tokenized stock comparison</title>
+    <title>Stocklens — Compare tokenized stocks</title>
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23126851'/%3E%3Cpath d='M10 26V14h12v12H10Zm8-4V10h12v12H18Z' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E"
@@ -25,31 +29,28 @@
         >stocklens<span class="brand-dot">.</span></a
       >
       <nav aria-label="Main navigation">
-        <span class="nav-current">Stocks</span
-        ><button class="text-button" id="how-it-works">
-          How it works <span aria-hidden="true">↗</span>
-        </button>
+        <span class="nav-current">Explore</span
+        ><button class="text-button" id="how-it-works">How it works ↗</button>
       </nav>
       <span class="demo-badge live-badge"
-        ><span aria-hidden="true"></span>Live beta</span
+        ><span aria-hidden="true"></span>Public market data</span
       >
     </header>
     <main>
       <section class="page-intro">
         <div>
-          <p class="eyebrow">TOKENIZED EQUITIES</p>
-          <h1>One stock. A clearer choice.</h1>
+          <h1>Compare tokenized stocks.</h1>
           <p class="intro-copy">
-            Compare the tokens, the costs, and what you actually own.
+            Compare issuers, chains and markets for one underlying asset.
           </p>
         </div>
         <div class="coverage-note">
-          <span>Verified issuer catalogs</span
+          <span>CoinGecko · GeckoTerminal · issuers</span
           ><strong id="coverage">Connecting…</strong>
         </div>
       </section>
       <div class="workspace">
-        <aside class="stock-rail" aria-label="Choose a stock">
+        <aside class="stock-rail" aria-label="Choose an asset">
           <label class="search-field"
             ><svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="10.5" cy="10.5" r="6.5" />
@@ -57,35 +58,98 @@
             ><input
               id="search"
               type="search"
-              placeholder="Company, ticker, or token…"
+              placeholder="Company, ticker, token…"
               aria-label="Search stocks"
               autocomplete="off"
               disabled
           /></label>
-          <div class="rail-filters" aria-label="Stock list">
+          <label class="asset-type-label"
+            >Asset type<select id="asset-type" aria-label="Asset type">
+              <option value="all">Stocks & ETFs</option>
+              <option value="Stock">Stocks</option>
+              <option value="ETF">ETFs</option>
+            </select></label
+          >
+          <div class="rail-filters" aria-label="Asset list">
             <button id="all-stocks" aria-pressed="true">All assets</button
             ><button id="saved-stocks" aria-pressed="false">
               Saved <span id="saved-count">0</span>
             </button>
           </div>
           <div id="stock-list" class="stock-list">
-            <p class="empty-search">Loading official contract lists…</p>
+            <p class="empty-search">Loading source catalogs…</p>
           </div>
           <p id="list-status" class="list-status"></p>
           <div class="rail-bottom">
             <span class="tiny-mark" aria-hidden="true">↗</span>
-            <p>Familiar companies.<br />Different onchain forms.</p>
+            <p>Find the stock.<br />Compare its onchain forms.</p>
           </div>
         </aside>
         <section
           id="comparison"
           class="comparison"
-          aria-label="Stock comparison"
+          aria-label="Asset comparison"
         >
           <div id="stock-heading" class="stock-heading">
-            <p class="loading-message">Connecting to issuer sources…</p>
+            <p class="loading-message">Connecting to market sources…</p>
           </div>
-          <div class="controls">
+          <div class="view-tabs" role="tablist" aria-label="Comparison views">
+            <button
+              role="tab"
+              id="tab-products"
+              data-view="products"
+              aria-selected="true"
+              aria-controls="view-panel"
+            >
+              Products</button
+            ><button
+              role="tab"
+              id="tab-quotes"
+              data-view="quotes"
+              aria-selected="false"
+              aria-controls="view-panel"
+              tabindex="-1"
+            >
+              Order quotes</button
+            ><button
+              role="tab"
+              id="tab-markets"
+              data-view="markets"
+              aria-selected="false"
+              aria-controls="view-panel"
+              tabindex="-1"
+            >
+              Markets</button
+            ><button
+              role="tab"
+              id="tab-terms"
+              data-view="terms"
+              aria-selected="false"
+              aria-controls="view-panel"
+              tabindex="-1"
+            >
+              Issuer terms
+            </button>
+          </div>
+          <div class="view-filters">
+            <label
+              >Chain<select id="chain" aria-label="Chain">
+                <option value="all">All chains</option>
+              </select></label
+            ><label
+              >Issuer<select id="issuer" aria-label="Issuer">
+                <option value="all">All issuers</option>
+              </select></label
+            ><label
+              >Sort by<select id="sort" aria-label="Sort by">
+                <option value="volume">24h volume</option>
+                <option value="price">Token price</option>
+                <option value="cap">Market cap</option>
+                <option value="name">Issuer name</option>
+              </select></label
+            >
+          </div>
+          <div id="quote-controls" class="controls" hidden>
             <div class="budget-control">
               <label for="budget">I want to spend</label>
               <div class="budget-input">
@@ -102,19 +166,9 @@
               </div>
             </div>
             <div class="presets" aria-label="Budget presets">
-              <button data-budget="100" type="button">100</button
-              ><button data-budget="1000" type="button" aria-pressed="true">
-                1,000</button
-              ><button data-budget="10000" type="button">10,000</button>
-            </div>
-            <div class="chain-control">
-              <label for="chain">Compare on</label
-              ><select id="chain">
-                <option value="all">All chains</option>
-                <option value="Solana">Solana</option>
-                <option value="Ethereum">Ethereum</option>
-                <option value="BinanceSmartChain">BNB Chain</option>
-              </select>
+              <button data-budget="100">100</button
+              ><button data-budget="1000" aria-pressed="true">1,000</button
+              ><button data-budget="10000">10,000</button>
             </div>
           </div>
           <p id="budget-error" class="field-error" hidden>
@@ -122,57 +176,63 @@
           </p>
           <div class="data-notice">
             <span class="notice-icon" aria-hidden="true">i</span>
-            <p>
-              Live swap quotes. <strong>Gas and bridging cost extra.</strong>
+            <p id="basis-note">
+              Market prices are USD per token unit. Use Order quotes to compare
+              equivalent shares for your budget.
             </p>
-            <button id="methodology">
-              Cost basis <span aria-hidden="true">↗</span>
-            </button>
+            <button id="methodology">Cost basis ↗</button>
           </div>
-          <div class="result-toolbar">
-            <h2>Compare versions <span id="result-count">—</span></h2>
-            <div class="quote-actions">
-              <span id="freshness" class="sort-label">Waiting for data</span
-              ><button id="refresh" class="refresh-button" disabled>
-                <span aria-hidden="true">↻</span> Refresh
-              </button>
+          <div id="view-panel" role="tabpanel" aria-labelledby="tab-products">
+            <div class="result-toolbar">
+              <h2 id="view-heading">
+                Products <span id="result-count">—</span>
+              </h2>
+              <div class="quote-actions">
+                <span id="freshness" class="sort-label">Waiting for data</span
+                ><button id="export" class="refresh-button" disabled>
+                  Export CSV</button
+                ><button id="refresh" class="refresh-button" disabled>
+                  ↻ Refresh
+                </button>
+              </div>
             </div>
+            <p
+              id="comparison-status"
+              class="comparison-status"
+              role="status"
+            ></p>
+            <div id="chart-panel" class="chart-panel" hidden>
+              <div class="chart-toolbar">
+                <label
+                  >Pool history<select
+                    id="chart-pool"
+                    aria-label="Pool history"
+                  ></select
+                ></label>
+                <div class="chart-range" aria-label="Chart range">
+                  <button data-range="1d" aria-pressed="true">1D</button
+                  ><button data-range="7d" aria-pressed="false">7D</button>
+                </div>
+                <button id="close-chart" aria-label="Close chart">×</button>
+              </div>
+              <div id="chart-content"></div>
+            </div>
+            <div id="results" aria-live="polite" aria-atomic="false">
+              <div class="empty-results">Loading the asset catalog…</div>
+            </div>
+            <p id="view-footnote" class="view-footnote"></p>
           </div>
-          <p id="comparison-status" class="comparison-status" role="status"></p>
-          <div id="results" aria-live="polite" aria-atomic="false">
-            <div class="empty-results">Loading the verified catalog…</div>
-          </div>
-          <div class="table-footnote">
-            <span aria-hidden="true">↳</span>
-            <p>
-              Ranked by equivalent exposure for the same USDC input, before
-              network costs. Quotes cover Raydium and KyberSwap, not every
-              market. The venue re-quotes before purchase.
-            </p>
-          </div>
+          <details class="source-panel">
+            <summary>
+              Sources & coverage <span id="source-summary"></span>
+            </summary>
+            <div id="source-details"><p>Waiting for catalog sources.</p></div>
+            <button id="enrich" class="text-button">
+              Refresh CoinGecko RWA mapping ↗
+            </button>
+          </details>
         </section>
       </div>
-      <section class="principles" aria-label="About the comparison">
-        <div>
-          <span class="principle-icon" aria-hidden="true">◎</span>
-          <h3>One underlying security</h3>
-          <p>
-            Issuer products matched by security identifier, not ticker alone.
-          </p>
-        </div>
-        <div>
-          <span class="principle-icon" aria-hidden="true">⇄</span>
-          <h3>Comparable exposure</h3>
-          <p>Verified token units. Missing ratios stay outside the ranking.</p>
-        </div>
-        <div>
-          <span class="principle-icon" aria-hidden="true">↗</span>
-          <h3>Read before you choose</h3>
-          <p>
-            Contract addresses, product rights, and original issuer documents.
-          </p>
-        </div>
-      </section>
     </main>
     <footer>
       <span
@@ -183,59 +243,77 @@
         <button id="share" class="text-button">Copy comparison link ↗</button
         ><span id="share-status" role="status"></span>
       </div>
+      <p class="attribution">
+        Market data by
+        <a
+          href="https://www.coingecko.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >CoinGecko</a
+        >
+        and
+        <a
+          href="https://www.geckoterminal.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >GeckoTerminal</a
+        >.
+      </p>
     </footer>
     <dialog id="info-dialog" aria-labelledby="dialog-title">
       <form method="dialog">
         <button class="close-dialog" aria-label="Close explanation">×</button>
       </form>
-      <p class="eyebrow">THE COMPARISON</p>
-      <h2 id="dialog-title">Same stock. Different products.</h2>
+      <h2 id="dialog-title">Same asset. Different products.</h2>
+      <h3>Products and markets</h3>
       <p>
-        Search a company, choose a USDC input, and compare live indicative swap
-        quotes across supported issuer deployments. Each row links to its exact
-        contract and an external trading venue.
+        CoinGecko provides token listings and aggregate token prices.
+        GeckoTerminal provides exact-contract pool prices, volume, liquidity and
+        historical closes. These observations are not the underlying stock’s
+        exchange price and do not predict what your order will receive. Pool
+        liquidity is not a slippage guarantee.
       </p>
-      <h3>What the ranking measures</h3>
+      <h3>Order quotes</h3>
       <div class="formula">
         USDC input ÷ equivalent share exposure<br /><strong
-          >= acquisition price before network costs</strong
+          >= price before network costs</strong
         >
       </div>
       <p>
-        Swap fees and price impact are already reflected in the quoted token
-        output. Network fees, approvals, account creation, funding, bridging,
-        taxes, and future exit costs are excluded from ranking. Any displayed
-        gas figure is the provider’s swap-gas estimate, not a complete
-        transaction cost.
+        Fees and price impact are reflected in output. Gas, approvals, account
+        creation, funding, bridging, taxes and future exit costs are separate.
+        On BNB Chain the input is Binance-Peg USDC. Funds are assumed available
+        on the destination chain.
+      </p>
+      <h3>Conversion and identity</h3>
+      <p>
+        One token may represent more than one share. Only source-backed
+        conversions enter equivalent-share rankings. Missing ratios stay
+        unranked. xStocks EVM units are already adjusted; Solana uses issuer or
+        onchain data. Other issuers do not inherit those assumptions.
       </p>
       <p>
-        USDC is assumed to be available on each selected chain. On BNB Chain the
-        quoted asset is Binance-Peg USDC. This comparison does not price moving
-        your funds between chains or stablecoins.
+        Issuer security identifiers and corroborated CoinGecko underlying names,
+        IDs, token symbols and addresses connect products. Wrapped tokens and
+        ambiguous matches are excluded from discovery. Source labels distinguish
+        issuer records from CoinGecko catalog mapping. The native RWA grouping
+        can be refreshed in Sources & coverage.
       </p>
-      <h3>Token units matter</h3>
+      <h3>Freshness and access</h3>
       <p>
-        Solana raw token outputs use verified onchain or issuer multipliers. EVM
-        xStocks amounts are already adjusted. Ondo conversions use its public
-        onchain data where available. A missing ratio is never assumed to be 1;
-        those rows show token output without a normalized ranking.
-      </p>
-      <h3>Sources and freshness</h3>
-      <p>
-        Contracts come from the xStocks public API and the contract list linked
-        in Ondo’s official documentation. Swap quotes come from Raydium and
-        KyberSwap. Quotes become stale after 30 seconds under our freshness
-        policy and must be refreshed. They are estimates, not reserved prices or
-        guaranteed fills.
+        Market observations show source timestamps. Quotes expire after 30
+        seconds and must be refreshed; the venue re-quotes before a purchase.
+        Public APIs can return partial coverage, access errors or rate limits.
+        Missing data stays missing.
       </p>
       <p>
-        Legal summaries link to original sources, reviewed October 18, 2026.
-        Product-specific terms and the provider’s eligibility checks remain
-        authoritative.
+        Terms summaries link primary documents. Unreviewed rights are labeled.
+        Check product-specific terms and jurisdiction restrictions with the
+        issuer and venue.
       </p>
       <p class="dialog-end">
-        Purchases happen on the external venue. Stocklens does not hold funds or
-        submit trades.
+        Stocklens does not hold funds, connect a wallet, or submit trades.
+        Purchase links open external venues.
       </p>
     </dialog>
   </body>

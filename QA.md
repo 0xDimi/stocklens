@@ -1,43 +1,47 @@
-# Verification — October 18, 2026
+# Verification — October 19, 2026 (Europe/Athens)
 
 ## Real integration
 
-Ran `npm test` and `npm run integration` against the current local server at port 4173. Integration uses actual issuer, RPC, and quote responses, without fixtures or replacement prices. Final run completed in 14.6 seconds.
+`npm run integration` ran against the current local server at port 4173. It fetched actual issuer, CoinGecko, GeckoTerminal, RPC and quote responses without fixture substitutions. Final source run timestamp: 2026-10-18T21:26:07.158Z / October 19 in Athens.
 
-| Stock | Issuer deployments | Live quotes | Normalized quotes |
+Observed catalog: **1,514 assets**, 12 recognized product families, 18 configured directory chains. NVIDIA: 12 products, 35 deployments, 11 CoinGecko prices, 16 exact-contract search pools, 24 hourly price observations in the selected one-day pool window. Counts describe this run and can change; they do not establish liquidity for every catalog asset.
+
+| Stock | Deployments | Actual order quotes | Normalized quotes |
 | --- | ---: | ---: | ---: |
-| NVIDIA | 6 | 5 | 4 |
-| Apple | 6 | 5 | 4 |
-| Tesla | 6 | 5 | 5 |
+| NVIDIA | 35 | 12 | 5 |
+| Apple | 33 | 11 | 5 |
+| Tesla | 34 | 8 | 5 |
 
-Catalog: 1,163 assets; 206 Ondo records withheld because identity mappings were unconfirmed or inconsistent. These counts are observations from this run, not guaranteed future coverage. Catalog size does not establish liquidity.
+Integration assertions check broad provider discovery, real market prices, exact catalog-contract membership of pools, positive chronological history observations, actual quote output, normalized arithmetic, ascending rankings, exact external pair addresses, BNB website chain slug and HTTP input validation. Raw report: `test-results/live-integration.json`; log: `test-results/full-integration.log`, both ignored by Git.
 
-Checks assert positive real token output, correct security identity, exact contract in explorer and handoff URLs, input/exposure arithmetic, freshness fields, ascending normalized ranking, and HTTP input validation. Raw report: `test-results/live-integration.json` (local, ignored by Git).
+Public native RWA detail initially returned HTTP 429, then recovered. The final real integration refreshed native grouping for ten NVIDIA products; wrapped products remained excluded. Normal discovery also retains conservative catalog mapping and exact issuer-contract joins so the app can work when optional native grouping is limited. Success/persistence, wrapper exclusion and malformed responses are regression-tested.
 
-Public Ondo Ethereum conversion data was unavailable for NVIDIA and Apple. Those quotes correctly show token quantities without a cross-product rank. Raydium returned no supported route for the three tested Ondo Solana deployments. Missing data remains visible; no price or multiplier is invented.
+## Actual browser
 
-## Actual browser checks
+The running app was exercised in the Codex in-app browser:
 
-Verified the served app in the Codex in-app browser:
+- Products: NVIDIA and Meta show broader issuer products; live prices, token market caps/volumes, timestamps and older-observation labels appear. Exact bStocks filtering produces one row; expanding it reveals primary terms, contract and handoffs.
+- Exact-token Markets link opens BNB bStocks pools. Twenty exact-token pools returned, with separate token/base orientation and liquidity/volume. A selected pool loaded 24 hourly observations for 1D and 168 for 7D. Stock-wide Meta markets also returned seven matching pools and a real Solana chart.
+- Issuer terms tab shows the selected provider's sourced terms. Unreviewed issuers use explicit unreviewed notes.
+- Order quotes: NVIDIA returns 35 deployment rows. Sorting by issuer keeps the true lowest effective-price row as winner; unavailable alphabetically-first issuers do not acquire its badge.
+- Invalid amount 1 removes quote rows and disables CSV. A valid preset recovers results.
+- Saved NVIDIA survives reload. Stock, amount, chain, view and issuer restore from URL. Saved-only filter shows one result; removing the test favorite produces the saved empty state. Test favorite removed afterward.
+- Real CSV download inspected from Downloads: one filtered NVIDIA/xStocks/Solana quote, correct equivalent shares/status, source columns and legal fields. Copy-link reports success.
+- ETF search returns S&P fund matches; unmatched search gives a useful empty state. Rapid Apple → Tesla → NVIDIA selection ends on NVIDIA without an older response replacing it.
+- Desktop, 390px and 320px checked. Document scroll width equals viewport content width. Responsive market rows, controls, tabs and disclosures remain usable. Viewport override reset afterward.
 
-- Live catalog search by company and token symbol; correct canonical names for NVIDIA, Apple, Tesla, Coinbase, and AMD.
-- Budget validation removes numerical results. Valid input recovers. Decimal input 100.25 and Solana filtering update the comparison URL and output.
-- Rapid NVIDIA → Tesla and 500 → 2,000 changes finish on Tesla / 2,000 / Solana with only Tesla Solana rows.
-- Favorites survive reload; saved-only filtering works. Test favorite removed afterward.
-- Product disclosures show legal links, exact contract, live multiplier, quote source, timestamp, and cost exclusions.
-- Quotes expire after 30 seconds: winner badge disappears, stale styling appears, and purchase links lose href and display a refresh instruction. Refresh returns current results.
-- KyberSwap BNB handoff actually loads USDC → AAPLon on **BNB Chain**. Browser testing exposed the API/web chain-slug difference; corrected and regression-tested.
-- Raydium handoff reaches the exact token-pair URL but its terms gate blocks further verification. No terms accepted, wallet connected, or transaction submitted.
-- Copy-link displays “Link copied.” Cost-basis dialog opens and closes with Escape.
-- Live layout checked at 390px and 320px; document scroll width equals viewport content width. Expanded disclosures fit at 320px. Viewport override reset afterward.
-- Final browser warning/error log: empty.
+External Raydium terms gate and correct Kyber BNB pair were verified in the previous release; those handoff paths are preserved. The new quote renderer retains expiry and refresh controls.
 
-## Supplementary automated checks
+## Automated and independent review
 
-20 unit/API tests pass. They cover decimal precision, strict amounts, raw versus adjusted units, missing multipliers, scheduled multiplier activation, paused tokens/oracles, stale ranking, quoted CSV parsing, identity conflicts/quarantine, canonical-source outage, malformed provider responses, missing price impact, correct venue chain URLs, HTTP validation, upstream errors, static allowlist, and security headers.
+**39 unit/API tests pass.** Coverage includes decimal precision, malformed budgets, unknown conversion units, paused tokens/oracles, CSV parsing, ambiguous identity and wrapped-token exclusions, same-contract joins, native grouping scope/persistence/wrapper exclusion, exact pool identity/orientation, elapsed history bounds, source-wide 429 cooldown, sorting-independent winner selection, HTML escaping, spreadsheet formula escaping, endpoint validation, private-file allowlist and security headers.
 
-Independent code review found a canonical-source outage that could bypass identity quarantine. Fixed, regression-tested, and independently rechecked. The earlier unit-field mismatch found by actual integration was also corrected. Impeccable detector returned no findings. `git diff --check` passed.
+Independent whole-change code review found four material issues: winner depended on display order, enrichment was response-local, sparse history could exceed the chosen range, and cooldown was path-local. Each reproduced in a failing test and now passes after the corresponding fix; the complete suite passes. The reviewer also checked exact-contract market-ID attachment without a material finding.
 
-## Boundaries
+## Limits
 
-No trade execution was tested or implemented. No exhaustive venue search, underlying exchange-price comparison, user eligibility assessment, or legal risk ranking is claimed. Comparison excludes network/funding/exit costs and relies on public upstream availability. These checks establish the local comparison MVP, not readiness for unrestricted public financial distribution.
+No financial transaction was submitted, terms accepted, or wallet connected. CoinGecko/GeckoTerminal prices are market observations, not underlying exchange reference prices or order fills. Quotes have five-chain adapter coverage; public APIs, missing conversions and source catalog quality limit availability. The tool reports gaps rather than inventing values or guaranteeing globally cheapest execution. Public distribution/hosting remains separate from this local application.
+
+Final accessibility/UX review confirmed the existing visual system and phone layout. Its two material findings were fixed: quote summary names now include exposure, price, units and availability; expanded quote details repeat the swap-gas estimate on phones. Browser confirmation showed 4.7082 equivalent shares at 212.40 USDC per share and a separately labeled gas estimate on the tested Ethereum row (point-in-time values, not a recommendation). Quote expiry/refresh and final console checks completed separately below.
+
+Final actual expiry check: an Ethereum quote changed to “Quotes stale · refresh,” its purchase href was removed, and the winner badge was hidden. Refresh restored a current quote and exact-token purchase link. Final browser warning/error log was empty. The viewport override was reset and the app was left on NVIDIA Products with all chains/issuers.

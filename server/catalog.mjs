@@ -1,3 +1,9 @@
+import {
+  getDiscovery,
+  mergeDiscovery,
+  getRwa,
+  attachKnownProducts,
+} from "./coingecko.mjs";
 import { memo, request } from "./http.mjs";
 import {
   XSTOCKS_API,
@@ -191,27 +197,48 @@ async function xStocksCatalog() {
 }
 export async function loadCatalog() {
   return memo("catalog", 600_000, async () => {
-    const [x, o] = await Promise.allSettled([
+    const [x, o, cg] = await Promise.allSettled([
       xStocksCatalog(),
       request(ONDO_CSV, { json: false }).then(parseCsv),
+      getDiscovery(),
     ]);
-    if (x.status === "rejected")
+    if (x.status === "rejected" && cg.status === "rejected")
       throw new Error(
         "The verified identity catalog is unavailable. Please try again shortly.",
       );
     const fetchedAt = new Date().toISOString();
     const conflicts = [];
-    const stocks = buildCatalog(
+    const issuerStocks = buildCatalog(
       x.status === "fulfilled" ? x.value : [],
       o.status === "fulfilled" ? o.value : [],
       fetchedAt,
       conflicts,
     );
+    const stocks =
+      cg.status === "fulfilled"
+        ? mergeDiscovery(
+            attachKnownProducts(
+              issuerStocks,
+              cg.value.registry || [],
+              cg.value.retrievedAt,
+            ),
+            cg.value.stocks,
+          )
+        : issuerStocks;
     if (!stocks.length)
       throw new Error(
         "Issuer catalogs did not contain verified supported securities.",
       );
     const warnings = [];
+    if (cg.status === "rejected")
+      warnings.push(
+        "CoinGecko catalog unavailable; showing issuer-sourced coverage.",
+      );
+    else if (cg.value.warning) warnings.push(cg.value.warning);
+    if (x.status === "rejected")
+      warnings.push(
+        "xStocks identity source unavailable; using independent CoinGecko underlying IDs.",
+      );
     if (conflicts.length)
       warnings.push(
         `${conflicts.length} issuer records held back because identity mappings are unconfirmed or inconsistent.`,
@@ -224,8 +251,19 @@ export async function loadCatalog() {
       stocks,
       fetchedAt,
       warnings,
-      chains: Object.values(CHAINS).map(({ id, label }) => ({ id, label })),
+      chains: Object.values(CHAINS).map(({ id, label, explorer, usdc }) => ({
+        id,
+        label,
+        explorer,
+        quotable: !!usdc,
+      })),
       sources: [
+        {
+          name: "CoinGecko",
+          url: "https://www.coingecko.com/en/categories/tokenized-stock",
+          available: cg.status === "fulfilled",
+          retrievedAt: cg.status === "fulfilled" ? cg.value.retrievedAt : null,
+        },
         {
           name: "xStocks public API",
           url: `${XSTOCKS_API}/assets`,
@@ -239,4 +277,36 @@ export async function loadCatalog() {
       ],
     };
   });
+}
+
+export async function resolveStock(
+  id,
+  enrich = false,
+  { getCatalog = loadCatalog, getNative = getRwa } = {},
+) {
+  const catalog = await getCatalog();
+  const matches = catalog.stocks.filter(
+    (s) => s.id === id || s.rwaId === id || s.ticker === id,
+  );
+  if (matches.length !== 1) {
+    const error = new Error(
+      matches.length
+        ? "Choose the exact underlying asset."
+        : "This asset is not in the catalog.",
+    );
+    error.status = matches.length ? 409 : 404;
+    throw error;
+  }
+  let stock = matches[0];
+  const warnings = [...catalog.warnings];
+  if (enrich && stock.rwaId) {
+    const native = await getNative(stock);
+    if (native.products.length)
+      Object.assign(
+        stock,
+        mergeDiscovery([stock], [{ ...stock, products: native.products }])[0],
+      );
+    if (native.warning) warnings.push(native.warning);
+  }
+  return { stock, warnings, catalogAt: catalog.fetchedAt };
 }

@@ -13,6 +13,57 @@ const fetchJson = async (path) => {
 const catalog = await fetchJson("/api/catalog");
 assert.ok(catalog.stocks.length > 0);
 assert.ok(catalog.stocks.some((s) => s.ticker === "NVDA"));
+const products = await fetchJson("/api/products?stock=NVDA&chain=all");
+assert.ok(products.rows.length >= 8, "Expected broad multi-issuer discovery");
+assert.ok(
+  products.rows.filter((p) => p.market?.price > 0).length >= 5,
+  "Expected actual CoinGecko prices",
+);
+const enriched = await fetchJson(
+  "/api/products?stock=NVDA&chain=all&enrich=true",
+);
+assert.ok(
+  enriched.rows.every((p) => !/^wrapped[ -]/i.test(p.name || p.coinId || "")),
+  "Wrapped products cannot bypass discovery exclusions through native grouping",
+);
+const nativeGrouped = enriched.rows.filter(
+  (p) => p.mapping === "CoinGecko RWA grouping",
+).length;
+const market = await fetchJson("/api/markets?stock=NVDA&chain=all");
+assert.ok(
+  market.rows.length > 0,
+  "Expected actual exact-contract GeckoTerminal pools",
+);
+for (const pool of market.rows)
+  assert.ok(
+    products.stock.products.some((p) =>
+      p.deployments.some(
+        (d) =>
+          d.chain === pool.chain &&
+          d.address.toLowerCase() === pool.address.toLowerCase(),
+      ),
+    ),
+    "Pool must contain catalog token",
+  );
+const history = await fetchJson(
+  "/api/history?" +
+    new URLSearchParams({
+      stock: "NVDA",
+      pool: market.rows[0].id,
+      range: "1d",
+    }),
+);
+assert.ok(history.points.length >= 2, "Expected real hourly price history");
+assert.ok(history.points.every((p) => p.price > 0));
+const broad = {
+  products: products.rows.length,
+  nativeGrouped,
+  priced: products.rows.filter((p) => p.market?.price > 0).length,
+  issuers: [...new Set(products.rows.map((p) => p.issuer))],
+  pools: market.rows.length,
+  historyPoints: history.points.length,
+};
+console.log("Broader sources", JSON.stringify(broad));
 const results = [];
 for (const ticker of ["NVDA", "AAPL", "TSLA"]) {
   const stock = catalog.stocks.find((s) => s.ticker === ticker);
@@ -35,6 +86,8 @@ for (const ticker of ["NVDA", "AAPL", "TSLA"]) {
     assert.ok(q.tokenQuantity > 0);
     assert.ok(q.explorerUrl.includes(q.address));
     assert.ok(q.buyUrl.includes(q.address));
+    if (q.chain === "BinanceSmartChain")
+      assert.ok(q.buyUrl.includes("/swap/bnb?"));
     assert.ok(q.expiresAt > q.fetchedAt);
     if (q.equivalentShares != null)
       assert.ok(
@@ -71,6 +124,7 @@ await writeFile(
       durationMs: Date.now() - start,
       catalogSize: catalog.stocks.length,
       warnings: catalog.warnings,
+      broad,
       results,
     },
     null,
@@ -78,5 +132,5 @@ await writeFile(
   ),
 );
 console.log(
-  `PASS: live catalog, real quotes for all three stocks, normalized ranking, exact handoff links, and HTTP validation (${Date.now() - start}ms).`,
+  `PASS: CoinGecko broad issuer catalog/prices, GeckoTerminal pools/history, real quotes for three stocks, normalized ranking, handoffs and HTTP validation (${Date.now() - start}ms).`,
 );

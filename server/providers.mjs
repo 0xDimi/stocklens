@@ -1,5 +1,5 @@
 import { request, memo, rpc } from "./http.mjs";
-import { CHAINS, XSTOCKS_API } from "./config.mjs";
+import { CHAINS, XSTOCKS_API, ONDO_SOURCE } from "./config.mjs";
 import {
   activeMultiplier,
   toBaseUnits,
@@ -83,8 +83,34 @@ export function parseSolanaMint(account, now = Date.now()) {
     outputUnit: "raw-token",
   };
 }
+export function evmConversion(issuer) {
+  return issuer === "xstocks"
+    ? {
+        sharesPerToken: 1,
+        outputUnit: "adjusted-share",
+        conversionSource: "https://docs.xstocks.fi/developers/multipliers",
+      }
+    : { sharesPerToken: null, outputUnit: "raw-token", conversionSource: null };
+}
+export function conversionIssuer(product) {
+  if (/^wrapped[ -]/i.test(product.name || product.coinId || "")) return null;
+  if (
+    product.issuer === "xstocks" &&
+    (product.source?.startsWith(XSTOCKS_API + "/assets/") ||
+      / xStock$/i.test(product.name || ""))
+  )
+    return "xstocks";
+  if (
+    product.issuer === "ondo" &&
+    (product.source === ONDO_SOURCE ||
+      /\(Ondo Tokenized Stock\)$/i.test(product.name || ""))
+  )
+    return "ondo";
+  return null;
+}
 async function tokenUnits(product, deployment) {
   const chain = CHAINS[deployment.chain];
+  const unitIssuer = conversionIssuer(product);
   if (deployment.chain === "Solana") {
     const account = await memo(`solmint:${deployment.address}`, 30_000, () =>
       rpc(chain.rpc(), "getAccountInfo", [
@@ -93,7 +119,8 @@ async function tokenUnits(product, deployment) {
       ]),
     );
     const parsed = parseSolanaMint(account);
-    if (product.issuer === "xstocks") {
+    if (!["xstocks", "ondo"].includes(unitIssuer)) parsed.sharesPerToken = null;
+    if (unitIssuer === "xstocks") {
       try {
         const multiplier = await memo(`xmult:${product.symbol}`, 30_000, () =>
           request(
@@ -122,14 +149,10 @@ async function tokenUnits(product, deployment) {
   const decimals = Number(BigInt(hex));
   if (!Number.isInteger(decimals) || decimals > 30)
     throw new Error("Unsupported token decimals.");
-  // xStocks balanceOf()/transfer amounts on EVM are already equity-adjusted.
-  if (product.issuer === "xstocks")
-    return {
-      outputDecimals: decimals,
-      sharesPerToken: 1,
-      outputUnit: "adjusted-share",
-      conversionSource: "https://docs.xstocks.fi/developers/multipliers",
-    };
+  // Only explicitly documented issuer units can authorize normalization.
+  const conversion = evmConversion(unitIssuer);
+  if (unitIssuer !== "ondo" || !chain.oracle)
+    return { outputDecimals: decimals, ...conversion };
   let oracleValue = null;
   try {
     // getSValue(address), selector derived with web3_sha3 and verified against the published ABI.
@@ -187,6 +210,23 @@ export function purchaseUrl(deployment) {
 export async function getQuote(product, deployment, amount) {
   const chain = CHAINS[deployment.chain];
   const id = `${product.issuer}:${deployment.chain}:${deployment.address}`;
+  if (!chain?.usdc)
+    return {
+      id,
+      issuer: product.issuer,
+      symbol: product.symbol,
+      chain: deployment.chain,
+      chainLabel: chain?.label || deployment.chain,
+      address: deployment.address,
+      source: product.source,
+      sourceAt: product.sourceAt,
+      explorerUrl: chain?.explorer + deployment.address,
+      status: "unavailable",
+      reason:
+        "Order quotes are not supported on this chain. Explore its listed markets in the Markets tab.",
+      venue: "—",
+      buyUrl: null,
+    };
   const inputAmount = toBaseUnits(amount, chain.decimals);
   const params = new URLSearchParams(
     deployment.chain === "Solana"

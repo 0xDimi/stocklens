@@ -59,3 +59,39 @@ test("upstream failure is a service error rather than a success with invented da
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error, "Catalog offline");
 });
+
+test("workspace API serves independent views and rejects invalid query/history scope", async (t) => {
+  const app = createApp({
+    products: async (q) => ({ view: "products", id: q.id }),
+    markets: async (q) => ({ view: "markets", chain: q.chain }),
+  });
+  await new Promise((resolve) => app.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => app.close(resolve)));
+  const base = `http://127.0.0.1:${app.address().port}`;
+  assert.equal(
+    (
+      await (
+        await fetch(base + "/api/products?stock=cg:nvidia&chain=Base")
+      ).json()
+    ).id,
+    "cg:nvidia",
+  );
+  assert.equal(
+    (
+      await (
+        await fetch(base + "/api/markets?stock=NVDA&chain=Robinhood")
+      ).json()
+    ).chain,
+    "Robinhood",
+  );
+  assert.equal(
+    (await fetch(base + "/api/products?stock=%3Cscript%3E")).status,
+    400,
+  );
+  assert.equal((await fetch(base + "/api/markets?chain=fake")).status, 400);
+  assert.equal(
+    (await fetch(base + "/api/history?stock=NVDA&pool=https://evil.test"))
+      .status,
+    400,
+  );
+});

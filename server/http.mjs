@@ -21,7 +21,7 @@ export async function request(
     method,
     body,
     headers: {
-      "User-Agent": "Stocklens/0.2",
+      "User-Agent": "Stocklens/0.3",
       Accept: "application/json",
       ...headers,
     },

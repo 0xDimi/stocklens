@@ -1,4 +1,4 @@
-import { loadCatalog } from "./catalog.mjs";
+import { resolveStock } from "./catalog.mjs";
 import { getQuote } from "./providers.mjs";
 import { mapLimit } from "./http.mjs";
 import { rankQuotes, validBudget } from "../src/model.mjs";
@@ -8,7 +8,7 @@ export function validateComparison(params) {
   const id = params.get("stock") || params.get("ticker") || "NVDA";
   const amount = params.get("amount") || "1000";
   const chain = params.get("chain") || "all";
-  if (!/^[A-Za-z0-9.\-]{1,20}$/.test(id))
+  if (!/^[A-Za-z0-9.:\-]{1,100}$/.test(id))
     throw new Error("Choose a valid stock identifier.");
   if (!validBudget(amount))
     throw new Error(
@@ -19,18 +19,7 @@ export function validateComparison(params) {
   return { id, amount, chain };
 }
 export async function compareStock({ id, amount, chain }) {
-  const catalog = await loadCatalog();
-  const matches = catalog.stocks.filter((s) => s.id === id || s.ticker === id);
-  if (matches.length !== 1) {
-    const error = new Error(
-      matches.length
-        ? "This ticker identifies more than one security. Choose its exact listing."
-        : "This stock is not in the verified catalog.",
-    );
-    error.status = matches.length ? 409 : 404;
-    throw error;
-  }
-  const stock = matches[0];
+  const { stock, warnings, catalogAt } = await resolveStock(id);
   const jobs = stock.products.flatMap((product) =>
     product.deployments
       .filter((d) => chain === "all" || d.chain === chain)
@@ -45,8 +34,8 @@ export async function compareStock({ id, amount, chain }) {
     chain,
     rows: rankQuotes(rows),
     fetchedAt: Date.now(),
-    catalogAt: catalog.fetchedAt,
-    warnings: catalog.warnings,
+    catalogAt,
+    warnings,
     costBasis:
       "USDC input divided by equivalent share exposure. Network, approval, account-creation, bridging, funding and future exit costs are excluded from ranking. USDC is assumed funded on each selected chain; BNB Chain uses Binance-Peg USDC.",
     quoteType:

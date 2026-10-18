@@ -5,22 +5,22 @@
 web
 
 ## Product Purpose
-Compare tokenized representations of the same underlying security using current public quotes. Search a familiar stock, enter a USDC amount, compare equivalent exposure, inspect issuer terms, and open the quoted token pair at an external venue.
+Compare tokenized representations of an underlying stock or ETF across issuers, chains and markets. Inspect token-unit market observations, actual order quotes, source-backed share conversion, pool liquidity, price history and issuer terms before following a product-specific external venue link.
 
 ## Users
-People exploring tokenized stocks. Launch jurisdiction remains undecided. Eligibility is checked with issuers and venues.
+People researching tokenized securities. Product access and jurisdiction eligibility are checked with issuers and venues.
 
 ## Capabilities and Constraints
-Public xStocks and corroborated Ondo catalogs; Solana, Ethereum, BNB Chain. Raydium and KyberSwap quotes. Exact contract links, source-backed conversions, expiry, chain filters, local favorites, and shareable comparison URLs. No synthetic fallback. Ranking uses equivalent exposure before network/funding/exit costs; unavailable conversions remain outside ranking. No wallet, custody, trade execution, jurisdiction screening, risk score, or exhaustive market coverage.
+CoinGecko discovery and market prices, GeckoTerminal pools and hourly charts, direct xStocks/Ondo catalogs, RPC-backed conversion and Raydium/KyberSwap quotes. Current configured directory spans 18 chains and recognizes 12 product families. Quotes cover five chains; unverified conversions stay unranked. Four views, source disclosures, filters, search, local favorites, URL state, CSV export and mobile layouts. No synthetic fallback, wallet, custody, transaction execution, underlying exchange-price feed, eligibility screening, invented issuer-risk score or exhaustive market coverage.
 
 ## Brand Commitments
-Less is more. Clean code. Stocklens remains a working name.
+Less is more. Clean code. Preserve the accepted daylight white/ink/teal comparison desk. Stocklens remains a working name.
 
 ## Evidence on Hand
-Actual issuer, onchain, quote API, and browser integrations checked October 18, 2026. Tests and source limits documented in QA.md and README.md. Sourced structural notes remain separate from live numerical data.
+Live issuer/CoinGecko/GeckoTerminal/RPC/quote integrations and actual browser checks on October 19, 2026 (Athens). Raw live checks retained locally. Source limits and run instructions in README.md; evidence in QA.md. Unreviewed issuer terms are labeled.
 
 ## Product Principles
-- Start with the underlying security.
-- Compare equivalent exposure using an explicit cost basis.
-- Make sources, missing data, and freshness visible.
-- Keep the initial flow on one screen.
+- Start with the underlying asset, preserve stable identifiers.
+- Separate token-unit prices from equivalent-share order costs.
+- Show sources, timestamps and gaps.
+- Make a product’s contracts, terms and venues easy to inspect.

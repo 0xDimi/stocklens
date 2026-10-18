@@ -1,0 +1,215 @@
+<!doctype html>
+<!--
+THESIS: A stock-first comparison desk. The table is the product.
+OWN-WORLD: Cool white, ink, deep teal, system typography, fine dividers.
+STORY: Choose a company, set a budget, compare exposure, inspect the terms.
+FIRST VIEWPORT: Compact navigation; stock rail left; comparison table right.
+FORM: A restrained research workspace, following the user's less-is-more brief.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f8fa" />
+    <meta
+      name="description"
+      content="An interactive demo for comparing tokenized versions of the same stock. Illustrative prices, transparent product terms."
+    />
+    <title>Stocklens — Tokenized stock comparison</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23126851'/%3E%3Cpath d='M10 26V14h12v12H10Zm8-4V10h12v12H18Z' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <script type="module" src="/src/app.mjs"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#comparison">Skip to comparison</a>
+    <header class="header">
+      <a class="brand" href="/" aria-label="Stocklens home"
+        ><span class="brand-mark" aria-hidden="true"><i></i><i></i></span
+        >stocklens<span class="brand-dot">.</span></a
+      >
+      <nav aria-label="Main navigation">
+        <span class="nav-current">Stocks</span
+        ><button class="text-button" id="how-it-works">
+          How it works <span aria-hidden="true">↗</span>
+        </button>
+      </nav>
+      <span class="demo-badge"
+        ><span aria-hidden="true"></span>Early preview</span
+      >
+    </header>
+
+    <main>
+      <section class="page-intro">
+        <div>
+          <p class="eyebrow">TOKENIZED EQUITIES</p>
+          <h1>One stock. A clearer choice.</h1>
+          <p class="intro-copy">
+            Compare the tokens, the costs, and what you actually own.
+          </p>
+        </div>
+        <div class="coverage-note">
+          <span>Starting with</span><strong>3 stocks · 2 providers</strong>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <aside class="stock-rail" aria-label="Choose a stock">
+          <label class="search-field"
+            ><svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="10.5" cy="10.5" r="6.5" />
+              <path d="m15.5 15.5 5 5" /></svg
+            ><input
+              id="search"
+              type="search"
+              placeholder="Find a stock…"
+              aria-label="Search stocks"
+              autocomplete="off"
+          /></label>
+          <p class="rail-label">Explore stocks</p>
+          <div id="stock-list" class="stock-list"></div>
+          <div class="rail-bottom">
+            <span class="tiny-mark" aria-hidden="true">↗</span>
+            <p>Familiar companies.<br />Different onchain forms.</p>
+          </div>
+        </aside>
+
+        <section
+          id="comparison"
+          class="comparison"
+          aria-label="Stock comparison"
+        >
+          <div id="stock-heading" class="stock-heading"></div>
+          <div class="controls">
+            <div class="budget-control">
+              <label for="budget">I want to spend</label>
+              <div class="budget-input">
+                <span aria-hidden="true">$</span
+                ><input
+                  id="budget"
+                  type="number"
+                  value="1000"
+                  min="10"
+                  max="1000000"
+                  step="any"
+                  inputmode="decimal"
+                  aria-describedby="budget-error"
+                /><span>USD</span>
+              </div>
+            </div>
+            <div class="presets" aria-label="Budget presets">
+              <button data-budget="100" type="button">$100</button
+              ><button data-budget="1000" type="button" aria-pressed="true">
+                $1,000</button
+              ><button data-budget="10000" type="button">$10,000</button>
+            </div>
+            <div class="chain-control">
+              <label for="chain">Compare on</label
+              ><select id="chain">
+                <option>All chains</option>
+                <option>Solana</option>
+                <option>Ethereum</option>
+                <option>BNB Chain</option>
+              </select>
+            </div>
+          </div>
+          <p id="budget-error" class="field-error" hidden>
+            Enter an amount between $10 and $1,000,000.
+          </p>
+          <div class="data-notice">
+            <span class="notice-icon" aria-hidden="true">i</span>
+            <p>
+              <strong>Demo prices.</strong> Modeled costs and routes, not live
+              market quotes.
+            </p>
+            <button id="methodology">
+              View assumptions <span aria-hidden="true">↗</span>
+            </button>
+          </div>
+          <div class="result-toolbar">
+            <h2>Compare versions <span id="result-count"></span></h2>
+            <span class="sort-label"
+              >Lowest modeled cost first <span aria-hidden="true">↓</span></span
+            >
+          </div>
+          <div id="results" aria-live="polite" aria-atomic="false"></div>
+          <div class="table-footnote">
+            <span aria-hidden="true">↳</span>
+            <p>
+              Equivalent shares measure economic exposure. Owning a token does
+              not necessarily make you a shareholder.
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <section class="principles" aria-label="About the comparison">
+        <div>
+          <span class="principle-icon" aria-hidden="true">◎</span>
+          <h3>One underlying stock</h3>
+          <p>Different tickers, grouped by the company they track.</p>
+        </div>
+        <div>
+          <span class="principle-icon" aria-hidden="true">⇄</span>
+          <h3>Comparable exposure</h3>
+          <p>Token ratios and modeled costs in one calculation.</p>
+        </div>
+        <div>
+          <span class="principle-icon" aria-hidden="true">↗</span>
+          <h3>Read before you choose</h3>
+          <p>Product rights and issuer documents, a click away.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span
+        >stocklens<span class="brand-dot">.</span
+        ><span class="footer-divider">/</span>Tokenized stocks, in focus.</span
+      ><span>Product demo · Illustrative data</span>
+    </footer>
+
+    <dialog id="info-dialog" aria-labelledby="dialog-title">
+      <form method="dialog">
+        <button class="close-dialog" aria-label="Close explanation">×</button>
+      </form>
+      <p class="eyebrow">THE COMPARISON</p>
+      <h2 id="dialog-title">Same stock. Different products.</h2>
+      <p>
+        Choose a company and an all-in budget. Stocklens groups illustrative
+        tokenized versions and ranks the equivalent exposure that budget would
+        buy.
+      </p>
+      <h3>How the demo calculates cost</h3>
+      <p>
+        The budget includes a modeled network fee. The remainder buys tokens at
+        a modeled price, including spread, size-dependent price impact, and a
+        trading fee. Tokens received are multiplied by an illustrative
+        shares-per-token ratio.
+      </p>
+      <div class="formula">
+        All-in budget ÷ equivalent shares<br /><strong
+          >= effective acquisition price</strong
+        >
+      </div>
+      <p>
+        All numerical inputs—including reference stock prices and conversion
+        ratios—are synthetic. Funds are assumed to be on the destination chain;
+        bridging and funding costs are excluded. The scenarios do not establish
+        venue availability or user eligibility.
+      </p>
+      <h3>What is real</h3>
+      <p>
+        The provider documentation linked in product details. Structural
+        summaries were checked against those sources on October 18, 2026. Review
+        current product-specific terms with the provider.
+      </p>
+      <p class="dialog-end">
+        This demo does not connect a wallet, place trades, or recommend an
+        investment.
+      </p>
+    </dialog>
+  </body>
+</html>

@@ -5,22 +5,22 @@
 web
 
 ## Product Purpose
-An early interactive demo for comparing tokenized representations of the same stock. Search a familiar stock, enter a budget, compare normalized exposure and costs, inspect product terms, and open an official provider.
+Compare tokenized representations of the same underlying security using current public quotes. Search a familiar stock, enter a USDC amount, compare equivalent exposure, inspect issuer terms, and open the quoted token pair at an external venue.
 
 ## Users
-People exploring tokenized stocks. Launch jurisdiction remains undecided; this demo does not determine eligibility.
+People exploring tokenized stocks. Launch jurisdiction remains undecided. Eligibility is checked with issuers and venues.
 
 ## Capabilities and Constraints
-Three stocks: NVIDIA, Apple, Tesla. Two provider families: xStocks and Ondo. All numerical prices, ratios, costs, and routes are illustrative scenarios, explicitly labeled. No live quotes, transaction execution, wallet, custody, recommendation, or exhaustive market coverage. Actual eligibility and product-specific terms must be checked with the provider.
+Public xStocks and corroborated Ondo catalogs; Solana, Ethereum, BNB Chain. Raydium and KyberSwap quotes. Exact contract links, source-backed conversions, expiry, chain filters, local favorites, and shareable comparison URLs. No synthetic fallback. Ranking uses equivalent exposure before network/funding/exit costs; unavailable conversions remain outside ranking. No wallet, custody, trade execution, jurisdiction screening, risk score, or exhaustive market coverage.
 
 ## Brand Commitments
-Less is more. Clean code. Stocklens is a working name chosen for this demo.
+Less is more. Clean code. Stocklens remains a working name.
 
 ## Evidence on Hand
-Provider documentation linked inside the app. Separate sourced structural notes from numerical demo assumptions. No independent live market integration exists yet.
+Actual issuer, onchain, quote API, and browser integrations checked October 18, 2026. Tests and source limits documented in QA.md and README.md. Sourced structural notes remain separate from live numerical data.
 
 ## Product Principles
-- Start with the underlying stock.
-- Compare equivalent exposure using an all-in budget.
-- Make source and data limitations visible.
+- Start with the underlying security.
+- Compare equivalent exposure using an explicit cost basis.
+- Make sources, missing data, and freshness visible.
 - Keep the initial flow on one screen.

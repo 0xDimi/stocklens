@@ -1,30 +1,54 @@
 # Stocklens
 
-Small tokenized-stock comparison demo. No runtime dependencies, build step, external fonts, analytics, or API keys. Node.js 22+.
+Live tokenized-stock comparison with external purchase handoff. Node.js 22+, no runtime dependencies or build step. Uses public sources; no API keys required.
 
 ```sh
 cd /Users/dpechli/Desktop/Codex/Stocklens
 npm start
 ```
 
-Open http://127.0.0.1:4173. Override the port with `PORT=4174 npm start`.
+Open [Stocklens](http://127.0.0.1:4173). The server listens on localhost only. Optional `.env` settings are documented in `.env.example`.
 
-## What works
+## Working flow
 
-Search NVIDIA, Apple, or Tesla; change the budget; filter by chain; compare modeled acquisition costs and equivalent exposure; expand sourced product notes; open official provider websites. No trades or wallet operations occur.
+Search a company, ticker, token symbol, or ISIN. Enter 10–1,000,000 USDC, select a chain, and compare current quotes. Expand a product for legal documents, conversion sources, contract explorers, and original quote responses. Save favorites locally, copy comparison URLs, refresh prices, or open the exact token pair on its venue.
 
-## Data boundary
+## Sources and coverage
 
-Every reference price, conversion ratio, spread, impact coefficient, fee, and venue route is a synthetic scenario in `src/data.mjs`. Numerical outputs are calculated from those assumptions, not live quotes. The model assumes money is already on the destination chain and excludes bridging/funding costs, taxes, and future selling/redemption costs. It does not assess user eligibility or assert exhaustive coverage.
+- Canonical securities and xStocks deployments: [public xStocks API](https://docs.xstocks.fi/developers/quickstart).
+- Ondo deployments: official CSV linked from [Ondo addresses](https://docs.ondo.finance/addresses#ondo-stocks).
+- Quotes: Raydium on Solana; KyberSwap on Ethereum and BNB Chain.
+- Conversion: xStocks issuer multipliers / adjusted EVM units; Solana mint extensions; Ondo synthetic-shares oracles where available.
 
-Provider documentation: https://xstocks.com/ and https://assets.backed.fi/legal-documentation; https://docs.ondo.finance/ondo-stocks/legal-and-regulatory; https://docs.ondo.finance/ondo-stocks/token-and-quote-pricing. Structural source notes checked October 18, 2026. Product-specific documents remain authoritative.
+The October 18, 2026 integration run returned 1,163 assets. This is catalog coverage, not a claim that every asset has liquidity. The catalog includes ETFs and other listed securities supplied by the issuer. Ondo records join only when both ISIN and ticker corroborate the canonical xStocks record; 206 unconfirmed or inconsistent records were held back in that run. If the canonical identity source fails, the catalog fails closed. Other provider failures appear as partial results with reasons. No synthetic fallback data is used.
 
-## Files
+## Comparison basis
 
-- `src/data.mjs`: fixed catalog, sourced notes, and explicitly synthetic scenario inputs.
-- `src/model.mjs`: pure cost normalization, filtering, and ranking.
-- `src/app.mjs`: event handling and rendering.
-- `src/styles.css`: responsive layout and accessible interaction states.
-- `server.mjs`: local-only static server with an explicit public-file allowlist.
+Effective price = nominal input USDC / equivalent underlying shares received. Provider output already reflects swap fees and price impact. Ranking excludes gas, approvals, account creation, funding, bridging, tax, and future exit/redemption costs. Gas estimates appear separately where supplied. BNB uses **Binance-Peg USDC**; ranking assumes the same nominal USDC budget on the destination chain, without adjusting stablecoin or bridge risk.
 
-Run `npm test` for calculation invariants. Browser verification covers the actual UI separately. To add live data later, replace scenario inputs with a quote adapter that preserves timestamps, included/excluded costs, token units, source, and quote status. Do not relabel modeled data as live.
+One raw token need not equal one share. Missing conversion data is shown without normalized ranking. xStocks EVM transfer amounts are already adjusted and must not be multiplied twice. Quotes expire after 30 seconds from the local request start; expired rows lose their winner status and purchase links. The venue obtains a new quote before any purchase.
+
+Coverage is limited to these issuers, chains, and quote providers. The app does not compare against an exchange stock-price feed or claim the globally cheapest execution. Structural notes link original issuer documents; product-specific terms and user eligibility require checking with the issuer/venue. No wallet, custody, in-app trading, jurisdiction screening, or risk scoring is included.
+
+## Code
+
+- `server/catalog.mjs`: issuer ingestion, identity matching, quarantine.
+- `server/providers.mjs`: quotes, units, conversion sources, purchase URLs.
+- `server/quotes.mjs`: comparison request validation and ranking.
+- `server/http.mjs`: timeouts, bounded responses/cache, RPC, concurrency limits.
+- `src/model.mjs`: pure precision, normalization, freshness, search logic.
+- `src/app.mjs`: async UI, expiry, URL state, local favorites.
+- `src/data.mjs`: sourced structural notes only.
+- `server.mjs`: same-origin API, static allowlist, security headers, local rate limits.
+
+```sh
+npm test
+# With npm start running, checks actual issuer/RPC/quote integrations:
+npm run integration
+# Optional alternate server:
+STOCKLENS_URL=http://127.0.0.1:4174 npm run integration
+```
+
+Live checks depend on upstream availability and write a dated report to `test-results/live-integration.json`. Unit/API tests isolate parsing and failure cases; they are supplementary to the real integration and browser checks recorded in `QA.md`.
+
+Public deployment will need suitable hosting, provider usage review, production RPC capacity, monitoring, and jurisdiction-specific product review. This repository runs locally and keeps no server-side user database.

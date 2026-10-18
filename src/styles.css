@@ -1278,3 +1278,295 @@ details[open] {
     scroll-behavior: auto !important;
   }
 }
+
+/* Live comparison states extend the original demo's restrained workspace. */
+.live-badge > span {
+  background: var(--accent);
+}
+.stock-list {
+  max-height: 480px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.stock-option-name {
+  min-width: 0;
+}
+.stock-option-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 126px;
+}
+.rail-filters {
+  display: flex;
+  gap: 8px;
+  margin: 22px 6px 12px;
+}
+.rail-filters button {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 5px 7px;
+  border-radius: 5px;
+}
+.rail-filters button[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--wash);
+}
+.rail-filters span {
+  font-size: 9px;
+  margin-left: 3px;
+}
+.list-status {
+  font-size: 10px;
+  color: var(--muted);
+  padding: 12px 10px 0;
+}
+.company-name h2 {
+  max-width: 340px;
+  overflow-wrap: anywhere;
+  font-size: 22px;
+}
+.company {
+  min-width: 0;
+}
+.company-name {
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.reference {
+  flex-shrink: 0;
+}
+.reference strong small {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.favorite-button {
+  font-size: 22px;
+  line-height: 1;
+  padding: 3px 5px;
+  color: var(--muted);
+}
+.favorite-button[aria-pressed="true"] {
+  color: var(--accent);
+}
+.quote-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.refresh-button {
+  font-size: 11px;
+  color: var(--accent);
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.refresh-button:hover {
+  background: var(--wash);
+}
+.comparison-status {
+  font-size: 10px;
+  color: var(--muted);
+  margin: -7px 0 13px;
+}
+.comparison-status:empty {
+  display: none;
+}
+.conversion-warning {
+  color: #8b5422 !important;
+}
+.contract-line {
+  padding: 0 14px 15px;
+  font-size: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+.contract-line > span {
+  color: var(--muted);
+}
+.contract-line a {
+  overflow-wrap: anywhere;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.unavailable-row > summary strong {
+  color: var(--muted);
+  font-size: 11px;
+}
+.unavailable-row .issuer-mark {
+  opacity: 0.65;
+}
+.stale .best-label {
+  display: none;
+}
+.stale.best > summary {
+  background: var(--page);
+}
+.stale .exposure-cell strong,
+.stale .price-cell strong {
+  color: var(--muted);
+}
+.quote-link[aria-disabled="true"] {
+  color: var(--muted);
+  cursor: default;
+}
+.loading-message {
+  color: var(--muted);
+}
+.retry-quotes {
+  margin-top: 14px;
+}
+.assumptions dd {
+  white-space: normal;
+  text-align: right;
+}
+.assumptions dl > div {
+  align-items: baseline;
+}
+#share-status {
+  font-size: 10px;
+  color: var(--accent);
+  margin-left: 9px;
+}
+.table-footnote p {
+  max-width: 650px;
+}
+.budget-input > span:last-child {
+  margin-left: 2px;
+}
+.data-notice button {
+  white-space: nowrap;
+}
+.empty-results p {
+  max-width: 400px;
+  margin: auto;
+}
+.quote-row summary {
+  scroll-margin-top: 24px;
+}
+@media (max-width: 1100px) {
+  .company-name h2 {
+    max-width: 240px;
+  }
+  .reference strong {
+    font-size: 19px;
+  }
+  .quote-actions {
+    gap: 8px;
+  }
+  .sort-label {
+    max-width: 120px;
+    text-align: right;
+  }
+}
+@media (max-width: 760px) {
+  .stock-list {
+    max-height: none;
+    overflow-y: hidden;
+  }
+  .stock-option-name strong {
+    max-width: 76px;
+  }
+  .stock-option {
+    flex: 0 0 auto;
+    min-width: 104px;
+    width: auto;
+    max-width: 140px;
+  }
+  .rail-filters {
+    margin: 12px 0 4px;
+  }
+  .list-status {
+    padding: 8px 0 0;
+    font-size: 9px;
+  }
+  .company-name h2 {
+    max-width: 170px;
+    font-size: 20px;
+  }
+  .reference > span {
+    font-size: 8px;
+  }
+  .reference strong small {
+    display: block;
+    font-size: 8px;
+  }
+  .company-name .ticker-label {
+    font-size: 8px;
+  }
+  .favorite-button {
+    font-size: 18px;
+  }
+  .quote-actions {
+    gap: 5px;
+  }
+  .refresh-button {
+    font-size: 10px;
+    padding: 5px 6px;
+  }
+  .sort-label {
+    font-size: 8px;
+    max-width: 92px;
+  }
+  .comparison-status {
+    font-size: 9px;
+  }
+  .product-details {
+    gap: 16px;
+  }
+  .contract-line {
+    padding: 0 10px 14px;
+    font-size: 9px;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .table-footnote p {
+    font-size: 9px;
+  }
+  .unavailable-row > summary strong {
+    font-size: 10px;
+  }
+  .stock-heading {
+    align-items: flex-start;
+  }
+  .data-notice p {
+    line-height: 1.6;
+  }
+  footer .text-button {
+    padding: 0;
+    font-size: 10px;
+  }
+  .coverage-note {
+    display: none;
+  }
+}
+@media (max-width: 360px) {
+  .header {
+    gap: 16px;
+    padding: 0 18px;
+  }
+  .demo-badge {
+    display: none;
+  }
+  .company-name h2 {
+    max-width: 135px;
+  }
+  .reference strong {
+    font-size: 17px;
+  }
+  .company-name {
+    gap: 4px;
+  }
+  .company {
+    gap: 7px;
+  }
+  .comparison {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+}

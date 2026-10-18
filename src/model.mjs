@@ -1,46 +1,110 @@
-// Pure calculations. Demo assumptions live in data.mjs, never in the UI.
-export function quoteRoute(stock, route, budget) {
+// Financial units are explicit. Integer amounts remain strings until display math.
+export function toBaseUnits(value, decimals) {
   if (
-    typeof budget !== "number" ||
-    !Number.isFinite(budget) ||
-    budget <= route.networkFee ||
-    budget > 1_000_000
+    !Number.isInteger(decimals) ||
+    decimals < 0 ||
+    decimals > 30 ||
+    !/^\d+(\.\d+)?$/.test(String(value))
   )
-    return null;
-  const impactBps = (route.impactBpsPerThousand * budget) / 1000;
-  const tokenPrice =
-    stock.referencePrice *
-    route.shareRatio *
-    (1 + (route.spreadBps + impactBps) / 10000);
-  const tokenQuantity =
-    (budget - route.networkFee) / (tokenPrice * (1 + route.feeBps / 10000));
-  const equivalentShares = tokenQuantity * route.shareRatio;
-  const effectivePrice = budget / equivalentShares;
+    throw new Error("Invalid decimal amount.");
+  const [whole, fraction = ""] = String(value).split(".");
+  if (fraction.length > decimals)
+    throw new Error("Amount has too many decimal places.");
+  return (
+    BigInt(whole) * 10n ** BigInt(decimals) +
+    BigInt(fraction.padEnd(decimals, "0") || "0")
+  ).toString();
+}
+export function fromBaseUnits(value, decimals) {
+  if (
+    !/^\d+$/.test(String(value)) ||
+    !Number.isInteger(decimals) ||
+    decimals < 0 ||
+    decimals > 30
+  )
+    throw new Error("Invalid token amount.");
+  const digits = String(value).padStart(decimals + 1, "0");
+  const result = Number(
+    decimals
+      ? `${digits.slice(0, -decimals)}.${digits.slice(-decimals)}`
+      : digits,
+  );
+  if (!Number.isFinite(result))
+    throw new Error("Token amount is outside supported bounds.");
+  return result;
+}
+export function validBudget(value) {
+  return (
+    typeof value === "string" &&
+    /^\d+(\.\d{1,2})?$/.test(value) &&
+    Number(value) >= 10 &&
+    Number(value) <= 1_000_000
+  );
+}
+export function activeMultiplier(data, now = Date.now()) {
+  const current = Number(data.currentMultiplier ?? data.multiplier);
+  const pending = Number(data.newMultiplier);
+  let activation = Number(
+    data.activationDateTime ?? data.newMultiplierEffectiveTimestamp,
+  );
+  if (activation > 1e12) activation /= 1000;
+  if (!Number.isFinite(current) || current <= 0)
+    throw new Error("Verified shares-per-token ratio is unavailable.");
+  return Number.isFinite(pending) &&
+    pending > 0 &&
+    activation > 0 &&
+    now >= activation * 1000
+    ? pending
+    : current;
+}
+export function normalizeQuote(raw) {
+  const inputQuantity = fromBaseUnits(raw.inputAmount, raw.inputDecimals);
+  const tokenQuantity = fromBaseUnits(raw.outputAmount, raw.outputDecimals);
+  if (inputQuantity <= 0 || tokenQuantity <= 0)
+    throw new Error("Quote returned no output.");
+  const ratio = Number(raw.sharesPerToken);
+  const equivalentShares =
+    raw.sharesPerToken != null && Number.isFinite(ratio) && ratio > 0
+      ? tokenQuantity * ratio
+      : null;
+  const effectivePrice = equivalentShares
+    ? inputQuantity / equivalentShares
+    : null;
+  const gas = raw.networkFeeUsd == null ? null : Number(raw.networkFeeUsd);
   return {
-    ...route,
-    tokenPrice,
+    inputQuantity,
     tokenQuantity,
     equivalentShares,
     effectivePrice,
-    impactBps,
-    premiumBps: (effectivePrice / stock.referencePrice - 1) * 10000,
-    totalCost: budget - equivalentShares * stock.referencePrice,
+    networkFeeUsd: gas != null && Number.isFinite(gas) && gas >= 0 ? gas : null,
+    fetchedAt: raw.fetchedAt,
+    expiresAt: raw.fetchedAt + 30_000,
   };
 }
-
-export function compareRoutes(stock, routes, budget, chain = "All chains") {
-  return routes
-    .filter((route) => chain === "All chains" || route.chain === chain)
-    .map((route) => quoteRoute(stock, route, budget))
-    .filter(Boolean)
+export function rankQuotes(rows, now = Date.now()) {
+  return rows
+    .map((row) => ({
+      ...row,
+      rankable:
+        row.status === "quoted" &&
+        Number.isFinite(row.effectivePrice) &&
+        row.effectivePrice > 0 &&
+        row.expiresAt > now,
+    }))
     .sort(
-      (a, b) => a.effectivePrice - b.effectivePrice || a.id.localeCompare(b.id),
+      (a, b) =>
+        Number(b.rankable) - Number(a.rankable) ||
+        (a.rankable
+          ? a.effectivePrice - b.effectivePrice
+          : Number(b.status === "quoted") - Number(a.status === "quoted")) ||
+        a.id.localeCompare(b.id),
     );
 }
-
 export function findStocks(stocks, query) {
-  const search = query.trim().toLowerCase();
+  const q = query.trim().toLowerCase();
   return stocks.filter((stock) =>
-    `${stock.ticker} ${stock.name}`.toLowerCase().includes(search),
+    `${stock.ticker} ${stock.name} ${stock.id || ""} ${(stock.products || []).map((p) => p.symbol).join(" ")}`
+      .toLowerCase()
+      .includes(q),
   );
 }

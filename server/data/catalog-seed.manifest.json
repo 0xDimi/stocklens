@@ -1,0 +1,159 @@
+{
+  "createdAt": "2026-10-19T12:22:21.477Z",
+  "rebuild": "Canonical model rebuilt from previously captured public source observations; original source timestamps preserved.",
+  "originalSnapshotAt": "2026-10-19T12:07:11.823Z",
+  "identityReferences": "server/data/catalog-identity-references.json",
+  "purpose": "Last successful identity observations for cold starts; runtime refreshes determine source availability. Identity data is not a live quote or guarantee of complete market coverage.",
+  "sources": [
+    {
+      "name": "xStocks public API",
+      "url": "https://api.xstocks.fi/api/v2/public/assets",
+      "query": "pageSize=100&page=0..terminal",
+      "retrievedAt": "2026-10-19T12:07:11.823Z",
+      "records": 1460
+    },
+    {
+      "name": "Ondo official contract list",
+      "url": "https://docs.ondo.finance/addresses#ondo-stocks",
+      "downloadUrl": "https://www.dropbox.com/scl/fi/qjfxyg748mx0dwi6up86d/EXTERNAL-Ondo-GM-Tokens-Ondo-GM-Tokens.csv?rlkey=n3no1w78wrah3umsl0nr9s77i&dl=1",
+      "retrievedAt": "2026-10-19T12:07:11.823Z",
+      "records": 458
+    },
+    {
+      "name": "CoinGecko underlying registry",
+      "urls": [
+        "https://api.coingecko.com/api/v3/rwas/list",
+        "https://api.coingecko.com/api/v3/coins/list?include_platform=true"
+      ],
+      "retrievedAt": "2026-10-19T09:51:33.840Z",
+      "universe": {
+        "underlyingRecords": 1028,
+        "securities": 1026,
+        "coinRegistryRecords": 22374
+      }
+    }
+  ],
+  "coverage": {
+    "assets": 1961,
+    "versions": 3153,
+    "deployments": 19110,
+    "pendingAssets": 160,
+    "wrappedVersions": 13,
+    "networks": 16,
+    "quoteNetworks": 5,
+    "issuers": [
+      {
+        "id": "xstocks",
+        "name": "xStocks",
+        "versions": 1461,
+        "networks": 12,
+        "reviewed": true,
+        "source": "https://docs.xstocks.fi/docs/product-legal-overview"
+      },
+      {
+        "id": "reality",
+        "name": "Reality",
+        "versions": 725,
+        "networks": 2,
+        "reviewed": true,
+        "source": "https://realityfinance.xyz/"
+      },
+      {
+        "id": "ondo",
+        "name": "Ondo",
+        "versions": 293,
+        "networks": 5,
+        "reviewed": true,
+        "source": "https://docs.ondo.finance/ondo-stocks/legal-and-regulatory"
+      },
+      {
+        "id": "robinhood",
+        "name": "Robinhood",
+        "versions": 173,
+        "networks": 1,
+        "reviewed": true,
+        "source": "https://robinhood.com/rhj/stocktokens/"
+      },
+      {
+        "id": "dinari",
+        "name": "Dinari",
+        "versions": 143,
+        "networks": 5,
+        "reviewed": true,
+        "source": "https://docs.dinari.com/docs/faqs"
+      },
+      {
+        "id": "coinbase",
+        "name": "Coinbase",
+        "versions": 109,
+        "networks": 1,
+        "reviewed": true,
+        "source": "https://www.coinbase.com/en-ca/tokenize"
+      },
+      {
+        "id": "anchored",
+        "name": "Anchored",
+        "versions": 78,
+        "networks": 6,
+        "reviewed": true,
+        "source": "https://docs.anchored.finance/"
+      },
+      {
+        "id": "bstocks",
+        "name": "bStocks",
+        "versions": 69,
+        "networks": 1,
+        "reviewed": true,
+        "source": "https://academy.binance.com/en/articles/what-are-bstocks-a-guide-to-tokenized-stocks-on-binance"
+      },
+      {
+        "id": "backpack",
+        "name": "Backpack Securities",
+        "versions": 53,
+        "networks": 1,
+        "reviewed": true,
+        "source": "https://learn.backpack.exchange/blog/introducing-backpack-securities"
+      },
+      {
+        "id": "stove",
+        "name": "Stove",
+        "versions": 34,
+        "networks": 1,
+        "reviewed": true,
+        "source": "https://www.stove.finance/"
+      },
+      {
+        "id": "st0x",
+        "name": "ST0x",
+        "versions": 13,
+        "networks": 1,
+        "reviewed": true,
+        "source": "https://st0x.io/docs/legal"
+      },
+      {
+        "id": "rstock",
+        "name": "rStocks · issuer unconfirmed",
+        "versions": 2,
+        "networks": 1,
+        "reviewed": false,
+        "source": "https://www.coingecko.com/en/categories/tokenized-stock"
+      }
+    ],
+    "unmappedPlatforms": [
+      "hyperliquid"
+    ],
+    "scope": "Observed coverage from connected sources, not a guarantee of every token or venue. Native grouping is checked when an asset is opened.",
+    "registry": {
+      "underlyingRecords": 1028,
+      "securities": 1026,
+      "coinRegistryRecords": 22374
+    },
+    "heldBackIssuerRecords": 200
+  },
+  "warnings": [
+    "200 issuer records held back because identity mappings are unconfirmed or inconsistent."
+  ],
+  "snapshotSha256": "15765d76f0e1a3bc93fa268263f287a9e0b9e67ff3eabf0b0fd7a08a04dcfb05",
+  "compressedSha256": "529362cea7758330ecffdd0d70ffa865acbba719a95c943dd58c12cf422caba4",
+  "compressedBytes": 1521268
+}

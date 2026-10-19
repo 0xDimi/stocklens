@@ -1,4 +1,4 @@
-import { findStocks, validBudget } from "./model.mjs";
+import { findStocks, validBudget, assetById } from "./model.mjs";
 import {
   escape,
   number,
@@ -249,7 +249,7 @@ function sourceDetails(data = {}) {
     ? `${warnings.length} coverage ${warnings.length === 1 ? "note" : "notes"}`
     : "Source timestamps & scope";
   $("#source-details").innerHTML =
-    `<div class="source-list">${catalogSources.map((s) => `<p>${external(s.url, s.name)} <strong>${s.available ? "Catalog loaded" : "Unavailable"}</strong></p>`).join("")}${(data.sources || []).map((s) => `<p>${escape(s.name)} <strong>${escape(s.status)}</strong> · ${stamp(s.checkedAt)}</p>`).join("")}</div><p>Catalog retrieved ${stamp(data.catalogAt || selected?.sourceAt)}. CoinGecko prices use source timestamps. GeckoTerminal pool results are a filtered search page, not all venues.</p>${warnings.map((w) => `<p class="coverage-warning">${escape(w)}</p>`).join("")}<p>Issuer legal summaries reviewed Oct 19, 2026 where supplied. Other issuer terms are unreviewed. Wrapped products and ambiguous matches are excluded.</p>`;
+    `<div class="source-list">${catalogSources.map((s) => `<p>${external(s.url, s.name)} <strong>${s.cached ? "Saved catalog · " + stamp(s.retrievedAt) : s.available ? "Catalog loaded" : s.stale ? "Retained observation" : "Unavailable"}</strong></p>`).join("")}${(data.sources || []).map((s) => `<p>${escape(s.name)} <strong>${escape(s.status)}</strong> · ${stamp(s.checkedAt)}</p>`).join("")}</div><p>Catalog retrieved ${stamp(data.catalogAt || selected?.sourceAt)}. CoinGecko prices use source timestamps. GeckoTerminal pool results are a filtered search page, not all venues.</p>${warnings.map((w) => `<p class="coverage-warning">${escape(w)}</p>`).join("")}<p>Issuer legal summaries reviewed Oct 19, 2026 where supplied. Other issuer terms are unreviewed. Wrapped products and ambiguous matches are excluded.</p>`;
 }
 function renderResults() {
   if (!snapshot) return;
@@ -473,7 +473,7 @@ async function initialize() {
     pendingProducts = data.pendingProducts || [];
     catalogWarnings = data.warnings;
     selected =
-      stocks.find((s) => s.id === params.get("stock")) ||
+      assetById(stocks, params.get("stock")) ||
       stocks.find((s) => s.ticker === params.get("ticker")) ||
       stocks.find((s) => s.ticker === "NVDA") ||
       stocks[0];
@@ -657,7 +657,15 @@ desk = createTerminal({
     }
   },
   onUniverseUpdate: renderStocks,
-  onMarketsUpdate: () => marketsPage?.render(),
+  onMarketsUpdate: () => {
+    if (page === "markets") {
+      marketsPage?.show();
+      if (desk?.marketState().screenNext)
+        setTimeout(() => {
+          if (page === "markets") desk.refreshMarkets(true);
+        }, 0);
+    } else marketsPage?.render();
+  },
   onWatchlistChange: () => {
     renderStocks();
     renderHeading();
@@ -675,7 +683,10 @@ function setPage(next, write = true) {
     page === "markets"
       ? "Markets — Stocklens"
       : "Stocklens — Compare tokenized stocks";
-  if (page === "markets") marketsPage?.render();
+  if (page === "markets") {
+    marketsPage?.show();
+    if (desk?.marketState().screenNext) desk.refreshMarkets(true);
+  }
   if (write) updateUrl();
 }
 function toggleSaved(id) {
@@ -693,7 +704,7 @@ function showCoverage() {
     ],
     issuerIds = [...new Set(products.map((p) => p.issuer))];
   $("#coverage-content").innerHTML =
-    `<p class="coverage-lead">${stocks.length.toLocaleString()} assets · ${products.length.toLocaleString()} mapped versions · ${networks.length} observed networks</p><p>Coverage is measured against connected sources. New products, restricted venues and unlisted contracts can be missing. Opening an asset checks CoinGecko’s native grouping, including wrapped versions.</p><h3>Connected discovery sources</h3><div class="source-list">${catalogSources.map((source) => `<p>${external(source.url, source.name)} <strong>${source.available ? "Loaded" : "Unavailable"}</strong></p>`).join("")}</div><h3>Issuer coverage</h3><div class="coverage-issuers">${issuerIds
+    `<p class="coverage-lead">${stocks.length.toLocaleString()} assets · ${products.length.toLocaleString()} mapped versions · ${networks.length} observed networks</p><p>Coverage is measured against connected sources. New products, restricted venues and unlisted contracts can be missing. Opening an asset checks CoinGecko’s native grouping, including wrapped versions.</p><h3>Connected discovery sources</h3><div class="source-list">${catalogSources.map((source) => `<p>${external(source.url, source.name)} <strong>${source.cached ? "Saved catalog · " + stamp(source.retrievedAt) : source.available ? "Loaded" : source.stale ? "Retained observation" : "Unavailable"}</strong></p>`).join("")}</div><h3>Issuer coverage</h3><div class="coverage-issuers">${issuerIds
       .sort(
         (a, b) =>
           products.filter((p) => p.issuer === b).length -

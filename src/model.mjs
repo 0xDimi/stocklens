@@ -108,3 +108,11 @@ export function findStocks(stocks, query) {
       .includes(q),
   );
 }
+
+export function assetById(stocks, id) {
+  const exact = stocks.find((stock) => stock.id === id);
+  if (exact) return exact;
+  const rwa = typeof id === "string" && id.startsWith("cg:") ? id.slice(3) : id;
+  const matches = stocks.filter((stock) => stock.rwaId === rwa);
+  return matches.length === 1 ? matches[0] : null;
+}

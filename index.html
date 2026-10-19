@@ -423,7 +423,7 @@
               <th scope="col">24h</th>
               <th
                 scope="col"
-                title="Latest supported buy quote vs a fresh Nasdaq reference, before gas, assuming USDC equals $1. Requires verified share conversion. Not a market-wide spot premium."
+                title="Automatically observed $1,000 USDC indicative buy premium for one verified representative version, before gas; USDC assumed $1. Expand a cell for price time, Nasdaq reference and share conversion."
               >
                 Onchain premium ⓘ
               </th>
@@ -439,7 +439,7 @@
               <th scope="col">Company cap</th>
               <th
                 scope="col"
-                title="P/E for the listed company, only if explicitly supplied by the connected source."
+                title="Nasdaq fiscal-year P/E (Zacks). The stated historical period appears beside each ratio; this is not a current trailing-twelve-month ratio."
               >
                 P/E ⓘ
               </th>
@@ -467,15 +467,16 @@
           latest native grouping. Missing values stay empty.
         </p>
         <p>
-          Quote premium uses your latest compared order and expires with the
-          quote. It requires a fresh listed-stock reference and verified share
-          conversion. USDC is assumed to equal $1; network costs are excluded.
+          Onchain premium observes a $1,000 USDC indicative buy for one verified
+          representative version, before gas, with USDC assumed to equal $1.
+          It is not the best price across all versions. Expired observations are
+          labeled; expand a cell for sources, times and missing-value reasons.
         </p>
         <div>
-          <button id="market-fundamentals">Load company data</button
+          <button id="market-fundamentals">Refresh page data</button
           ><span id="market-company-status"
-            >Optional Nasdaq references for the current 25 rows. Company cap and
-            P/E are separate from tokenized metrics.</span
+            >Nasdaq references and premiums load automatically for the current 25
+            rows. P/E uses the stated fiscal year, rather than current TTM.</span
           >
         </div>
       </div>

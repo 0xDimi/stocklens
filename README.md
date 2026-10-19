@@ -1,6 +1,6 @@
 # Stocklens
 
-A comparison tool for tokenized stocks and ETFs. Start with a company, then inspect its issuer products, onchain pools, exchange markets and share-normalized order quotes.
+[Public WIP app](https://stocklens-osft.onrender.com) · A comparison tool for tokenized stocks and ETFs. Start with a company, then inspect its issuer products, onchain pools, exchange markets and share-normalized order quotes.
 
 **Node.js 22+ · zero runtime dependencies · no build step.**
 
@@ -14,7 +14,7 @@ Open [Stocklens](http://127.0.0.1:4173). Optional source settings live in `.env.
 
 Home follows one flow: search a stock → inspect source-mapped issuer versions and exact contracts → compare issuers/networks → compare supported size-specific quotes → open the venue.
 
-Markets (`?page=markets`) presents the entire connected asset registry as a sortable, searchable table. It has tokenized price/change, tokenized capitalization and volume, chain/version/issuer counts, shared watchlist, CSV export and optional Nasdaq company references for the current page. A stock row opens Home for that exact canonical asset.
+Markets (`?page=markets`) presents the entire connected asset registry as a sortable, searchable table. It has tokenized price/change, tokenized capitalization and volume, chain/version/issuer counts, shared watchlist, CSV export and automatic Nasdaq company references and indicative premium observations for the current page. Company cap and fiscal-period P/E include source links and dates; the P/E period is displayed beside the ratio. ETF company metrics are explicitly not applicable. A stock row opens Home for that exact canonical asset.
 
 ## The comparison workspace
 
@@ -26,7 +26,7 @@ Markets (`?page=markets`) presents the entire connected asset registry as a sort
 
 `⌘/Ctrl K` or `/` opens security search. `1`–`5` switch panels; `W` toggles the watchlist; `R` refreshes the table and current chart. Shortcuts leave text-entry fields alone. The URL preserves page, stock, table, amount, chain and issuer. Sorting and CSV export are under More beside Refresh. CSV exports preserve units, sources and timestamps. Watchlists stay in the current browser; JSON import/export provides a portable list of asset IDs; import merges matching catalog IDs with the current watchlist.
 
-Markets poll every ten minutes while the page is visible. Charts load on demand and refresh every 180 seconds while their section is open and the page is visible. All loaded screener pages refresh. Buy quotes expire after 30 seconds and require an explicit refresh; expired purchase links are disabled. Cached source fallbacks are labeled, retain their original timestamps and never become executable quotes.
+Markets poll every ten minutes while the page is visible. Charts load on demand and refresh every 180 seconds while their section is open and the page is visible. Markets automatically loads subsequent source pages; all loaded screener pages refresh. Visible-page company data and indicative premium observations refresh independently once a minute. Buy quotes expire after 30 seconds and require an explicit refresh; expired purchase links are disabled. Cached source fallbacks are labeled, retain their original timestamps and never become executable quotes.
 
 ## Data and identity
 
@@ -36,7 +36,7 @@ Primary integrations:
 - [GeckoTerminal public API](https://api.geckoterminal.com/docs/index.html): exact-contract pools, reserve values, volumes and OHLCV history.
 - [xStocks public API](https://docs.xstocks.fi/developers/quickstart) and [multiplier documentation](https://docs.xstocks.fi/developers/multipliers).
 - Ondo's official CSV from its [contract registry](https://docs.ondo.finance/addresses#ondo-stocks), plus registered onchain conversion oracles.
-- Nasdaq public quote/summary endpoints: independently named listed-security references and company capitalization; P/E only if explicitly supplied. Name and symbol corroboration are required. These references are separate from the tokenized market.
+- Nasdaq public quote/summary and analyst P/E endpoints: independently named listed-security references and company capitalization; P/E only if explicitly supplied. Name and symbol corroboration are required. These references are separate from the tokenized market.
 - Raydium and KyberSwap size-specific quotes; public chain RPCs for supported conversion mechanics.
 
 The October 19, 2026 update integration observed 1,963 catalog assets and 12 recognized product families. Registry assets remain searchable before token mapping is loaded; opening one requests its native RWA grouping. Sources and counts are audited in Coverage & sources. The configured directory covers 18 chains; quote adapters cover Solana, Ethereum, BNB Chain, Base and Arbitrum. Counts and available routes change. See [QA.md](QA.md) for the measured run and limits.
@@ -50,7 +50,7 @@ Canonical identifiers come from issuer records and corroborated CoinGecko underl
 - xStocks EVM quote output is already adjusted. Solana conversions use the active multiplier. Other issuers do not inherit these assumptions. Conversion gaps are shown directly.
 - GeckoTerminal stock-wide coverage is a filtered first search page; exact-token links query that deployment's top pools. Exchange tickers are paginated provider observations, not a complete executable order book. Pool reserves and reported depth do not guarantee fill size or slippage.
 - Direct exchange links are shown only for validated supported hosts. Other market rows link to CoinGecko's markets page. This avoids incorrectly cased DEX contract URLs supplied by third-party tickers.
-- Markets “Onchain premium” is the latest compared supported order versus a fresh Nasdaq reference, before gas and assuming USDC equals $1. It requires verified share conversion, reference timestamps within five minutes and two-minute alignment, and an unexpired quote. It is not a market-wide spot premium. Missing P/E, company cap, prices and conversions remain unavailable rather than estimated.
+- Markets “Onchain premium” automatically compares a representative $1,000 USDC buy observation with a fresh Nasdaq reference, before gas and assuming USDC equals $1. It requires verified share conversion, observations within five minutes and two-minute timestamp alignment. It is a dated order observation, not a market-wide spot premium or executable offer; it does not claim the best route across issuers. Older observations are labeled “Last observed.” Missing P/E, company cap, prices and conversions remain unavailable rather than estimated.
 - Public API limits and provider outages can constrain coverage. Last-good market observations are process-local; catalog snapshots persist to disk. No account database, wallet, custody or transaction submission is included. Issuers and venues determine product eligibility.
 
 ## Deploy and verify
@@ -73,3 +73,19 @@ The integration scripts contact real sources; live availability can cause a chec
 Brand files and their retrieval provenance are in `assets/logos/`; trusted remote images use an explicit CSP/URL allowlist. `node scripts/sync-brand-assets.mjs` refreshes source-owned logos manually (it uses macOS `sips` for non-PNG conversion, and is not part of deployment). Failed image loads keep readable text fallbacks.
 
 Modules remain small in purpose: `server/` owns catalog identity, providers, source resilience and HTTP boundaries; `src/model.mjs` owns numeric/search logic; `src/views.mjs` owns escaped rendering and exports; `src/chart.mjs` owns chart geometry/inspection; `src/terminal.mjs` owns comparison navigation and optional chart panels; `src/app.mjs` coordinates the selected security and table requests; `src/markets-page.mjs` owns the market overview; `src/brands.mjs` renders safe brand imagery; `server/fundamentals.mjs` owns identity-checked listed references; `server/coverage.mjs` derives coverage counts.
+
+## Source resilience and manual data refresh
+
+Cold starts serve a checksummed, dated identity snapshot immediately, then refresh issuer registries in the background. Bounded xStocks pagination prevents slow pages from dropping the entire issuer. Failed refreshes retain validated IDs and exact-contract mappings with their original source dates. Captured public observations ship for CoinGecko and Nasdaq; runtime successes update an atomic local cache. A public-feed rate limit can still occur. Cached observations remain explicitly dated, and source failure is never turned into a fabricated live value.
+
+CoinGecko requests share conservative keyless pacing, coalesce and reuse USD price batches by exact coin ID. If token-market prices cannot refresh promptly, Products can show exact-contract $1,000 indicative buy estimates from the independent quote providers. These prices are labeled and do not invent market capitalization or volume.
+
+Refresh the packaged public observations manually before a release:
+
+```sh
+node scripts/refresh-catalog-seed.mjs
+node scripts/refresh-market-seed.mjs
+node scripts/refresh-fundamentals-seed.mjs
+```
+
+These scripts contact actual public sources and retain provenance manifests. They are not scheduled jobs. The Render cost-monitor automation was removed at the owner's request.

@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { gzip } from "node:zlib";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -11,6 +12,7 @@ import {
 } from "./server/workspace.mjs";
 import { screenerView, venuesView } from "./server/market-desk.mjs";
 import { fundamentalsView } from "./server/fundamentals.mjs";
+import { marketDetailsView } from "./server/market-details.mjs";
 import { loadCatalog } from "./server/catalog.mjs";
 import { compareStock, validateComparison } from "./server/quotes.mjs";
 import { readRuntime, clientIdentity } from "./server/runtime.mjs";
@@ -40,6 +42,32 @@ const files = new Map([
 for (const name of readdirSync(new URL("./assets/logos/", import.meta.url)))
   if (/^[a-zA-Z0-9_.-]+\.png$/.test(name))
     files.set("/assets/logos/" + name, ["assets/logos/" + name, "image/png"]);
+// A single graph revision prevents browser caches from mixing releases.
+const revisionHash = createHash("sha256");
+for (const [path, [file, type]] of files)
+  if (/^(text\/|application\/javascript)/.test(type))
+    revisionHash
+      .update(path)
+      .update(readFileSync(new URL(file, import.meta.url)));
+const assetRevision = revisionHash.digest("hex").slice(0, 12);
+function versionAsset(body, type) {
+  if (type.startsWith("text/html"))
+    return body
+      .toString()
+      .replace(
+        /(src|href)="(\/src\/[^"?]+\.(?:mjs|css))"/g,
+        (_, attribute, path) => `${attribute}="${path}?v=${assetRevision}"`,
+      );
+  if (type.startsWith("text/javascript"))
+    return body
+      .toString()
+      .replace(
+        /(from\s+["'])(\.\/[^"'?]+\.mjs)(["'])/g,
+        (_, prefix, path, quote) =>
+          `${prefix}${path}?v=${assetRevision}${quote}`,
+      );
+  return body;
+}
 const securityHeaders = {
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
@@ -112,8 +140,10 @@ export function createApp({
         type = "application/json; charset=utf-8",
         extra = {},
       ) => {
-        const body = typeof data === "string" || Buffer.isBuffer(data)
-          ? data : JSON.stringify(data);
+        const body =
+          typeof data === "string" || Buffer.isBuffer(data)
+            ? data
+            : JSON.stringify(data);
         const headers = {
           ...securityHeaders,
           ...(config.production
@@ -132,16 +162,25 @@ export function createApp({
           response.end(request.method === "HEAD" ? undefined : payload);
         };
         const encodings = String(request.headers["accept-encoding"] || "")
-          .split(",").map((item) => {
+          .split(",")
+          .map((item) => {
             const [name, ...params] = item.trim().toLowerCase().split(";");
             const quality = params.find((p) => p.trim().startsWith("q="));
             return [name, quality ? Number(quality.trim().slice(2)) : 1];
           });
-        const quality = encodings.find(([name]) => name === "gzip")?.[1]
-          ?? encodings.find(([name]) => name === "*")?.[1] ?? 0;
-        if (quality > 0 && quality <= 1 && Buffer.byteLength(body) >= 65536
-          && /^(application\/json|text\/)/.test(type)) {
-          gzip(body, (error, compressed) => finish(error ? body : compressed, !error));
+        const quality =
+          encodings.find(([name]) => name === "gzip")?.[1] ??
+          encodings.find(([name]) => name === "*")?.[1] ??
+          0;
+        if (
+          quality > 0 &&
+          quality <= 1 &&
+          Buffer.byteLength(body) >= 65536 &&
+          /^(application\/json|text\/)/.test(type)
+        ) {
+          gzip(body, (error, compressed) =>
+            finish(error ? body : compressed, !error),
+          );
         } else finish(body);
       };
       try {
@@ -157,7 +196,7 @@ export function createApp({
         }
         const url = new URL(request.url, "http://localhost");
         if (url.pathname === "/api/health") {
-          send(200, { status: "ok", version: "0.4.0" });
+          send(200, { status: "ok", version: "0.5.0" });
           return;
         }
         if (url.pathname === "/api/ready") {
@@ -200,6 +239,16 @@ export function createApp({
           try {
             if (url.pathname === "/api/catalog") {
               send(200, await deadline(getCatalog, 35000));
+              return;
+            }
+            if (url.pathname === "/api/market-details") {
+              send(
+                200,
+                await deadline(
+                  () => marketDetailsView(url.searchParams),
+                  35000,
+                ),
+              );
               return;
             }
             if (url.pathname === "/api/fundamentals") {
@@ -270,7 +319,7 @@ export function createApp({
           return;
         }
         const body = await readFile(new URL(file[0], import.meta.url));
-        send(200, body, file[1], {
+        send(200, versionAsset(body, file[1]), file[1], {
           "Cache-Control":
             config.production && url.pathname !== "/"
               ? "public, max-age=300, must-revalidate"

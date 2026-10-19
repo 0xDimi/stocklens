@@ -5,7 +5,16 @@ import {
   attachKnownProducts,
 } from "./coingecko.mjs";
 import { coverageSummary } from "./coverage.mjs";
-import { memo, request } from "./http.mjs";
+import { request } from "./http.mjs";
+import { applyCatalogReferences } from "./catalog-identities.mjs";
+import { join } from "node:path";
+import { readRuntime } from "./runtime.mjs";
+import {
+  catalogSchema,
+  defaultSeedPath,
+  readSnapshot,
+  writeSnapshot,
+} from "./catalog-snapshot.mjs";
 import {
   XSTOCKS_API,
   ONDO_CSV,
@@ -167,7 +176,7 @@ export function buildCatalog(xstocks, ondo, fetchedAt, conflicts = []) {
     "COIN",
     "AMD",
   ];
-  return [...securities.values()].sort((a, b) => {
+  return applyCatalogReferences([...securities.values()]).sort((a, b) => {
     const ai = priority.indexOf(a.ticker),
       bi = priority.indexOf(b.ticker);
     return (
@@ -176,23 +185,64 @@ export function buildCatalog(xstocks, ondo, fetchedAt, conflicts = []) {
   });
 }
 
-async function xStocksCatalog() {
-  const nodes = [];
-  const deadline = Date.now() + 25_000;
-  for (let page = 0; page < 30; page++) {
-    if (Date.now() >= deadline) throw new Error("Identity catalog timed out.");
-    const data = await request(
-      `${XSTOCKS_API}/assets?pageSize=100&page=${page}`,
-      { timeout: Math.min(12_000, deadline - Date.now()) },
+export async function xStocksCatalog({
+  base = XSTOCKS_API,
+  deadlineMs = 25_000,
+} = {}) {
+  const nodes = [],
+    seen = new Set();
+  const deadline = Date.now() + deadlineMs;
+  const maxPages = 100,
+    concurrency = 4;
+  for (let first = 0; first < maxPages; first += concurrency) {
+    const pages = Array.from(
+      { length: Math.min(concurrency, maxPages - first) },
+      (_, i) => first + i,
     );
-    if (
-      !Array.isArray(data.nodes) ||
-      !data.page ||
-      data.page.currentPage !== page
-    )
-      throw new Error("Unexpected xStocks catalog response.");
-    nodes.push(...data.nodes);
-    if (!data.page.hasNextPage) return nodes;
+    const results = await Promise.allSettled(
+      pages.map(async (page) => {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0)
+          throw new Error("xStocks identity catalog timed out.");
+        const data = await request(`${base}/assets?pageSize=100&page=${page}`, {
+          timeout: Math.min(12_000, remaining),
+        });
+        if (
+          !Array.isArray(data.nodes) ||
+          !data.page ||
+          data.page.currentPage !== page ||
+          typeof data.page.hasNextPage !== "boolean"
+        )
+          throw new Error(
+            `Unexpected xStocks catalog response on page ${page}.`,
+          );
+        return data;
+      }),
+    );
+    // A terminal page is authoritative. Speculative requests beyond it may return HTTP 404.
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      if (result.status === "rejected") throw result.reason;
+      const data = result.value;
+      for (const node of data.nodes) {
+        const key = node.id || node.symbol;
+        if (!key || seen.has(key))
+          throw new Error(
+            "xStocks pagination repeated or omitted an asset identity.",
+          );
+        seen.add(key);
+        nodes.push(node);
+      }
+      if (!data.page.hasNextPage) {
+        if (!nodes.length)
+          throw new Error("xStocks catalog returned no asset identities.");
+        return nodes;
+      }
+      if (!data.nodes.length)
+        throw new Error(
+          "xStocks pagination returned an empty non-terminal page.",
+        );
+    }
   }
   throw new Error("xStocks catalog exceeded the supported page limit.");
 }
@@ -300,25 +350,128 @@ export function pendingIssuerRecords(rows, conflicts, at) {
     ];
   });
 }
-export async function loadCatalog() {
-  return memo("catalog", 600_000, async () => {
-    const [x, o, cg] = await Promise.allSettled([
-      xStocksCatalog(),
-      request(ONDO_CSV, { json: false }).then(parseCsv),
-      getDiscovery(),
+function sameContract(a, b) {
+  return (
+    a.chain === b.chain &&
+    (a.chain === "Solana"
+      ? a.address === b.address
+      : a.address.toLowerCase() === b.address.toLowerCase())
+  );
+}
+export function retainCatalogIdentities(previous, current, retainMissing) {
+  const output = structuredClone(current);
+  for (const old of previous) {
+    const matches = output.filter(
+      (stock) =>
+        stock.id === old.id ||
+        (stock.rwaId && stock.rwaId === old.rwaId) ||
+        stock.products.some((p) =>
+          old.products.some(
+            (q) =>
+              p.issuer === q.issuer &&
+              p.deployments.some((d) =>
+                q.deployments.some((e) => sameContract(d, e)),
+              ),
+          ),
+        ),
+    );
+    if (matches.length === 1) {
+      const stock = matches[0];
+      if (stock.id !== old.id) {
+        // A previously separate CoinGecko URL remains an alias after exact
+        // underlying corroboration. It must not replace an issuer ISIN.
+        if (!old.id.startsWith("cg:") || stock.id.startsWith("cg:")) {
+          if (!output.some((other) => other !== stock && other.id === old.id)) {
+            stock.aliases = [...new Set([...(stock.aliases || []), stock.id])];
+            stock.id = old.id;
+          }
+        } else stock.aliases = [...new Set([...(stock.aliases || []), old.id])];
+      }
+      if (old.aliases?.length)
+        stock.aliases = [
+          ...new Set([...(stock.aliases || []), ...old.aliases]),
+        ].filter((id) => id !== stock.id);
+      if (retainMissing)
+        for (const p of old.products) {
+          if (
+            !stock.products.some(
+              (q) => q.issuer === p.issuer && q.symbol === p.symbol,
+            )
+          )
+            stock.products.push({ ...structuredClone(p), stale: true });
+        }
+    } else if (!matches.length && retainMissing)
+      output.push({ ...structuredClone(old), stale: true });
+  }
+  return output;
+}
+export function createCatalogLoader(options = {}) {
+  const cachePath = join(
+    options.cacheDir ?? readRuntime().cacheDir,
+    "canonical-catalog-v1.json",
+  );
+  const now = options.now ?? Date.now;
+  let inFlight;
+  const load = async () => {
+    const saved =
+      (await readSnapshot(cachePath)) ||
+      (await readSnapshot(
+        options.seedPath === undefined ? defaultSeedPath : options.seedPath,
+        { seed: true },
+      ));
+    const sources = { ...saved?.sources };
+    const observations = await Promise.allSettled([
+      (options.getXstocks ?? xStocksCatalog)(),
+      (
+        options.getOndo ??
+        (() => request(ONDO_CSV, { json: false }).then(parseCsv))
+      )(),
+      (options.getDiscovery ?? getDiscovery)(),
     ]);
+    const fetchedAt = new Date(now()).toISOString();
+    const [x, o, cg] = observations.map((result, index) => {
+      const key = ["xstocks", "ondo", "coingecko"][index];
+      if (result.status === "fulfilled") {
+        const retrievedAt =
+          key === "coingecko"
+            ? result.value.retrievedAt
+            : options.sourceRetrievedAt?.[key] || fetchedAt;
+        sources[key] = { value: result.value, retrievedAt };
+        return {
+          ...result,
+          retrievedAt,
+          available: result.value?.stale !== true,
+          stale: result.value?.stale === true,
+          error: result.value?.stale ? result.value.warning || null : null,
+        };
+      }
+      const previous = sources[key];
+      return previous
+        ? {
+            status: "fulfilled",
+            value: previous.value,
+            retrievedAt: previous.retrievedAt,
+            available: false,
+            stale: true,
+            error: result.reason.message,
+          }
+        : { ...result, available: false, error: result.reason.message };
+    });
     if (x.status === "rejected" && cg.status === "rejected")
       throw new Error(
         "The verified identity catalog is unavailable. Please try again shortly.",
       );
-    const fetchedAt = new Date().toISOString();
     const conflicts = [];
     const issuerStocks = buildCatalog(
       x.status === "fulfilled" ? x.value : [],
       o.status === "fulfilled" ? o.value : [],
-      fetchedAt,
+      x.retrievedAt || fetchedAt,
       conflicts,
     );
+    for (const stock of issuerStocks)
+      for (const product of stock.products)
+        if (product.issuer === "ondo")
+          product.sourceAt = o.retrievedAt || fetchedAt;
     let stocks =
       cg.status === "fulfilled"
         ? mergeDiscovery(
@@ -331,12 +484,26 @@ export async function loadCatalog() {
           )
         : issuerStocks;
     if (o.status === "fulfilled")
-      stocks = attachOndoCatalog(stocks, o.value, fetchedAt);
+      stocks = attachOndoCatalog(stocks, o.value, o.retrievedAt);
+    stocks = retainCatalogIdentities(
+      saved?.catalog?.stocks || [],
+      stocks,
+      [x, o, cg].some((r) => r.status === "rejected" || r.stale),
+    );
     if (!stocks.length)
       throw new Error(
         "Issuer catalogs did not contain verified supported securities.",
       );
     const warnings = [];
+    for (const [key, result] of [
+      ["xStocks", x],
+      ["Ondo", o],
+      ["CoinGecko", cg],
+    ])
+      if (result.stale)
+        warnings.push(
+          `${key} catalog snapshot from ${result.retrievedAt} retained; live refresh unavailable${result.error ? `: ${result.error}` : "."}`,
+        );
     if (cg.status === "rejected")
       warnings.push(
         "CoinGecko catalog unavailable; showing issuer-sourced coverage.",
@@ -367,12 +534,12 @@ export async function loadCatalog() {
       warnings.push(
         "Ondo direct catalog unavailable; independent registry mappings remain available.",
       );
-    return {
+    const result = {
       stocks,
       pendingProducts: pendingIssuerRecords(
         o.status === "fulfilled" ? o.value : [],
         unresolved,
-        fetchedAt,
+        o.retrievedAt || fetchedAt,
       ),
       coverage: {
         ...coverageSummary(stocks),
@@ -391,22 +558,152 @@ export async function loadCatalog() {
         {
           name: "CoinGecko",
           url: "https://www.coingecko.com/en/categories/tokenized-stock",
-          available: cg.status === "fulfilled",
-          retrievedAt: cg.status === "fulfilled" ? cg.value.retrievedAt : null,
+          available: cg.available,
+          stale: cg.stale || false,
+          retrievedAt: cg.retrievedAt || null,
+          error: cg.error || null,
         },
         {
           name: "xStocks public API",
           url: `${XSTOCKS_API}/assets`,
-          available: x.status === "fulfilled",
+          available: x.available,
+          stale: x.stale || false,
+          retrievedAt: x.retrievedAt || null,
+          error: x.error || null,
         },
         {
           name: "Ondo official contract list",
           url: ONDO_SOURCE,
-          available: o.status === "fulfilled",
+          available: o.available,
+          stale: o.stale || false,
+          retrievedAt: o.retrievedAt || null,
+          error: o.error || null,
         },
       ],
     };
-  });
+    const persistenceWarning = await writeSnapshot(cachePath, {
+      schemaVersion: catalogSchema,
+      savedAt: fetchedAt,
+      sources,
+      catalog: result,
+    });
+    if (persistenceWarning) result.warnings.push(persistenceWarning);
+    return result;
+  };
+  return () => {
+    if (!inFlight)
+      inFlight = load().finally(() => {
+        inFlight = null;
+      });
+    return inFlight;
+  };
+}
+// Only the public runtime loader uses stale-while-revalidate. Capture tooling still
+// awaits createCatalogLoader(), so a seed can never be captured as a new observation.
+export function createCachedCatalogLoader(options = {}) {
+  const now = options.now ?? Date.now;
+  const refresh = createCatalogLoader(options);
+  const cachePath = join(
+    options.cacheDir ?? readRuntime().cacheDir,
+    "canonical-catalog-v1.json",
+  );
+  let latest,
+    initialization,
+    inFlight,
+    nextRefreshAt = 0;
+  const initialize = async () => {
+    for (const [path, seed] of [
+      [cachePath, false],
+      [
+        options.seedPath === undefined ? defaultSeedPath : options.seedPath,
+        true,
+      ],
+    ]) {
+      const saved = await readSnapshot(path, { seed });
+      const age = now() - Date.parse(saved?.savedAt);
+      if (
+        !saved?.catalog?.stocks?.length ||
+        !Number.isFinite(age) ||
+        age < 0 ||
+        age > 72 * 3600000
+      )
+        continue;
+      latest = {
+        ...saved.catalog,
+        stocks: applyCatalogReferences(saved.catalog.stocks),
+        mode: "cached",
+        cachedAt: saved.savedAt,
+        refreshing: false,
+        checkedAt: null,
+        warnings: [
+          ...saved.catalog.warnings,
+          `Catalog snapshot from ${saved.savedAt}; live source availability is being checked in the background.`,
+        ],
+        sources: saved.catalog.sources.map((source) => ({
+          ...source,
+          available: null,
+          lastKnownAvailable: source.available,
+          lastCheckedAt: source.checkedAt || saved.catalog.checkedAt || null,
+          checkedAt: null,
+          cached: true,
+          stale: true,
+        })),
+      };
+      return;
+    }
+  };
+  const startRefresh = () => {
+    if (inFlight || now() < nextRefreshAt) return;
+    nextRefreshAt = now() + 600_000;
+    if (latest) latest = { ...latest, refreshing: true };
+    inFlight = refresh()
+      .then((value) => {
+        const retained = value.sources.some((source) => source.stale);
+        latest = {
+          ...value,
+          mode: retained ? "retained" : "refreshed",
+          cachedAt: retained ? latest?.cachedAt || null : null,
+          checkedAt: value.fetchedAt,
+          refreshing: false,
+        };
+        return latest;
+      })
+      .catch((error) => {
+        if (!latest) throw error;
+        latest = {
+          ...latest,
+          refreshing: false,
+          refreshError: error.message,
+          warnings: [
+            ...new Set([
+              ...latest.warnings,
+              `Catalog refresh failed: ${error.message}`,
+            ]),
+          ],
+        };
+        return latest;
+      })
+      .finally(() => {
+        inFlight = null;
+      });
+    // A cached response has no caller awaiting the refresh; failures remain visible
+    // on the retained result without producing an unhandled rejection.
+    inFlight.catch(() => {});
+  };
+  return async () => {
+    if (!initialization) initialization = initialize();
+    await initialization;
+    startRefresh();
+    if (latest) return latest;
+    if (inFlight) return inFlight;
+    throw new Error(
+      "The verified identity catalog is unavailable. Please try again shortly.",
+    );
+  };
+}
+const defaultCatalogLoader = createCachedCatalogLoader();
+export async function loadCatalog() {
+  return defaultCatalogLoader();
 }
 
 export async function resolveStock(
@@ -416,7 +713,10 @@ export async function resolveStock(
 ) {
   const catalog = await getCatalog();
   const matches = catalog.stocks.filter(
-    (s) => s.id === id || s.rwaId === id || s.ticker === id,
+    (s) =>
+      s.id === id ||
+      s.rwaId === (id.startsWith("cg:") ? id.slice(3) : id) ||
+      s.ticker === id,
   );
   if (matches.length !== 1) {
     const error = new Error(

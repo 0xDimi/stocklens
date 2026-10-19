@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { request } from "./http.mjs";
 import { readRuntime } from "./runtime.mjs";
+import { observationStore } from "./observation-store.mjs";
 const health = new Map();
 const catalogWork = new Map();
 export function sourceStatus() {
@@ -24,6 +25,27 @@ export function sourceClient(
     inflight = new Map(),
     failures = new Map(),
     queue = [];
+  const store = observationStore(
+    options.cacheFile,
+    options.seedFile,
+    options.maxAge,
+  );
+  const loaded =
+    options.cacheFile || options.seedFile
+      ? store.load().then((rows) =>
+          rows.forEach(([path, value]) => {
+            try {
+              if (
+                !options.validate ||
+                options.validate(value.data, path) === true
+              )
+                observations.set(path, value);
+            } catch {
+              /* Discard invalid observations from older releases. */
+            }
+          }),
+        )
+      : Promise.resolve();
   let active = 0,
     next = 0,
     cooldownUntil = 0;
@@ -78,11 +100,23 @@ export function sourceClient(
       queue.push(job);
       pump();
     });
-  return (path, ttl = 60000) => {
+  return async (path, ttl = 60000) => {
+    await loaded;
     const saved = observations.get(path);
     if (saved && saved.expires > Date.now())
       return Promise.resolve({ ...saved, stale: false });
-    if (inflight.has(path)) return inflight.get(path);
+    const retained =
+      options.staleWhileRevalidate &&
+      saved &&
+      Date.now() - Date.parse(saved.retrievedAt) <= config.sourceStaleMs
+        ? {
+            ...saved,
+            stale: true,
+            warning:
+              "Dated source observations retained while the feed refreshes.",
+          }
+        : null;
+    if (inflight.has(path)) return retained || inflight.get(path);
     const waitDeadline = Date.now() + queueTimeoutMs;
     const work = schedule(async () => {
       if (cooldownUntil > Date.now())
@@ -101,6 +135,8 @@ export function sourceClient(
           headers: headers(),
           timeout: config.sourceTimeoutMs,
         });
+        if (options.validate && options.validate(data, path) !== true)
+          throw new Error(`${name} returned an invalid provider response.`);
         const value = {
           data,
           retrievedAt: new Date().toISOString(),
@@ -109,6 +145,7 @@ export function sourceClient(
         if (observations.size >= 500 && !observations.has(path))
           observations.delete(observations.keys().next().value);
         observations.set(path, value);
+        if (options.cacheFile) await store.save(observations);
         failures.delete(path);
         health.set(name, {
           name,
@@ -130,6 +167,10 @@ export function sourceClient(
       .catch((error) => unavailable(path, error))
       .finally(() => inflight.delete(path));
     inflight.set(path, work);
+    if (retained) {
+      work.catch(() => {});
+      return retained;
+    }
     return work;
   };
 }

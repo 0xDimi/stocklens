@@ -118,3 +118,17 @@ export async function mapLimit(items, limit, fn) {
   );
   return output;
 }
+
+// The shared source job may finish populating its cache after this caller stops waiting.
+export function observeWithin(work, timeoutMs) {
+  let timer;
+  return Promise.race([
+    Promise.resolve().then(work),
+    new Promise((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error("Source refresh is still in progress.")),
+        timeoutMs,
+      );
+    }),
+  ]).finally(() => clearTimeout(timer));
+}

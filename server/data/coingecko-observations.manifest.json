@@ -1,0 +1,80 @@
+{
+  "createdAt": "2026-10-19T12:15:32.579Z",
+  "source": "https://api.coingecko.com/api/v3",
+  "purpose": "Real last-successful public observations. Original retrieval/source dates retained; runtime refreshes or marks stale. Not synthetic live data.",
+  "observations": [
+    {
+      "path": "/rwas/nvidia?tokens=true&tokenized_market_data=true",
+      "retrievedAt": "2026-10-19T12:10:44.938Z"
+    },
+    {
+      "path": "/rwas/apple?tokens=true&tokenized_market_data=true",
+      "retrievedAt": "2026-10-19T12:10:51.459Z"
+    },
+    {
+      "path": "/rwas/tesla?tokens=true&tokenized_market_data=true",
+      "retrievedAt": "2026-10-19T12:10:57.973Z"
+    },
+    {
+      "path": "/rwas/microsoft?tokens=true&tokenized_market_data=true",
+      "retrievedAt": "2026-10-19T12:11:04.408Z"
+    },
+    {
+      "path": "/rwas/amazon?tokens=true&tokenized_market_data=true",
+      "retrievedAt": "2026-10-19T12:11:10.926Z"
+    },
+    {
+      "path": "/rwas/alphabet-class-a?tokens=true&tokenized_market_data=true",
+      "retrievedAt": "2026-10-19T12:11:17.433Z"
+    },
+    {
+      "path": "/rwas/meta-platforms?tokens=true&tokenized_market_data=true",
+      "retrievedAt": "2026-10-19T12:11:23.920Z"
+    },
+    {
+      "path": "/rwas/coinbase?tokens=true&tokenized_market_data=true",
+      "retrievedAt": "2026-10-19T12:13:14.629Z"
+    },
+    {
+      "path": "/rwas/amd?tokens=true&tokenized_market_data=true",
+      "retrievedAt": "2026-10-19T12:13:26.988Z"
+    },
+    {
+      "path": "/rwas/palantir-technologies?tokens=true&tokenized_market_data=true",
+      "retrievedAt": "2026-10-19T12:14:17.535Z"
+    },
+    {
+      "path": "/coins/markets?vs_currency=usd&ids=advanced-micro-devices-astock%2Cadvanced-micro-devices-backpack-securities%2Cadvanced-micro-devices-bstocks-tokenized-stock%2Cadvanced-micro-devices-dinari-tokenized-stock%2Cadvanced-micro-devices-inc-coinbase-tokenized-stock%2Cadvanced-micro-devices-rstock%2Cadvanced-micro-devices-stove-tokenized-stock%2Calphabet-a-stove-tokenized-stock%2Calphabet-astock%2Calphabet-bstocks-tokenized-stock%2Calphabet-class-a-ondo-tokenized-stock%2Calphabet-class-a-robinhood-tokenized-stock%2Calphabet-coinbase-tokenized-stock%2Calphabet-dinari-tokenized-stock%2Calphabet-rstock%2Calphabet-xstock%2Camazon-astock%2Camazon-backpack-securities%2Camazon-bstocks-tokenized-stock%2Camazon-coinbase-tokenized-stock%2Camazon-dinari-tokenized-stock%2Camazon-ondo-tokenized-stock%2Camazon-robinhood-tokenized-stock%2Camazon-rstock%2Camazon-stove-tokenized-stock%2Camazon-xstock%2Camd-ondo-tokenized-stock%2Camd-robinhood-tokenized-stock%2Camd-xstock%2Capple-astock%2Capple-backpack-securities%2Capple-bstocks-tokenized-stock%2Capple-coinbase-tokenized-stock%2Capple-dinari-tokenized-stock%2Capple-ondo-tokenized-stock%2Capple-reality-protocol%2Capple-robinhood-tokenized-stock%2Capple-stove-tokenized-stock%2Capple-xstock%2Ccoinbase-bstocks-tokenized-stock%2Ccoinbase-global-astock%2Ccoinbase-global-backpack-securities%2Ccoinbase-global-dinari-tokenized-stock%2Ccoinbase-global-inc-st0x%2Ccoinbase-ondo-tokenized-stock%2Ccoinbase-robinhood-tokenized-stock%2Ccoinbase-rstock%2Ccoinbase-stove-tokenized-stock%2Ccoinbase-xstock%2Cmeta-astock%2Cmeta-coinbase-tokenized-stock%2Cmeta-platforms-backpack-securities%2Cmeta-platforms-bstocks-tokenized-stock%2Cmeta-platforms-dinari-tokenized-stock%2Cmeta-platforms-ondo-tokenized-stock%2Cmeta-platforms-robinhood-tokenized-stock%2Cmeta-platforms-rstock%2Cmeta-platforms-stove-tokenized-stock%2Cmeta-xstock%2Cmicrosoft-astock%2Cmicrosoft-bstocks-tokenized-stock%2Cmicrosoft-coinbase-tokenized-stock%2Cmicrosoft-dinari-tokenized-stock%2Cmicrosoft-ondo-tokenized-stock%2Cmicrosoft-robinhood-tokenized-stock%2Cmicrosoft-rstock%2Cmicrosoft-stove-tokenized-stock%2Cmicrosoft-xstock%2Cnvidia-astock%2Cnvidia-backpack-securities%2Cnvidia-bstocks%2Cnvidia-coinbase-tokenized-stock%2Cnvidia-dinari-tokenized-stock%2Cnvidia-ondo-tokenized-stock%2Cnvidia-robinhood-tokenized-stock%2Cnvidia-rstock%2Cnvidia-rstock-2%2Cnvidia-st0x-tokenized-stock%2Cnvidia-stove-tokenized-stock%2Cnvidia-xstock%2Cpalantir-astock%2Cpalantir-coinbase-tokenized-stock%2Cpalantir-rstock%2Cpalantir-stove-tokenized-stock%2Cpalantir-technologies-backpack-securities%2Cpalantir-technologies-bstocks-tokenized-stock%2Cpalantir-technologies-dinari-tokenized-stock%2Cpalantir-technologies-ondo-tokenized-stock%2Cpalantir-technologies-robinhood-tokenized-stock%2Cpalantir-xstock%2Ctesla-astock%2Ctesla-backpack-securities%2Ctesla-bstocks-tokenized-stock%2Ctesla-coinbase-tokenized-stocks%2Ctesla-dinari-tokenized-stock%2Ctesla-ondo-tokenized-stock%2Ctesla-robinhood-tokenized-stock%2Ctesla-rstock%2Ctesla-rstock-2%2Ctesla-stove-tokenized-stock%2Ctesla-xstock%2Cwrapped-alphabet-xstock%2Cwrapped-apple-xstock%2Cwrapped-coinbase-xstock%2Cwrapped-meta-xstock%2Cwrapped-microsoft-xstock%2Cwrapped-nvidia-xstock%2Cwrapped-palantir-xstock%2Cwrapped-tesla-xstock&per_page=250&page=1&sparkline=false",
+      "retrievedAt": "2026-10-19T12:14:30.195Z"
+    },
+    {
+      "path": "/rwas/markets?per_page=250&page=1&order=volume_desc&sparkline=true",
+      "retrievedAt": "2026-10-19T12:14:42.909Z"
+    },
+    {
+      "path": "/rwas/markets?per_page=250&page=2&order=volume_desc&sparkline=true",
+      "retrievedAt": "2026-10-19T12:14:55.262Z"
+    },
+    {
+      "path": "/rwas/markets?per_page=250&page=3&order=volume_desc&sparkline=true",
+      "retrievedAt": "2026-10-19T12:15:08.998Z"
+    },
+    {
+      "path": "/rwas/markets?per_page=250&page=4&order=volume_desc&sparkline=true",
+      "retrievedAt": "2026-10-19T12:15:20.224Z"
+    },
+    {
+      "path": "/rwas/markets?per_page=250&page=5&order=volume_desc&sparkline=true",
+      "retrievedAt": "2026-10-19T12:15:32.549Z"
+    },
+    {
+      "path": "/rwas/spdr-s-p-500-etf-trust?tokens=true&tokenized_market_data=true",
+      "retrievedAt": "2026-10-19T12:19:08.745Z"
+    },
+    {
+      "path": "/rwas/invesco-qqq-etf?tokens=true&tokenized_market_data=true",
+      "retrievedAt": "2026-10-19T12:19:08.457Z"
+    }
+  ],
+  "sha256": "150afca19c7b4511c598997f9f7d8ea65b7fda31a53f840954776d7704907f74"
+}

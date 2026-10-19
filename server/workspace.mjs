@@ -1,6 +1,6 @@
 import { getFundamentals } from "./fundamentals.mjs";
 import { resolveStock } from "./catalog.mjs";
-import { getTokenMarkets } from "./coingecko.mjs";
+import { productMarkets } from "./product-markets.mjs";
 import { getPools, getHistory } from "./gecko.mjs";
 import { CHAINS } from "./config.mjs";
 import { sourceStatus } from "./source-client.mjs";
@@ -18,11 +18,11 @@ export async function productsView({ id, chain }, params) {
     id,
     params?.get("enrich") !== "false",
   );
+  const referenceWork = getFundamentals(stock);
   let markets = { rows: [], retrievedAt: null };
   try {
-    markets = await getTokenMarkets(
-      stock.products.map((p) => p.coinId).filter(Boolean),
-    );
+    markets = await productMarkets(stock);
+    if (markets.warning) warnings.push(markets.warning);
   } catch (error) {
     warnings.push("CoinGecko prices unavailable: " + error.message);
   }
@@ -36,7 +36,7 @@ export async function productsView({ id, chain }, params) {
     }));
   return {
     stock,
-    reference: await getFundamentals(stock),
+    reference: await referenceWork,
     rows,
     warnings,
     catalogAt,

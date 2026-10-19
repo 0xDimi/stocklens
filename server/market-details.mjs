@@ -1,0 +1,127 @@
+import { loadCatalog } from "./catalog.mjs";
+import { getFundamentals } from "./fundamentals.mjs";
+import { getQuote, conversionIssuer } from "./providers.mjs";
+import { memo, mapLimit, observeWithin } from "./http.mjs";
+import { premium } from "../src/market-model.mjs";
+
+const BASIS =
+  "$1,000 USDC indicative buy premium before gas; USDC assumed $1. A representative verified version, not the best price across all versions. Observed quote, not a market-wide spot price or executable offer.";
+function candidates(stock) {
+  const order = ["Solana", "BinanceSmartChain", "Ethereum"];
+  return stock.products
+    .filter((p) => !p.wrapped && !p.halted && conversionIssuer(p))
+    .flatMap((product) =>
+      product.deployments
+        .filter((d) => order.includes(d.chain))
+        .map((deployment) => ({ product, deployment })),
+    )
+    .sort(
+      (a, b) =>
+        Number(a.product.issuer !== "xstocks") -
+          Number(b.product.issuer !== "xstocks") ||
+        order.indexOf(a.deployment.chain) - order.indexOf(b.deployment.chain),
+    );
+}
+async function observe(stock, quote) {
+  for (const { product, deployment } of candidates(stock).slice(0, 3)) {
+    const result = await quote(product, deployment, "1000");
+    if (
+      result.status === "quoted" &&
+      result.equivalentShares > 0 &&
+      result.effectivePrice > 0
+    )
+      return result;
+  }
+  return null;
+}
+export async function marketDetailsView(
+  params,
+  {
+    getCatalog = loadCatalog,
+    getReference = getFundamentals,
+    quote = getQuote,
+  } = {},
+) {
+  const ids = [...new Set((params.get("ids") || "").split(","))];
+  if (
+    !ids.length ||
+    ids.length > 25 ||
+    ids.some((id) => !/^[A-Za-z0-9.:\-]{1,100}$/.test(id))
+  )
+    throw Object.assign(new Error("Choose 1–25 exact catalog asset IDs."), {
+      status: 400,
+    });
+  const catalog = await getCatalog();
+  const stocks = ids.map((id) => catalog.stocks.find((s) => s.id === id));
+  if (stocks.some((s) => !s))
+    throw Object.assign(new Error("Choose exact catalog assets."), {
+      status: 400,
+    });
+  const deadline = Date.now() + 26000;
+  const rows = await mapLimit(stocks, 5, async (stock) => {
+    const remaining = () => Math.max(1, deadline - Date.now());
+    const [reference, observation] = await Promise.all([
+      observeWithin(
+        () => getReference(stock),
+        Math.min(18000, remaining()),
+      ).catch(() => null),
+      observeWithin(
+        () =>
+          quote === getQuote
+            ? memo("market-premium:" + stock.id, 120000, () =>
+                observe(stock, quote),
+              )
+            : observe(stock, quote),
+        Math.min(10000, remaining()),
+      ).catch(() => null),
+    ]);
+    const value = !(reference?.priceStale ?? reference?.stale)
+      ? premium(
+          {
+            price: observation?.effectivePrice,
+            sharesPerToken: 1,
+            conversionVerified: !!observation?.equivalentShares,
+            currency: "USD",
+            at: observation?.fetchedAt,
+          },
+          reference,
+        )
+      : null;
+    const metric =
+      value == null
+        ? null
+        : {
+            value,
+            symbol: observation.symbol,
+            issuer: observation.issuer,
+            chain: observation.chain,
+            venue: observation.venue,
+            budget: 1000,
+            price: observation.effectivePrice,
+            sharesPerToken: observation.sharesPerToken,
+            priceAt: observation.fetchedAt,
+            referenceAt: reference.at,
+            retrievedAt: new Date(observation.fetchedAt).toISOString(),
+            source: observation.quoteSource,
+            conversionSource: observation.conversionSource,
+            basis: BASIS,
+            expiresAt: Math.min(observation.fetchedAt, reference.at) + 300000,
+          };
+    return {
+      id: stock.id,
+      reference,
+      premium: metric,
+      referenceReason: reference
+        ? null
+        : "No corroborated listed-security reference is currently available.",
+      premiumReason: metric
+        ? null
+        : !reference
+          ? "Listed-stock reference unavailable."
+          : !observation
+            ? "No supported quote with verified share conversion for this asset."
+            : "Quote and listed-stock reference are not fresh and time-aligned; no current premium is asserted.",
+    };
+  });
+  return { rows, retrievedAt: new Date().toISOString(), basis: BASIS };
+}

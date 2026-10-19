@@ -1,0 +1,380 @@
+{
+  "version": 1,
+  "file": "nasdaq-observations.json.gz",
+  "capturedAt": "2026-10-19T12:13:48.912Z",
+  "purpose": "Cached public Nasdaq observations for source outages; not live data. Original retrieval times are preserved.",
+  "expirationPolicy": "Bundled observations have expires=0 and require a live refresh. Runtime SOURCE_STALE_MS limits stale fallback; expired observations are never renewed by packaging.",
+  "refreshCommand": "node scripts/refresh-fundamentals-seed.mjs",
+  "sha256": "400a45b05649374ab39d8315a6949cce1a798cc987e5498440110e4293734d6f",
+  "uncompressedSha256": "ed3b55348c455b8076436a5a563630d9026172e57b262a264a19062f65bda34b",
+  "observationCount": 73,
+  "earliestRetrievedAt": "2026-10-19T12:13:30.794Z",
+  "latestRetrievedAt": "2026-10-19T12:13:48.910Z",
+  "observations": [
+    {
+      "source": "https://api.nasdaq.com/api/analyst/AAPL/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:31.844Z",
+      "payloadSha256": "527c4314feecededfd7c7a2f385352f86049ad0b201ccaf6ae03576a798f6c22"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/ABBV/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:43.669Z",
+      "payloadSha256": "1f603a38e2e94e408372c93ccda37dd21b2b4ed0b0e48dfb042491c5e51c906d"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/ABT/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:42.791Z",
+      "payloadSha256": "0735d8ad01aa381bd7f60a4dabcf13c3166899764b9f05200cb6ee64bc1f36fb"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/ADBE/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:44.431Z",
+      "payloadSha256": "47af3396a53588591c58aa9a21b276bb8191d811b11253bd3b5e8730773a7490"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/AMD/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:37.355Z",
+      "payloadSha256": "5ecff3b2314ef0a06f295ef07e4d06e5876b85f4a53f7498aba2b399cf9109cb"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/AMZN/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:34.277Z",
+      "payloadSha256": "f17631a38a22bede8a60de94748af8b7200f3e78aed86ea82ad03fa51a6edb7d"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/ARM/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:42.099Z",
+      "payloadSha256": "1d66316df4761c1b0cdbaf7cdbdcf6e41b3acf564053a0de947fc8c3c74a6087"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/BABA/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:41.295Z",
+      "payloadSha256": "f98128ac24eea2d1239de4ee28f3929b7e7ed531266f090a4f65916744a3ca51"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/BRK.B/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:38.831Z",
+      "payloadSha256": "a7f14974635831dc4986b7a047f321af697a0319810e463668a4dab576895e7a"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/COIN/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:36.600Z",
+      "payloadSha256": "84082cd804e34bcf0393a6d825ebfcf64472c5b9d730b9679d34f2c8f3f92d1e"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/GOOGL/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:35.030Z",
+      "payloadSha256": "7c8f1674fe4044a6592433b67e003625f784532f93db5fee7f6d241917c3b975"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/JPM/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:48.133Z",
+      "payloadSha256": "63c36790212472f2d10c8a57f88143b866860e0d038b65fc18a9519d24f9efe9"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/MA/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:47.411Z",
+      "payloadSha256": "64e297ff283d360a53b2bf927a4771c31cb28ec98589fb81acd8a4ce55eac29c"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/META/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:35.804Z",
+      "payloadSha256": "654f8a8cee9a0f06166902de198a2546049309458f4e3d353ac208b6ea17d414"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/MMM/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:38.043Z",
+      "payloadSha256": "072f1e94b8dffe2598cd718812bcde9d577ae2b227d4ca2021f02f9dece0e74e"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/MSFT/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:33.528Z",
+      "payloadSha256": "47c7948726cdf54ec65835ecbd0fd20c519b1a3d17b660ecba644649b1d89a6e"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/NFLX/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:45.126Z",
+      "payloadSha256": "1ce74d86821eceb3aa74b50ccaa3f5156ad29f4fbacb4102b7e9a5a3fcafbeda"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/NVDA/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:31.099Z",
+      "payloadSha256": "56d792840787a216c4161a87310efb97b10bca9e57a04de94764f9156ad8d14a"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/PLUG/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:40.533Z",
+      "payloadSha256": "3bca0ba76bea4d02fd48a00515bda17a75506be99297650312dc1a508fb4b5f1"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/TSLA/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:32.694Z",
+      "payloadSha256": "e11e7cf618209fc569d37e80bc15efd959cd9cc37b4e0ae005aeb43f07e6c0a8"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/UNH/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:45.832Z",
+      "payloadSha256": "27c28dc2826fc55ec8b939e5cdbcb43cd2eee59798974b5a749304a83d1b5f7b"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/UPS/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:48.910Z",
+      "payloadSha256": "010d6aaa5dd3fb32820cb025203140ae32e023638072fe5a32560d1b0d713e62"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/analyst/V/peg-ratio",
+      "retrievedAt": "2026-10-19T12:13:46.583Z",
+      "payloadSha256": "48cf7d5410b7c2d0d4335a5e193320f861082335ee0d58a42b834b969fc1d84a"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/AAPL/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:31.395Z",
+      "payloadSha256": "82ae47504673a93fab2646816421f6cc1dbe964e61901fcff4a6b4e0f5a6b3ed"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/AAPL/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:31.851Z",
+      "payloadSha256": "29be2c2408f57769302fcc1307ad291aa480775276d92e635e1463d83725ffae"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/ABBV/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:43.551Z",
+      "payloadSha256": "fce0bf8ff8b699897442bf38dab745458cac957c697e486572e3502b8a6089a7"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/ABBV/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:43.648Z",
+      "payloadSha256": "319fdb54635aa7aa6f959c97b10306dd80138260c9dbc2a6fd8f66699f0d0765"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/ABT/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:42.502Z",
+      "payloadSha256": "1ab1fe990216e2fd5803ff0187bc4ac1cecec49fd59171e75ff860c679a5aadc"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/ABT/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:43.123Z",
+      "payloadSha256": "2d947d8618f187b75397037f998c0cd2cdab8f7bf32ee30d4e81981f9aecc07b"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/ADBE/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:43.899Z",
+      "payloadSha256": "5e33f507dc4c2daa928541950130c8aec0cc355fc830a74f5353841bd428e531"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/ADBE/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:44.430Z",
+      "payloadSha256": "9dfd335bf6f0a09d2aa093e4fa822ab10bdc001e0005f02ea88df23001e0bc93"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/AMD/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:37.018Z",
+      "payloadSha256": "69bf2042648f852ba908bbfd9a8b76979d2f62ff15a05be8d266d674a298382e"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/AMD/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:37.355Z",
+      "payloadSha256": "70fd9bdef7807b1ce4a901340218eaf1c685879a40d1c370d3ea206fe95a2e80"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/AMZN/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:34.211Z",
+      "payloadSha256": "18824333b5280c6d9c723abd66b0d20b8245c5f11110c484e837b8712bf2ac96"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/AMZN/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:34.217Z",
+      "payloadSha256": "2bcd65ef4fcb10d5b11a6dbc769b94bf281cc732df119b93398ac954cb3192d3"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/ARM/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:41.651Z",
+      "payloadSha256": "30cd79b69d29f30b0a75c0a438aa547f399192659d00f8ff8e8e0b4f1d9c00d8"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/ARM/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:42.073Z",
+      "payloadSha256": "cb0d55ed7b58e7404ad758ab5fecf3fa7da1e94f6232802d7b55accdfe861a0d"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/BABA/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:41.116Z",
+      "payloadSha256": "eeaabf752db86e9d182fde2e98b6afa5b1c3f63549e6a37502d6ad24d3aa6d36"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/BABA/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:41.339Z",
+      "payloadSha256": "88ead11509de6971b9b8d4d9c118eaf586f776d04b5aafe9dea505c0cd87d7ac"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/BRK.B/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:38.485Z",
+      "payloadSha256": "43606f9dca7f49132fce711c1b128ae5fde0c3728d815a1e9fcad21d41a1c780"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/BRK.B/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:38.713Z",
+      "payloadSha256": "4a528aada7fefb19ad5de0378f50e6bd36f1c03ea4e9b662e59f108897f8824a"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/COIN/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:36.307Z",
+      "payloadSha256": "ca64a62aed7dc955df39f271c1da44ed12b3486deed1a68368bc7724dac9010a"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/COIN/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:36.642Z",
+      "payloadSha256": "d1fe7c00a8b60ac3dfb5f4f3e79a6b3ae73b896306e232242a63420058d3459f"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/GOOGL/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:34.582Z",
+      "payloadSha256": "9df2794619210f00599f8aa95c1b6060e394bf7d4cb0e005d3db9290c528e789"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/GOOGL/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:34.965Z",
+      "payloadSha256": "600b7e402eb06b6835a628204896b1efa15531750df8298c2b7308d4b943266b"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/JPM/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:47.842Z",
+      "payloadSha256": "0aa62a36e329d9a3cf72aa2c4c18325c656724672766442d82412f5f96b61890"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/JPM/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:48.150Z",
+      "payloadSha256": "5da817f447def8570bc5963a4ed838b89d5b140dce06c8143b94d315943a8c07"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/MA/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:46.880Z",
+      "payloadSha256": "e28d9fa6ac3588983eaf2f7f0ec24b3a1e846185050f9db7929f343b77b459ef"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/MA/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:47.464Z",
+      "payloadSha256": "33d0b7207c7a40c565cd33dc91828d8b6748be94f1295d3d46252e8cad0d4dd1"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/META/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:35.331Z",
+      "payloadSha256": "d9b52186f196e14c0ace7bf608485c2af56a59720857e818aba92c800e07f153"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/META/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:35.784Z",
+      "payloadSha256": "513d3ddb5004a824e8d3f06c756b53b363b9639c75bf53a50b77ff01ff4113fb"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/MMM/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:37.729Z",
+      "payloadSha256": "f7bb24b7db5d4502451d7ea14f007b6437b7a92ccee0bb4d303d11551daa2bdc"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/MMM/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:38.091Z",
+      "payloadSha256": "00a15635d48f690730b832ff077eff2992acc15ac86f8265f4991cdcbfe9b63c"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/MSFT/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:33.687Z",
+      "payloadSha256": "4f3646bacc58b02a72a43ecae47f851cf27bd29a00cc687806a01d5cb207af6d"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/MSFT/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:33.498Z",
+      "payloadSha256": "05b6e86b1804c98c003f7686ec18dc3ea58975c4b73b4808430b709814380221"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/NFLX/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:44.868Z",
+      "payloadSha256": "0e267003edefe7e990d8e0eb2a8c4334b78cc13f583ba478e6dc162b176b02ee"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/NFLX/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:45.219Z",
+      "payloadSha256": "827296f071223c3a76b7a3eb02927bf8ebdfc175f47a111a0d8b49e17170293e"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/NVDA/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:30.794Z",
+      "payloadSha256": "4bb97a2949f21bcc442ea8e325cb3c10177e08da420f4b0906f81efeded4e8e0"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/NVDA/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:31.068Z",
+      "payloadSha256": "a55ba3af633a3603a12cd0ab557fcbb328ac643e9571aaad8bfaccbf8d13da9f"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/PLUG/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:40.243Z",
+      "payloadSha256": "55b947e5ece49f498850a9eefccd5b651ccce07a2fe018d8213c06e8d82ee164"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/PLUG/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:40.503Z",
+      "payloadSha256": "fdb8a3110478e8cc9e1498f4075df83cc0e8f9bb642498df732666c324c82904"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/QQQ/info?assetclass=etf",
+      "retrievedAt": "2026-10-19T12:13:39.683Z",
+      "payloadSha256": "05cb307f55d9da700258d9bf2d72d78596f62f41dbfdc0f95e31d6e2de3296c8"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/QQQ/summary?assetclass=etf",
+      "retrievedAt": "2026-10-19T12:13:40.065Z",
+      "payloadSha256": "e6f85c461031f7c4afa30b149d93fd78f12a3e55178aaf7d6c81ae448c0b5f84"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/SPY/info?assetclass=etf",
+      "retrievedAt": "2026-10-19T12:13:39.095Z",
+      "payloadSha256": "9f48eded4ccc1903d2e0e14709293c1d4d2d72004a3c61eea961ef7672023085"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/SPY/summary?assetclass=etf",
+      "retrievedAt": "2026-10-19T12:13:39.341Z",
+      "payloadSha256": "f8a49a54c4e4a753a9d3b9f0ca897176c9e5306c3b1ea4bcdd18c4a51e02fa49"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/TSLA/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:32.869Z",
+      "payloadSha256": "6feef7aeedd791b0ae26dcb2ebd3b432209a2c533cbc422831f7a99d54aafcba"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/TSLA/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:32.639Z",
+      "payloadSha256": "f1829fc9f2ac9ab9603a73f3cacdb96a41a7fc8deacddcc40af11ade914f411c"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/UNH/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:45.541Z",
+      "payloadSha256": "6c77e2acf5a44daa89736a875a20cc0cfe499e03b35e26b962068b059a5df00c"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/UNH/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:45.759Z",
+      "payloadSha256": "4c8504e05a80a1f1f1650bb2a9462c0bfa846e16efebdf6c64d255a80b21a8ae"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/UPS/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:48.626Z",
+      "payloadSha256": "83dda44f4415beec3c52e4064acc17016c0dd1260d086186d0275fd9e8075438"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/UPS/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:48.889Z",
+      "payloadSha256": "f0c5337bf618569e1c081c630dccd0d98ecfa61328d04ab7110ada2f28493cd1"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/V/info?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:46.273Z",
+      "payloadSha256": "15f20f84dbe19c15c4504eddd199c54ee20fc8394e262b3e1bb1ee1e89299e5f"
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/V/summary?assetclass=stocks",
+      "retrievedAt": "2026-10-19T12:13:46.590Z",
+      "payloadSha256": "d3b12e9c0933521a5b14ef251ca35c810b2212b37c3b4334243990dac0853b52"
+    }
+  ]
+}

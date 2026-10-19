@@ -104,14 +104,21 @@ test("large catalog responses negotiate gzip without changing data or HEAD seman
   await new Promise((resolve) => app.listen(0, "127.0.0.1", resolve));
   t.after(() => new Promise((resolve) => app.close(resolve)));
   const base = `http://127.0.0.1:${app.address().port}`;
-  const raw = (encoding, method = "GET") => new Promise((resolve, reject) => {
-    get(base + "/api/catalog", { method, headers: { "Accept-Encoding": encoding } }, (res) => {
-      const chunks = [];
-      res.on("data", (chunk) => chunks.push(chunk));
-      res.on("end", () => resolve({ headers: res.headers, body: Buffer.concat(chunks) }));
-      res.on("error", reject);
-    }).on("error", reject);
-  });
+  const raw = (encoding, method = "GET") =>
+    new Promise((resolve, reject) => {
+      get(
+        base + "/api/catalog",
+        { method, headers: { "Accept-Encoding": encoding } },
+        (res) => {
+          const chunks = [];
+          res.on("data", (chunk) => chunks.push(chunk));
+          res.on("end", () =>
+            resolve({ headers: res.headers, body: Buffer.concat(chunks) }),
+          );
+          res.on("error", reject);
+        },
+      ).on("error", reject);
+    });
   const compressed = await raw("br, gzip");
   assert.equal(compressed.headers["content-encoding"], "gzip");
   assert.match(compressed.headers.vary, /Accept-Encoding/);
@@ -124,4 +131,22 @@ test("large catalog responses negotiate gzip without changing data or HEAD seman
   }
   const head = await raw("gzip", "HEAD");
   assert.equal(head.body.length, 0);
+});
+
+test("a release uses one content revision across HTML, styles and module imports", async (t) => {
+  const app = createApp();
+  await new Promise((resolve) => app.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => app.close(resolve)));
+  const base = `http://127.0.0.1:${app.address().port}`;
+  const html = await (await fetch(base + "/")).text();
+  const scripts = html.match(/\/src\/app\.mjs\?v=([a-f0-9]+)/);
+  assert.ok(scripts, "HTML entry must invalidate old cached modules");
+  const revision = scripts[1];
+  assert.ok(html.includes("/src/styles.css?v=" + revision));
+  const source = await (await fetch(base + scripts[0])).text();
+  assert.ok(source.includes("./model.mjs?v=" + revision));
+  assert.equal(
+    (await fetch(base + "/server/market-details.mjs?v=" + revision)).status,
+    404,
+  );
 });

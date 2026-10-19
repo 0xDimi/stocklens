@@ -1,0 +1,71 @@
+{
+  "note": "Reviewed underlying metadata, corroborated by exact issuer security identifiers and product contracts. Native RWA bindings are extracted from real CoinGecko responses; no ticker-only association is permitted.",
+  "references": [
+    {
+      "underlyingIsin": "US78462F1030",
+      "ticker": "SPY",
+      "name": "SPDR S&P 500 ETF Trust",
+      "category": "ETF",
+      "source": "https://assets.backed.fi/products/sp500-xstock",
+      "checkedAt": "2026-10-19T12:19:08.745Z",
+      "product": {
+        "issuer": "xstocks",
+        "symbol": "SPYx",
+        "isin": "CH1436219716",
+        "chain": "Ethereum",
+        "address": "0x90a2a4c76b5d8c0bc892a69ea28aa775a8f2dd48",
+        "source": "https://api.xstocks.fi/api/v2/public/assets/SPYx"
+      },
+      "rwa": {
+        "id": "spdr-s-p-500-etf-trust",
+        "coinId": "sp500-xstock",
+        "issuer": "xstocks-ecosystem",
+        "chain": "Ethereum",
+        "address": "0x90a2a4c76b5d8c0bc892a69ea28aa775a8f2dd48",
+        "source": "https://api.coingecko.com/api/v3/rwas/spdr-s-p-500-etf-trust?tokens=true&tokenized_market_data=true",
+        "retrievedAt": "2026-10-19T12:19:08.745Z"
+      }
+    },
+    {
+      "underlyingIsin": "US46090E1038",
+      "ticker": "QQQ",
+      "name": "Invesco QQQ Trust",
+      "category": "ETF",
+      "source": "https://assets.backed.fi/products/nasdaq-xstock",
+      "checkedAt": "2026-10-19T12:19:08.457Z",
+      "product": {
+        "issuer": "xstocks",
+        "symbol": "QQQx",
+        "isin": "CH1436219724",
+        "chain": "Ethereum",
+        "address": "0xa753a7395cae905cd615da0b82a53e0560f250af",
+        "source": "https://api.xstocks.fi/api/v2/public/assets/QQQx"
+      },
+      "rwa": {
+        "id": "invesco-qqq-etf",
+        "coinId": "nasdaq-xstock",
+        "issuer": "xstocks-ecosystem",
+        "chain": "Ethereum",
+        "address": "0xa753a7395cae905cd615da0b82a53e0560f250af",
+        "source": "https://api.coingecko.com/api/v3/rwas/invesco-qqq-etf?tokens=true&tokenized_market_data=true",
+        "retrievedAt": "2026-10-19T12:19:08.457Z"
+      }
+    },
+    {
+      "underlyingIsin": "US38747R8271",
+      "ticker": "NVDL",
+      "name": "GraniteShares 2x Long NVDA Daily ETF",
+      "category": "ETF",
+      "source": "https://graniteshares.com/etfs/nvdl/",
+      "checkedAt": "2026-10-19T12:18:05.792Z",
+      "product": {
+        "issuer": "xstocks",
+        "symbol": "NVDLx",
+        "isin": "CH1588665104",
+        "chain": "Ethereum",
+        "address": "0xbd8ee984ca75475161d38facbec2749276012737",
+        "source": "https://api.xstocks.fi/api/v2/public/assets/NVDLx"
+      }
+    }
+  ]
+}

@@ -1,4 +1,7 @@
-import { memo } from "./http.mjs";
+import { memo, observeWithin } from "./http.mjs";
+import { join } from "node:path";
+import { readRuntime } from "./runtime.mjs";
+import { observationStore } from "./observation-store.mjs";
 import { CHAINS, validAddress } from "./config.mjs";
 import { sourceClient, persistentCatalog } from "./source-client.mjs";
 
@@ -8,7 +11,7 @@ const cg = sourceClient(
     process.env.COINGECKO_PLAN === "pro"
       ? "https://pro-api.coingecko.com/api/v3"
       : "https://api.coingecko.com/api/v3",
-  2200,
+  process.env.COINGECKO_API_KEY ? 2200 : 12500,
   () =>
     process.env.COINGECKO_API_KEY
       ? {
@@ -17,6 +20,33 @@ const cg = sourceClient(
             : "x-cg-demo-api-key"]: process.env.COINGECKO_API_KEY,
         }
       : {},
+  {
+    validate: (body, path) => {
+      const pathname = new URL(path, "https://api.coingecko.com").pathname;
+      if (
+        [
+          "/rwas/list",
+          "/rwas/markets",
+          "/coins/list",
+          "/coins/markets",
+        ].includes(pathname)
+      )
+        return Array.isArray(body);
+      if (pathname.startsWith("/rwas/"))
+        return (
+          body?.id === decodeURIComponent(pathname.slice(6)) &&
+          Array.isArray(body.tokens)
+        );
+      if (/^\/coins\/[^/]+\/tickers$/.test(pathname))
+        return Array.isArray(body?.tickers);
+      return !body?.error && !body?.status?.error_code;
+    },
+    concurrency: 1,
+    staleWhileRevalidate: true,
+    queueTimeoutMs: 60000,
+    cacheFile: join(readRuntime().cacheDir, "coingecko-observations.json"),
+    seedFile: new URL("./data/coingecko-observations.json.gz", import.meta.url),
+  },
 );
 export const cgRequest = (path, ttl = 60_000) => cg(path, ttl);
 export const cleanName = (value) =>
@@ -189,7 +219,8 @@ export function mergeDiscovery(existing, discovered) {
     const matches = output.filter(
       (s) =>
         symbolKey(s.ticker) === symbolKey(item.ticker) &&
-        (cleanName(s.name) === cleanName(item.name) ||
+        ((s.rwaId && s.rwaId === item.rwaId) ||
+          cleanName(s.name) === cleanName(item.name) ||
           s.products.some((p) =>
             item.products.some(
               (q) =>
@@ -381,15 +412,21 @@ export async function getDiscovery() {
 export async function getRwa(stock) {
   if (!stock.rwaId) return { products: [], warning: null };
   try {
-    const result = await cg(
-      `/rwas/${encodeURIComponent(stock.rwaId)}?tokens=true&tokenized_market_data=true`,
-      300_000,
+    const result = await observeWithin(
+      () =>
+        cg(
+          `/rwas/${encodeURIComponent(stock.rwaId)}?tokens=true&tokenized_market_data=true`,
+          12 * 3600_000,
+        ),
+      8000,
     );
     return {
       products: parseRwaTokens(result.data, stock, { includeWrapped: true }),
       logo: result.data.image?.small || result.data.image?.large || null,
       checkedAt: result.retrievedAt,
       aggregate: result.data.tokenized_market_data || null,
+      stale: result.stale === true,
+      warning: result.warning || null,
     };
   } catch (error) {
     return {
@@ -418,22 +455,77 @@ export function parseTokenMarkets(data, ids) {
       source: `https://www.coingecko.com/en/coins/${encodeURIComponent(c.id)}`,
     }));
 }
+const marketStore = observationStore(
+  join(readRuntime().cacheDir, "coingecko-observations.json"),
+  new URL("./data/coingecko-observations.json.gz", import.meta.url),
+);
+export function retainedTokenMarkets(ids, observations, now = Date.now()) {
+  const rows = new Map();
+  for (const [path, value] of observations) {
+    const url = new URL(path, "https://api.coingecko.com");
+    const at = Date.parse(value.retrievedAt);
+    if (
+      url.pathname !== "/coins/markets" ||
+      url.searchParams.get("vs_currency") !== "usd" ||
+      !Number.isFinite(at) ||
+      at > now ||
+      now - at > 86400000
+    )
+      continue;
+    for (const row of parseTokenMarkets(value.data, ids)) {
+      if (!rows.has(row.coinId) || at > rows.get(row.coinId).at)
+        rows.set(row.coinId, { row, at });
+    }
+  }
+  const oldest = rows.size
+    ? Math.min(...[...rows.values()].map((v) => v.at))
+    : null;
+  return {
+    rows: [...rows.values()].map((v) => v.row),
+    retrievedAt: oldest ? new Date(oldest).toISOString() : null,
+  };
+}
 export async function getTokenMarkets(ids) {
   if (!ids.length) return { rows: [], retrievedAt: new Date().toISOString() };
   const unique = [...new Set(ids)].sort();
-  const result = await cg(
-    "/coins/markets?" +
-      new URLSearchParams({
-        vs_currency: "usd",
-        ids: unique.join(","),
-        per_page: "250",
-        page: "1",
-        sparkline: "false",
-      }),
-    60_000,
-  );
-  return {
-    rows: parseTokenMarkets(result.data, unique),
-    retrievedAt: result.retrievedAt,
-  };
+  const retained = retainedTokenMarkets(unique, await marketStore.load());
+  const refresh = () =>
+    cg(
+      "/coins/markets?" +
+        new URLSearchParams({
+          vs_currency: "usd",
+          ids: unique.join(","),
+          per_page: "250",
+          page: "1",
+          sparkline: "false",
+        }),
+      300000,
+    );
+  if (retained.rows.length === unique.length) {
+    if (Date.now() - Date.parse(retained.retrievedAt) < 300000) return retained;
+    refresh().catch(() => {});
+    return {
+      ...retained,
+      stale: true,
+      warning:
+        "Dated CoinGecko observations retained while market prices refresh in the background.",
+    };
+  }
+  try {
+    const result = await refresh();
+    return {
+      rows: parseTokenMarkets(result.data, unique),
+      retrievedAt: result.retrievedAt,
+      stale: result.stale === true,
+      warning: result.warning || null,
+    };
+  } catch (error) {
+    if (!retained.rows.length) throw error;
+    return {
+      ...retained,
+      stale: true,
+      warning:
+        "Last successful CoinGecko prices retained with original timestamps while the source refreshes.",
+    };
+  }
 }

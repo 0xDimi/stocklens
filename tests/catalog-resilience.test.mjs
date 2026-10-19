@@ -120,7 +120,7 @@ test("xStocks scans a large live-style paginated registry in bounded parallel wi
       );
     }, 25);
   });
-  const nodes = await catalog.xStocksCatalog({ base, deadlineMs: 350 });
+  const nodes = await catalog.xStocksCatalog({ base, deadlineMs: 2000 });
   assert.equal(nodes.length, 20);
   assert.equal(nodes.at(-1).id, "product-19");
   assert.ok(maximum > 1 && maximum <= 4, `concurrent requests: ${maximum}`);

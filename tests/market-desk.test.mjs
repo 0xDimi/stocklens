@@ -116,7 +116,7 @@ test("screener uses one paged source request, reports continuation and keeps sta
       assert.equal(url.searchParams.get("page"), "2");
       assert.equal(url.searchParams.get("order"), "volume_desc");
       assert.equal(url.searchParams.get("sparkline"), "true");
-      assert.equal(ttl, 60_000);
+      assert.equal(ttl, 600_000);
       return {
         data: Array.from({ length: 250 }, (_, i) => ({
           ...observations[0],

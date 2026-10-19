@@ -26,7 +26,7 @@ Markets (`?page=markets`) presents the entire connected asset registry as a sort
 
 `⌘/Ctrl K` or `/` opens security search. `1`–`5` switch panels; `W` toggles the watchlist; `R` refreshes the table and current chart. Shortcuts leave text-entry fields alone. The URL preserves page, stock, table, amount, chain and issuer. Sorting and CSV export are under More beside Refresh. CSV exports preserve units, sources and timestamps. Watchlists stay in the current browser; JSON import/export provides a portable list of asset IDs; import merges matching catalog IDs with the current watchlist.
 
-Markets poll every 90 seconds while the page is visible. Charts load on demand and refresh every 180 seconds while their section is open and the page is visible. All loaded screener pages refresh. Buy quotes expire after 30 seconds and require an explicit refresh; expired purchase links are disabled. Cached source fallbacks are labeled, retain their original timestamps and never become executable quotes.
+Markets poll every ten minutes while the page is visible. Charts load on demand and refresh every 180 seconds while their section is open and the page is visible. All loaded screener pages refresh. Buy quotes expire after 30 seconds and require an explicit refresh; expired purchase links are disabled. Cached source fallbacks are labeled, retain their original timestamps and never become executable quotes.
 
 ## Data and identity
 

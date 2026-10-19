@@ -95,3 +95,33 @@ test("workspace API serves independent views and rejects invalid query/history s
     400,
   );
 });
+
+test("large catalog responses negotiate gzip without changing data or HEAD semantics", async (t) => {
+  const { get } = await import("node:http");
+  const { gunzipSync } = await import("node:zlib");
+  const catalog = { stocks: [{ name: "NVIDIA ".repeat(14000) }], warnings: [] };
+  const app = createApp({ getCatalog: async () => catalog });
+  await new Promise((resolve) => app.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => app.close(resolve)));
+  const base = `http://127.0.0.1:${app.address().port}`;
+  const raw = (encoding, method = "GET") => new Promise((resolve, reject) => {
+    get(base + "/api/catalog", { method, headers: { "Accept-Encoding": encoding } }, (res) => {
+      const chunks = [];
+      res.on("data", (chunk) => chunks.push(chunk));
+      res.on("end", () => resolve({ headers: res.headers, body: Buffer.concat(chunks) }));
+      res.on("error", reject);
+    }).on("error", reject);
+  });
+  const compressed = await raw("br, gzip");
+  assert.equal(compressed.headers["content-encoding"], "gzip");
+  assert.match(compressed.headers.vary, /Accept-Encoding/);
+  assert.deepEqual(JSON.parse(gunzipSync(compressed.body)), catalog);
+  assert.ok(compressed.body.length < JSON.stringify(catalog).length / 10);
+  for (const encoding of ["gzip;q=0, *;q=1", "identity", "gzip;q=0.0"]) {
+    const plain = await raw(encoding);
+    assert.equal(plain.headers["content-encoding"], undefined);
+    assert.deepEqual(JSON.parse(plain.body), catalog);
+  }
+  const head = await raw("gzip", "HEAD");
+  assert.equal(head.body.length, 0);
+});

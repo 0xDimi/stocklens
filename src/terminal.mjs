@@ -573,7 +573,7 @@ export function createTerminal({
   }, 180000);
   setInterval(() => {
     if (!document.hidden) screener();
-  }, 90000);
+  }, 600000);
   return {
     universe,
     select,

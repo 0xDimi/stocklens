@@ -754,5 +754,5 @@ setInterval(() => {
     view !== "terms"
   )
     loadView();
-}, 90000);
+}, 600000);
 initialize();

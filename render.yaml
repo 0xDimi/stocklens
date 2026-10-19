@@ -17,7 +17,3 @@ services:
         value: demo
       - key: TRUST_PROXY
         value: ""
-    disk:
-      name: stocklens-cache
-      mountPath: /app/.cache
-      sizeGB: 1

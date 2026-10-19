@@ -95,7 +95,7 @@ export async function screenerView(
   let result = null;
   const warnings = [...(catalog.warnings || [])];
   try {
-    result = await request("/rwas/markets?" + query, 60_000);
+    result = await request("/rwas/markets?" + query, 600_000);
     if (!Array.isArray(result.data))
       throw new Error("Unexpected CoinGecko RWA market response.");
     if (result.warning) warnings.push(result.warning);

@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { gzip } from "node:zlib";
 import { readdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -111,22 +112,37 @@ export function createApp({
         type = "application/json; charset=utf-8",
         extra = {},
       ) => {
-        if (response.destroyed || response.writableEnded) return;
-        response.writeHead(status, {
+        const body = typeof data === "string" || Buffer.isBuffer(data)
+          ? data : JSON.stringify(data);
+        const headers = {
           ...securityHeaders,
           ...(config.production
             ? { "Strict-Transport-Security": "max-age=31536000" }
             : {}),
           "Content-Type": type,
+          Vary: "Accept-Encoding",
           ...extra,
-        });
-        response.end(
-          request.method === "HEAD"
-            ? undefined
-            : typeof data === "string" || Buffer.isBuffer(data)
-              ? data
-              : JSON.stringify(data),
-        );
+        };
+        const finish = (payload, compressed = false) => {
+          if (response.destroyed || response.writableEnded) return;
+          response.writeHead(status, {
+            ...headers,
+            ...(compressed ? { "Content-Encoding": "gzip" } : {}),
+          });
+          response.end(request.method === "HEAD" ? undefined : payload);
+        };
+        const encodings = String(request.headers["accept-encoding"] || "")
+          .split(",").map((item) => {
+            const [name, ...params] = item.trim().toLowerCase().split(";");
+            const quality = params.find((p) => p.trim().startsWith("q="));
+            return [name, quality ? Number(quality.trim().slice(2)) : 1];
+          });
+        const quality = encodings.find(([name]) => name === "gzip")?.[1]
+          ?? encodings.find(([name]) => name === "*")?.[1] ?? 0;
+        if (quality > 0 && quality <= 1 && Buffer.byteLength(body) >= 65536
+          && /^(application\/json|text\/)/.test(type)) {
+          gzip(body, (error, compressed) => finish(error ? body : compressed, !error));
+        } else finish(body);
       };
       try {
         if (!["GET", "HEAD"].includes(request.method)) {

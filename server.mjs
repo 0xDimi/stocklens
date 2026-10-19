@@ -29,6 +29,8 @@ const files = new Map([
     "brands.mjs",
     "market-model.mjs",
     "markets-page.mjs",
+    "market-feed.mjs",
+    "market-observations.mjs",
   ].map((name) => [
     "/src/" + name,
     [
@@ -76,7 +78,7 @@ const securityHeaders = {
   "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
   "Cross-Origin-Opener-Policy": "same-origin",
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://coin-images.coingecko.com https://assets.coingecko.com https://xstocks-metadata.backed.fi https://cdn.ondo.finance; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://coin-images.coingecko.com https://assets.coingecko.com https://xstocks-metadata.backed.fi https://cdn.ondo.finance; connect-src 'self' https://api.coingecko.com; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
 };
 function deadline(work, ms) {
   let timer;
@@ -196,7 +198,7 @@ export function createApp({
         }
         const url = new URL(request.url, "http://localhost");
         if (url.pathname === "/api/health") {
-          send(200, { status: "ok", version: "0.5.0" });
+          send(200, { status: "ok", version: "0.5.1" });
           return;
         }
         if (url.pathname === "/api/ready") {

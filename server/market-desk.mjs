@@ -2,6 +2,7 @@ import { loadCatalog, resolveStock } from "./catalog.mjs";
 import { cgRequest } from "./coingecko.mjs";
 import { CHAINS } from "./config.mjs";
 import { sourceStatus } from "./source-client.mjs";
+import { indexMarketObservations } from "../src/market-observations.mjs";
 
 const MARKET_BASIS =
   "Aggregated tokenized onchain market observations in USD; not underlying exchange prices or executable quotes.";
@@ -27,31 +28,12 @@ function pageNumber(params) {
     throw badRequest("Choose a page from 1 through 10.");
   return Number(value);
 }
-function marketObservation(row) {
-  const data = row?.tokenized_market_data;
-  if (!data || typeof data !== "object") return null;
-  const rawSparkline = data.sparkline_in_7d?.price;
-  // Do not compress invalid samples into apparently adjacent valid prices.
-  const sparkline =
-    Array.isArray(rawSparkline) &&
-    rawSparkline.every((value) => numeric(value) > 0)
-      ? rawSparkline.map(Number)
-      : [];
-  return {
-    price: numeric(data.current_price),
-    change24h: numeric(data.price_change_percentage_24h, -Infinity),
-    volume24h: numeric(data.total_volume),
-    marketCap: numeric(data.market_cap),
-    high24h: numeric(data.high_24h),
-    low24h: numeric(data.low_24h),
-    updatedAt: timestamp(data.last_updated),
-    sparkline,
-    image: typeof row.image === "string" ? row.image : row.image?.small || null,
-  };
-}
 function sourceState(result) {
   return {
     stale: result?.stale === true,
+    refreshState:
+      result?.refreshState || (result?.stale ? "unavailable" : "fresh"),
+    retryAt: result?.retryAt || null,
     lastAttemptAt: result?.lastAttemptAt || null,
     sources: sourceStatus(),
   };
@@ -93,25 +75,24 @@ export async function screenerView(
   if (ids)
     query.set("ids", [...new Set(selectedStocks.map(rwaId))].sort().join(","));
   let result = null;
+  let marketWarning = null;
   const warnings = [...(catalog.warnings || [])];
   try {
     result = await request("/rwas/markets?" + query, 600_000);
     if (!Array.isArray(result.data))
       throw new Error("Unexpected CoinGecko RWA market response.");
-    if (result.warning) warnings.push(result.warning);
+    if (result.warning) {
+      marketWarning = result.warning;
+      warnings.push(result.warning);
+    }
   } catch (error) {
     result = null;
-    warnings.push(
-      "CoinGecko aggregate market data unavailable: " + error.message,
-    );
+    marketWarning =
+      "CoinGecko aggregate market data unavailable: " + error.message;
+    warnings.push(marketWarning);
   }
   // Identity is supplied by the canonical catalog. A matching ticker never authorizes a join.
-  const observations = new Map();
-  for (const row of result?.data || []) {
-    if (typeof row?.id !== "string") continue;
-    if (observations.has(row.id)) observations.set(row.id, null);
-    else observations.set(row.id, marketObservation(row));
-  }
+  const observations = indexMarketObservations(result?.data || []);
   const rows = selectedStocks.map((stock) => ({
     id: stock.id,
     rwaId: rwaId(stock),
@@ -133,6 +114,7 @@ export async function screenerView(
     retrievedAt: result?.retrievedAt || null,
     catalogAt: catalog.fetchedAt,
     warnings,
+    marketWarning,
     ...sourceState(result),
     scope: {
       page,

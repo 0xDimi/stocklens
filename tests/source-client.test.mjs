@@ -21,6 +21,30 @@ test("HTTP 429 applies a source-wide cooldown across different endpoints", async
   assert.equal(calls, 1);
 });
 
+test("a retained observation reports a confirmed rate limit separately from background refresh", async (t) => {
+  let calls = 0;
+  const app = createServer((req, res) => {
+    calls++;
+    res.writeHead(calls === 1 ? 200 : 429, {
+      "Content-Type": "application/json",
+    });
+    res.end(calls === 1 ? '{"price":123}' : "{}");
+  });
+  await new Promise((resolve) => app.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => app.close(resolve)));
+  const api = sourceClient(
+    "typed-rate-limit",
+    () => `http://127.0.0.1:${app.address().port}`,
+    0,
+  );
+  const first = await api("/price", 0);
+  const retained = await api("/price", 0);
+  assert.equal(retained.refreshState, "rate-limited");
+  assert.ok(Date.parse(retained.retryAt) > Date.now());
+  assert.equal(retained.retrievedAt, first.retrievedAt);
+  assert.equal(retained.data.price, 123);
+});
+
 test("expired simultaneous requests coalesce and retain last good data after upstream failure", async (t) => {
   let calls = 0,
     fail = false;

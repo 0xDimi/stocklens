@@ -1,3 +1,11 @@
+## Market refresh status and public feed recovery — 0.5.1, October 19, 2026
+
+The production screener returned dated observations plus a confirmed CoinGecko rate-limit status. The client also incorrectly described every stale-while-revalidate response as a failed refresh. Those states are now distinct. Source cooldowns avoid scheduling redundant background work while the feed is already rate limited.
+
+When server market observations are stale, the browser can read the official CORS-enabled public RWA endpoint. Both paths use the same strict ID-based normalizer. Public requests omit credentials and referrers, use 12.5-second pacing, coalesce, respect 429 cooldowns across pages and retain a ten-minute bounded browser observation cache without rewriting source timestamps. Newer browser observations cannot be replaced by an older server recovery. Failure leaves dated server data available. Public rate limits can still affect both paths; no uninterrupted free-feed guarantee is made.
+
+All 146 Node 22 tests pass. The strict production smoke passed with actual catalog readiness. A real public-service integration passed 248 priced rows and source-dated NVIDIA market observations; the server feed recovered during that run. Actual browser checks loaded fresh public market observations and exercised the rate-limit fallback across pagination. The direct API returned `Access-Control-Allow-Origin: *` for the application origin. Evidence is in ignored `test-results/market-feed-tests.log`, `market-feed-smoke.log`, `market-feed-integration.json`, and `cg-cors-headers.txt`. Final public rollout evidence is captured separately after deployment.
+
 ## Data reliability repair — 0.5.0, October 19, 2026
 
 The repair release passes 137 Node 22 tests and the strict production startup smoke with real catalog readiness. Actual HTTP repair integration passes company capitalization, provider-disclosed fiscal P/E, and independently obtained $1,000 indicative buy premiums for NVIDIA, Apple and Tesla. ETF applicability and saved CoinGecko asset links are checked. The broad real-source integration also passes issuer prices, exact-contract pools/history, normalized quotes and venue handoff identities. These checks use actual HTTP/source data, never fixture substitution.

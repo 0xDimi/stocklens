@@ -10,6 +10,7 @@ import {
 import { stockLogo, issuerLogo, chainLogo } from "./brands.mjs";
 import { mountChart } from "./chart.mjs";
 import { findStocks } from "./model.mjs";
+import { createMarketFeed } from "./market-feed.mjs";
 
 export function toggleCompare(ids, id) {
   return ids.includes(id)
@@ -58,13 +59,33 @@ export function historyQuery(stockId, pool, range) {
   return query;
 }
 export function marketWarnings(data) {
+  if (Object.hasOwn(data, "marketWarning")) {
+    if (!data.stale && !data.marketWarning) return [];
+    if (
+      /rate.?limit/i.test(data.marketWarning || "") ||
+      data.refreshState === "rate-limited"
+    )
+      return [
+        "Some prices are delayed by CoinGecko’s rate limit. Saved prices show their original timestamps.",
+      ];
+    if (
+      data.refreshState === "refreshing" &&
+      !/failed|unavailable|delayed/i.test(data.marketWarning || "")
+    )
+      return ["Some prices are refreshing. Each asset shows its last update."];
+    return [
+      "Some price updates are unavailable. Saved prices show their original timestamps.",
+    ];
+  }
   return [
     ...(data.warnings || []).filter((w) =>
       /CoinGecko|Last successful|stale|unavailable|rate limit/i.test(w),
     ),
     data.warning,
     data.stale
-      ? "Cached market observations retained after a failed source refresh."
+      ? data.refreshState === "refreshing"
+        ? "Saved market prices are visible while CoinGecko is refreshing."
+        : "Cached market observations retained with their original timestamps."
       : "",
   ].filter(Boolean);
 }
@@ -91,6 +112,11 @@ export function createTerminal({
 }) {
   const $ = (s) => document.querySelector(s);
   const references = new Map();
+  let marketStorage;
+  try {
+    marketStorage = localStorage;
+  } catch {}
+  const loadMarketPage = createMarketFeed({ storage: marketStorage });
   let markets = new Map(),
     marketPages = new Map(),
     asset = null,
@@ -159,10 +185,7 @@ export function createTerminal({
     const warnings = [];
     try {
       for (const page of requested) {
-        const response = await fetch("/api/screener?page=" + page),
-          data = await response.json();
-        if (!response.ok)
-          throw new Error(data.error || "Market data unavailable");
+        const data = await loadMarketPage(page);
         const observed = new Map(
           (data.rows || [])
             .filter((r) => r.market)

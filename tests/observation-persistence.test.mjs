@@ -65,6 +65,7 @@ test(
     assert.equal(cached.data.price, 217);
     assert.equal(cached.retrievedAt, initial.retrievedAt);
     assert.equal(cached.stale, true);
+    assert.equal(cached.refreshState, "refreshing");
     const concurrent = await api("/price", 10000);
     assert.equal(concurrent.data.price, 217);
   },

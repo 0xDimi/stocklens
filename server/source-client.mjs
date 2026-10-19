@@ -66,6 +66,12 @@ export function sourceClient(
       return {
         ...saved,
         stale: true,
+        refreshState:
+          cooldownUntil > Date.now() ? "rate-limited" : "unavailable",
+        retryAt:
+          cooldownUntil > Date.now()
+            ? new Date(cooldownUntil).toISOString()
+            : null,
         warning: `Last successful observation retained; ${error.message}`,
         lastAttemptAt: at,
       };
@@ -105,6 +111,8 @@ export function sourceClient(
     const saved = observations.get(path);
     if (saved && saved.expires > Date.now())
       return Promise.resolve({ ...saved, stale: false });
+    const failed = failures.get(path);
+    const limited = cooldownUntil > Date.now();
     const retained =
       options.staleWhileRevalidate &&
       saved &&
@@ -112,10 +120,21 @@ export function sourceClient(
         ? {
             ...saved,
             stale: true,
-            warning:
-              "Dated source observations retained while the feed refreshes.",
+            refreshState: limited
+              ? "rate-limited"
+              : failed?.until > Date.now()
+                ? "unavailable"
+                : "refreshing",
+            retryAt: limited ? new Date(cooldownUntil).toISOString() : null,
+            lastAttemptAt: failed?.at || null,
+            warning: limited
+              ? `${name} refresh is delayed by a rate limit; saved observations retain their original timestamps.`
+              : failed?.until > Date.now()
+                ? `Last successful observation retained; ${failed.message}`
+                : "Dated source observations retained while the feed refreshes.",
           }
         : null;
+    if (retained && (limited || failed?.until > Date.now())) return retained;
     if (inflight.has(path)) return retained || inflight.get(path);
     const waitDeadline = Date.now() + queueTimeoutMs;
     const work = schedule(async () => {
@@ -158,6 +177,7 @@ export function sourceClient(
         if (error.status === 429) cooldownUntil = Date.now() + 30000;
         failures.set(path, {
           until: Date.now() + 30000,
+          at: new Date().toISOString(),
           message: error.message,
         });
         if (failures.size > 100) failures.delete(failures.keys().next().value);

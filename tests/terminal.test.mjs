@@ -89,6 +89,24 @@ test("stale screener fallback is explicit even when the original error does not 
   assert.ok(warnings.some((w) => w.startsWith("Last successful")));
 });
 
+test("an ordinary background market refresh is never described as failed", () => {
+  const warnings = marketWarnings({
+    stale: true,
+    refreshState: "refreshing",
+    marketWarning: null,
+  });
+  assert.ok(!warnings.some((w) => /failed/i.test(w)));
+  assert.ok(warnings.some((w) => /refreshing/i.test(w)));
+  assert.deepEqual(
+    marketWarnings({
+      stale: false,
+      marketWarning: null,
+      warnings: ["Unrelated catalog warning"],
+    }),
+    [],
+  );
+});
+
 test("watchlist import deduplicates exact catalog IDs and rejects malformed files", () => {
   assert.deepEqual(
     parseWatchlist(

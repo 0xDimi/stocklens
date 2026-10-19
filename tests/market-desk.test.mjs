@@ -214,7 +214,7 @@ test("real captured provider payloads normalize without fabricated prices or tok
   assert.equal(typeof desk.screenerView, "function");
   const data = JSON.parse(
     await readFile(
-      new URL("../research/rwa_markets.json", import.meta.url),
+      new URL("./fixtures/coingecko-nvidia-rwa.json", import.meta.url),
       "utf8",
     ),
   );
@@ -230,7 +230,7 @@ test("real captured provider payloads normalize without fabricated prices or tok
   );
   const captured = JSON.parse(
     await readFile(
-      new URL("../research/nvda_venues.json", import.meta.url),
+      new URL("./fixtures/coingecko-nvidia-tickers.json", import.meta.url),
       "utf8",
     ),
   );

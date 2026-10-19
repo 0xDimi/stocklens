@@ -49,7 +49,19 @@ function corroboratesName(stock, companyName) {
   if (!target || !actual) return false;
   // Legal name changed on 2025-08-11; MSTR Class A and its CUSIP remained unchanged.
   // https://www.strategy.com/press/strategy-announces-legal-name-change-from-microstrategy-incorporated-to-strategy-inc_08-14-2025
-  if (stock.ticker === "MSTR" && target === "microstrategy" && actual === "strategy")
+  if (
+    stock.ticker === "MSTR" &&
+    target === "microstrategy" &&
+    actual === "strategy"
+  )
+    return true;
+  // The June 2026 10-Q names the SPCX registrant and its SpaceX brand together.
+  // https://www.sec.gov/Archives/edgar/data/1181412/000162828026052535/spcx-20260630.htm
+  if (
+    stock.ticker === "SPCX" &&
+    target === "spacex" &&
+    actual === "space exploration technologies"
+  )
     return true;
   if (
     target.replace(/ /g, "") === actual.replace(/ /g, "") ||

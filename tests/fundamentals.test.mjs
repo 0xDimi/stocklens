@@ -565,3 +565,49 @@ test("MSTR's documented legal name change corroborates only MicroStrategy and St
     ),
   );
 });
+
+test("SPCX's SEC-disclosed SpaceX brand corroborates its exact listed corporate name only", () => {
+  const brand = {
+    id: "US84615Q1031",
+    ticker: "SPCX",
+    name: "SpaceX",
+    category: "Stock",
+  };
+  const listed = listedInfo(
+    "SPCX",
+    "Space Exploration Technologies Corp. Class A Common Stock",
+  );
+  const result = parseFundamentals(listed, null, brand, retrievedAt);
+  assert.equal(result.id, "US84615Q1031");
+  assert.equal(
+    result.companyName,
+    "Space Exploration Technologies Corp. Class A Common Stock",
+  );
+  assert.throws(() =>
+    parseFundamentals(
+      listedInfo(
+        "SPCE",
+        "Space Exploration Technologies Corp. Class A Common Stock",
+      ),
+      null,
+      { ...brand, ticker: "SPCE" },
+      retrievedAt,
+    ),
+  );
+  assert.throws(() =>
+    parseFundamentals(
+      listedInfo("SPCX", "Space Exploration Holdings Class A Common Stock"),
+      null,
+      brand,
+      retrievedAt,
+    ),
+  );
+  assert.throws(() =>
+    parseFundamentals(
+      listed,
+      null,
+      { ...brand, name: "SpaceX Fund" },
+      retrievedAt,
+    ),
+  );
+});

@@ -2,7 +2,8 @@ services:
   - type: web
     name: stocklens
     runtime: docker
-    plan: starter
+    plan: 0.5c-512mb
+    autoDeployTrigger: checksPass
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
     envVars:
@@ -14,8 +15,6 @@ services:
         value: /app/.cache
       - key: COINGECKO_PLAN
         value: demo
-      - key: COINGECKO_API_KEY
-        sync: false
       - key: TRUST_PROXY
         value: ""
     disk:

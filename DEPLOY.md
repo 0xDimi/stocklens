@@ -30,7 +30,7 @@ The image copies only runtime files. `.dockerignore` excludes secrets, cached ob
 
 ## Render manifest
 
-`render.yaml` describes a Docker web service with a persistent cache disk and `/api/health` as its platform health path. Import this repository as a Blueprint, review the service plan and disk cost, then configure the source key privately if desired. Render assigns `PORT`; the server binds `0.0.0.0`. No Render service has been created as part of this repository change.
+`render.yaml` describes a Docker web service with a persistent cache disk and `/api/health` as its platform health path. Import this repository as a Blueprint, review the service plan and disk cost, then configure a source key privately if desired. The manifest uses the documented `0.5c-512mb` compute ID, waits for passing CI checks before automatic deploys, and does not require an API key during setup. Add `COINGECKO_API_KEY` in the service environment when available. Render assigns `PORT`; the server binds `0.0.0.0`. The repository is prepared for Render; creating and validating a cloud service requires a signed-in Render account. A GitHub push alone does not create a public application URL.
 
 The supplied manifest leaves `TRUST_PROXY` empty. Before raising public traffic limits, identify the immediate proxy peer addresses in your deployment and set the exact addresses you trust. If your platform does not supply stable trusted peer addresses, retain the empty setting and budget the shared proxy rate limit or put a controlled reverse proxy in front. Do not set a blanket proxy trust flag.
 

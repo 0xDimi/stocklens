@@ -106,3 +106,24 @@ test("Nasdaq minute-precision reference times tolerate rounding, but unqualified
     assert.equal(!!result.rows[0].premium, valid);
   }
 });
+
+test("outside market hours a fresh official last-close reference produces an explicitly labeled premium", async () => {
+  const deps = setup();
+  const now = Date.now();
+  deps.getReference = async () => ({
+    price: 100,
+    currency: "USD",
+    at: now - 3 * 86400000,
+    priceSession: "Closed",
+    retrievedAt: new Date(now).toISOString(),
+    priceStale: false,
+  });
+  const data = await marketDetailsView(
+    new URLSearchParams({ ids: stock.id }),
+    deps,
+  );
+  assert.ok(Math.abs(data.rows[0].premium.value - 1) < 1e-8);
+  assert.equal(data.rows[0].premium.referenceBasis, "last-close");
+  assert.match(data.rows[0].premium.basis, /last close/i);
+  assert.ok(data.rows[0].premium.expiresAt > now);
+});

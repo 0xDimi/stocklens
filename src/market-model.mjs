@@ -65,14 +65,28 @@ export function premium(observation, benchmark, now = Date.now()) {
     )
   )
     return null;
+  const retrieved = Date.parse(benchmark.retrievedAt);
+  const lastClose =
+    benchmark.priceSession === "Closed" &&
+    !benchmark.priceStale &&
+    Number.isFinite(retrieved) &&
+    retrieved <= now &&
+    now - retrieved <= 300000 &&
+    Number.isFinite(benchmark.at) &&
+    benchmark.at <= now &&
+    now - benchmark.at <= 7 * 86400000;
   if (
     !Number.isFinite(observation.at) ||
     observation.at > now ||
-    now - observation.at > 300000 ||
-    !Number.isFinite(benchmark.at) ||
-    benchmark.at > now + (benchmark.timePrecisionMs === 60000 ? 60000 : 0) ||
-    now - benchmark.at > 300000 ||
-    Math.abs(observation.at - benchmark.at) > 120000
+    now - observation.at > 300000
+  )
+    return null;
+  if (
+    !lastClose &&
+    (!Number.isFinite(benchmark.at) ||
+      benchmark.at > now + (benchmark.timePrecisionMs === 60000 ? 60000 : 0) ||
+      now - benchmark.at > 300000 ||
+      Math.abs(observation.at - benchmark.at) > 120000)
   )
     return null;
   return (

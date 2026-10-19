@@ -87,6 +87,10 @@ export async function marketDetailsView(
           reference,
         )
       : null;
+    const lastClose = reference?.priceSession === "Closed";
+    const referenceTime = lastClose
+      ? Date.parse(reference.retrievedAt)
+      : reference?.at;
     const metric =
       value == null
         ? null
@@ -104,8 +108,13 @@ export async function marketDetailsView(
             retrievedAt: new Date(observation.fetchedAt).toISOString(),
             source: observation.quoteSource,
             conversionSource: observation.conversionSource,
-            basis: BASIS,
-            expiresAt: Math.min(observation.fetchedAt, reference.at) + 300000,
+            referenceBasis: lastClose ? "last-close" : "contemporaneous",
+            basis:
+              BASIS +
+              (lastClose
+                ? " Compared with the official Nasdaq last close, not a live listed-stock price."
+                : ""),
+            expiresAt: Math.min(observation.fetchedAt, referenceTime) + 300000,
           };
     return {
       id: stock.id,

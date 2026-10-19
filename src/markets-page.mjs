@@ -81,7 +81,7 @@ export function createMarketsPage({
       const budget = Number.isFinite(p.budget)
           ? `${compact(p.budget)} buy`
           : "Observed",
-        label = `${observed.stale ? "Last observed" : budget} · ${stamp(p.priceAt)}`,
+        label = `${observed.stale ? "Last observed" : budget}${p.referenceBasis === "last-close" ? " vs close" : ""} · ${stamp(p.priceAt)}`,
         reason = [
           p.basis,
           `${p.symbol || "Token"} · ${p.chain || "Network not supplied"}`,

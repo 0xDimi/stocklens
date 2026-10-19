@@ -33,13 +33,13 @@ Markets poll every ten minutes while the page is visible. Charts load on demand 
 Primary integrations:
 
 - CoinGecko [RWA catalog](https://docs.coingecko.com/demo/reference/rwas-list), [tokenized market reference](https://docs.coingecko.com/demo/reference/rwas-markets), [token markets](https://docs.coingecko.com/demo/reference/coins-markets) and [exchange tickers](https://docs.coingecko.com/demo/reference/coins-id-tickers).
-- [GeckoTerminal public API](https://api.geckoterminal.com/docs/index.html): exact-contract pools, reserve values, volumes and OHLCV history.
+- [GeckoTerminal public API](https://api.geckoterminal.com/docs/index.html): exact-contract pools, reserve values, volumes and OHLCV history. When public access is throttled or unavailable, a configured CoinGecko key enables the equivalent authenticated onchain API without changing the selected pool or token.
 - [xStocks public API](https://docs.xstocks.fi/developers/quickstart) and [multiplier documentation](https://docs.xstocks.fi/developers/multipliers).
 - Ondo's official CSV from its [contract registry](https://docs.ondo.finance/addresses#ondo-stocks), plus registered onchain conversion oracles.
 - Nasdaq public quote/summary and analyst P/E endpoints: independently named listed-security references and company capitalization; P/E only if explicitly supplied. Name and symbol corroboration are required. These references are separate from the tokenized market.
 - Raydium and KyberSwap size-specific quotes; public chain RPCs for supported conversion mechanics.
 
-The October 19, 2026 update integration observed 1,963 catalog assets and 12 recognized product families. Registry assets remain searchable before token mapping is loaded; opening one requests its native RWA grouping. Sources and counts are audited in Coverage & sources. The configured directory covers 18 chains; quote adapters cover Solana, Ethereum, BNB Chain, Base and Arbitrum. Counts and available routes change. See [QA.md](QA.md) for the measured run and limits.
+The October 19, 2026 validated identity snapshot contains 1,961 catalog assets and 12 recognized product families. Registry assets remain searchable before token mapping is loaded; opening one requests its native RWA grouping. Sources and counts are audited in Coverage & sources. The configured directory covers 18 chains; quote adapters cover Solana, Ethereum, BNB Chain, Base and Arbitrum. Counts and available routes change. See [QA.md](QA.md) for the measured run and limits.
 
 Canonical identifiers come from issuer records and corroborated CoinGecko underlying identity, symbols and contracts. A ticker alone does not assign an ISIN. Conflicting issuer mappings are quarantined. Ambiguous matches are held back. Wrappers are included as separate labeled versions and never inherit share-conversion assumptions. An Ondo record can acquire issuer provenance through exact-contract corroboration without assigning an uncorroborated ISIN to an existing CoinGecko asset ID. This mapping does not establish legal equivalence between products.
 
@@ -51,7 +51,7 @@ Canonical identifiers come from issuer records and corroborated CoinGecko underl
 - GeckoTerminal stock-wide coverage is a filtered first search page; exact-token links query that deployment's top pools. Exchange tickers are paginated provider observations, not a complete executable order book. Pool reserves and reported depth do not guarantee fill size or slippage.
 - Direct exchange links are shown only for validated supported hosts. Other market rows link to CoinGecko's markets page. This avoids incorrectly cased DEX contract URLs supplied by third-party tickers.
 - Markets “Onchain premium” automatically compares a representative $1,000 USDC buy observation with a fresh Nasdaq reference, before gas and assuming USDC equals $1. It requires verified share conversion, observations within five minutes and two-minute timestamp alignment. It is a dated order observation, not a market-wide spot premium or executable offer; it does not claim the best route across issuers. Outside market hours, a freshly retrieved official last close can be used with an explicit “vs close” label and its original date. Older observations are labeled “Last observed.” Missing P/E, company cap, prices and conversions remain unavailable rather than estimated.
-- Public API limits and provider outages can constrain coverage. Last-good market observations are process-local; catalog snapshots persist to disk. No account database, wallet, custody or transaction submission is included. Issuers and venues determine product eligibility.
+- Public API limits and provider outages can constrain coverage. Validated source observations and catalog snapshots persist to the application cache directory. Packaged dated seeds survive redeployment; the Render runtime cache is ephemeral. Catalog fallback uses the original observation time and expires after 72 hours. No account database, wallet, custody or transaction submission is included. Issuers and venues determine product eligibility.
 
 ## Deploy and verify
 
@@ -65,10 +65,13 @@ NODE_ENV=production HOST=0.0.0.0 PORT=4173 npm start
 npm test
 npm run integration
 npm run integration:terminal
+npm run integration:access
+npm run integration:markets
+npm run integration:metrics
 npm run smoke:production
 ```
 
-The integration scripts contact real sources; live availability can cause a check to fail. `STOCKLENS_URL` selects an already running instance. The production smoke starts and stops its own production process and requires an actual usable catalog. CI covers Node 22/24 and a container job; local execution evidence is in QA.md.
+For the public deployment, prefix an integration command with `STOCKLENS_URL=https://stocklens-osft.onrender.com`. The integration scripts contact real sources; live availability can cause a check to fail. `STOCKLENS_URL` selects an already running instance. The production smoke starts and stops its own production process and requires an actual usable catalog. CI covers Node 22/24 and a container job; local execution evidence is in QA.md.
 
 Brand files and their retrieval provenance are in `assets/logos/`; trusted remote images use an explicit CSP/URL allowlist. `node scripts/sync-brand-assets.mjs` refreshes source-owned logos manually (it uses macOS `sips` for non-PNG conversion, and is not part of deployment). Failed image loads keep readable text fallbacks.
 
@@ -89,3 +92,9 @@ node scripts/refresh-fundamentals-seed.mjs
 ```
 
 These scripts contact actual public sources and retain provenance manifests. They are not scheduled jobs. The Render cost-monitor automation was removed at the owner's request.
+
+## Portfolio status and operating limits
+
+The public app requires no account or wallet connection to browse, compare, or open a venue. Stocklens never submits transactions. See [PORTFOLIO_REVIEW.md](PORTFOLIO_REVIEW.md) for the dated code review, fixes, actual integration checks and scope.
+
+The CoinGecko Demo plan is a limited data budget. Its [published allowance](https://www.coingecko.com/en/api/pricing) is 10,000 calls per month as checked October 19, 2026. Under continuous demand, refreshing five market pages every ten minutes alone would require 21,600 calls in 30 days, before other data requests. Low-traffic portfolio use is the intended deployment scope; uninterrupted market-wide freshness under sustained traffic requires a separate quota/batching decision. Existing caches, coalescing, provider cooldowns and a public browser feed reduce repeated requests but do not remove upstream quotas. No paid data upgrade or scheduled monitoring is enabled.

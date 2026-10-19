@@ -1,6 +1,6 @@
 {
   "name": "stocklens",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,6 +8,9 @@
     "test": "node --test tests/*.test.mjs",
     "integration": "node scripts/integration.mjs",
     "integration:terminal": "node scripts/terminal-integration.mjs",
+    "integration:access": "node scripts/public-access.mjs",
+    "integration:markets": "node scripts/market-feed-integration.mjs",
+    "integration:metrics": "node scripts/repair-integration.mjs",
     "smoke:production": "node scripts/production-smoke.mjs --require-ready"
   },
   "engines": {

@@ -92,11 +92,13 @@ function renderStocks() {
 }
 function renderHeading() {
   if (!selected) return;
+  const focusTitle = document.activeElement?.id === "stock-title";
   const chainCount = new Set(
     selected.products.flatMap((p) => p.deployments.map((d) => d.chain)),
   ).size;
   $("#stock-heading").innerHTML =
-    `<div class="company">${stockLogo(selected, desk?.getMarkets().get(selected.id)?.image)}<div><div class="company-name"><h2>${escape(selected.name)}</h2><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p><b>${escape(selected.ticker)}</b> · ${escape(selected.category)} · ${selected.products.filter((p) => !p.wrapped).length} issuer versions${selected.products.some((p) => p.wrapped) ? ` + ${selected.products.filter((p) => p.wrapped).length} wrapped` : ""} · ${new Set(selected.products.map((p) => p.issuer)).size} ${new Set(selected.products.map((p) => p.issuer)).size === 1 ? "issuer" : "issuers"} · ${chainCount} networks</p></div></div><button class="primary-button" data-action="quotes" ${view === "quotes" ? "hidden" : ""}>Compare buy quotes <span aria-hidden="true">→</span></button>`;
+    `<div class="company">${stockLogo(selected, desk?.getMarkets().get(selected.id)?.image)}<div><div class="company-name"><h2 id="stock-title" tabindex="-1">${escape(selected.name)}</h2><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p><b>${escape(selected.ticker)}</b> · ${escape(selected.category)} · ${selected.products.filter((p) => !p.wrapped).length} issuer versions${selected.products.some((p) => p.wrapped) ? ` + ${selected.products.filter((p) => p.wrapped).length} wrapped` : ""} · ${new Set(selected.products.map((p) => p.issuer)).size} ${new Set(selected.products.map((p) => p.issuer)).size === 1 ? "issuer" : "issuers"} · ${chainCount} networks</p></div></div><button class="primary-button" data-action="quotes" ${view === "quotes" ? "hidden" : ""}>Compare buy quotes <span aria-hidden="true">→</span></button>`;
+  if (focusTitle) $("#stock-title").focus({ preventScroll: true });
   const wrappers = selected.products.filter((p) => p.wrapped).length;
   $("#wrapper-control").hidden =
     !wrappers || !["products", "terms", "quotes"].includes(view);
@@ -455,10 +457,12 @@ function selectStock(id) {
   $("#issuer").value = "all";
   renderHeading();
   renderStocks();
-  document.querySelector(`[data-stock="${selected.id}"]`)?.focus();
   desk.select(selected);
   document.body.classList.remove("universe-open");
   $("#toggle-universe").setAttribute("aria-expanded", "false");
+  if (matchMedia("(max-width: 760px)").matches)
+    $("#stock-title").focus({ preventScroll: true });
+  else document.querySelector(`[data-stock="${selected.id}"]`)?.focus();
   loadView();
 }
 async function initialize() {
@@ -675,6 +679,9 @@ function setPage(next, write = true) {
   page = next === "markets" ? "markets" : "home";
   $("#home-page").hidden = page !== "home";
   $("#markets-page").hidden = page !== "markets";
+  $(".skip-link").href = page === "markets" ? "#markets-page" : "#comparison";
+  $(".skip-link").textContent =
+    page === "markets" ? "Skip to markets" : "Skip to comparison";
   document.querySelectorAll("[data-page]").forEach((link) => {
     if (link.dataset.page === page) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");

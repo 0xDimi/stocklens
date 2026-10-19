@@ -5,6 +5,34 @@ import { observationStore } from "./observation-store.mjs";
 import { CHAINS, validAddress } from "./config.mjs";
 import { sourceClient, persistentCatalog } from "./source-client.mjs";
 
+export function validateCoinGeckoResponse(body, path) {
+  const pathname = new URL(path, "https://api.coingecko.com").pathname;
+  if (/^\/onchain\/networks\/[^/]+\/pools\/[^/]+\/ohlcv\/[^/]+$/.test(pathname))
+    return Array.isArray(body?.data?.attributes?.ohlcv_list);
+  if (
+    pathname === "/onchain/search/pools" ||
+    /^\/onchain\/networks\/[^/]+\/tokens\/[^/]+\/pools$/.test(pathname)
+  )
+    return Array.isArray(body?.data);
+  if (
+    [
+      "/rwas/list",
+      "/rwas/markets",
+      "/coins/list",
+      "/coins/markets",
+    ].includes(pathname)
+  )
+    return Array.isArray(body);
+  if (pathname.startsWith("/rwas/"))
+    return (
+      body?.id === decodeURIComponent(pathname.slice(6)) &&
+      Array.isArray(body.tokens)
+    );
+  if (/^\/coins\/[^/]+\/tickers$/.test(pathname))
+    return Array.isArray(body?.tickers);
+  return !body?.error && !body?.status?.error_code;
+}
+
 const cg = sourceClient(
   "CoinGecko",
   () =>
@@ -21,26 +49,7 @@ const cg = sourceClient(
         }
       : {},
   {
-    validate: (body, path) => {
-      const pathname = new URL(path, "https://api.coingecko.com").pathname;
-      if (
-        [
-          "/rwas/list",
-          "/rwas/markets",
-          "/coins/list",
-          "/coins/markets",
-        ].includes(pathname)
-      )
-        return Array.isArray(body);
-      if (pathname.startsWith("/rwas/"))
-        return (
-          body?.id === decodeURIComponent(pathname.slice(6)) &&
-          Array.isArray(body.tokens)
-        );
-      if (/^\/coins\/[^/]+\/tickers$/.test(pathname))
-        return Array.isArray(body?.tickers);
-      return !body?.error && !body?.status?.error_code;
-    },
+    validate: validateCoinGeckoResponse,
     concurrency: 1,
     staleWhileRevalidate: true,
     queueTimeoutMs: 60000,
@@ -284,7 +293,11 @@ export function mergeDiscovery(existing, discovered) {
   }
   return output;
 }
-export function parseRwaTokens(data, stock, { includeWrapped = false } = {}) {
+export function parseRwaTokens(
+  data,
+  stock,
+  { includeWrapped = false, retrievedAt = new Date().toISOString() } = {},
+) {
   if (
     data?.id !== stock.rwaId ||
     symbolKey(data.symbol) !== symbolKey(stock.ticker) ||
@@ -314,7 +327,7 @@ export function parseRwaTokens(data, stock, { includeWrapped = false } = {}) {
         ...product(
           c,
           issuer,
-          new Date().toISOString(),
+          retrievedAt,
           "CoinGecko RWA grouping",
         ),
         issuerName: c.issuer_details?.name || issuerName(issuer),
@@ -373,6 +386,30 @@ export function attachKnownProducts(stocks, coins, at) {
     }
   return copy;
 }
+export function discoveryObservation(r, c) {
+  const retrievedAt = new Date(
+    Math.min(Date.parse(r.retrievedAt), Date.parse(c.retrievedAt)),
+  ).toISOString();
+  return {
+    stocks: discoverProducts(r.data, c.data, retrievedAt),
+    universe: {
+      underlyingRecords: r.data.length,
+      securities: r.data.filter((r) =>
+        ["stock", "etf"].includes(r.asset_type),
+      ).length,
+      coinRegistryRecords: c.data.length,
+    },
+    registry: c.data.filter(
+      (coin) =>
+        typeof coin.name === "string" &&
+        !/^wrapped /i.test(coin.name) &&
+        families.some(([, pattern]) => pattern.test(coin.name)),
+    ),
+    retrievedAt,
+    stale: r.stale === true || c.stale === true,
+    warning: [r.warning, c.warning].filter(Boolean).join(" ") || null,
+  };
+}
 export async function getDiscovery() {
   return memo("cg-discovery", 3600_000, () =>
     persistentCatalog("coingecko-discovery-v3", async () => {
@@ -380,23 +417,7 @@ export async function getDiscovery() {
         cg("/rwas/list", 3600_000),
         cg("/coins/list?include_platform=true", 3600_000),
       ]);
-      return {
-        stocks: discoverProducts(r.data, c.data, c.retrievedAt),
-        universe: {
-          underlyingRecords: r.data.length,
-          securities: r.data.filter((r) =>
-            ["stock", "etf"].includes(r.asset_type),
-          ).length,
-          coinRegistryRecords: c.data.length,
-        },
-        registry: c.data.filter(
-          (coin) =>
-            typeof coin.name === "string" &&
-            !/^wrapped /i.test(coin.name) &&
-            families.some(([, pattern]) => pattern.test(coin.name)),
-        ),
-        retrievedAt: c.retrievedAt,
-      };
+      return discoveryObservation(r, c);
     }).then((data) => ({
       ...data,
       stocks: data.stocks.map((stock) => ({
@@ -421,7 +442,10 @@ export async function getRwa(stock) {
       8000,
     );
     return {
-      products: parseRwaTokens(result.data, stock, { includeWrapped: true }),
+      products: parseRwaTokens(result.data, stock, {
+        includeWrapped: true,
+        retrievedAt: result.retrievedAt,
+      }),
       logo: result.data.image?.small || result.data.image?.large || null,
       checkedAt: result.retrievedAt,
       aggregate: result.data.tokenized_market_data || null,

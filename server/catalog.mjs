@@ -23,6 +23,40 @@ import {
   validAddress,
 } from "./config.mjs";
 
+const CATALOG_MAX_AGE_MS = 72 * 3600000;
+function eligibleSourceTime(value, now) {
+  const at = Date.parse(value);
+  return Number.isFinite(at) && at <= now && now - at <= CATALOG_MAX_AGE_MS;
+}
+// A recent cache write or outage check must never renew an identity observation.
+function eligibleStocks(stocks, now) {
+  return stocks.flatMap((stock) => {
+    const products = stock.products.filter((p) =>
+      eligibleSourceTime(p.sourceAt, now),
+    );
+    return products.length ||
+      (!stock.products.length && eligibleSourceTime(stock.sourceAt, now))
+      ? [{ ...stock, products }]
+      : [];
+  });
+}
+function eligibleCatalog(catalog, now) {
+  const stocks = eligibleStocks(catalog.stocks, now);
+  if (!stocks.length) return null;
+  const changed =
+    stocks.length !== catalog.stocks.length ||
+    stocks.some((stock, i) =>
+      stock.products.length !== catalog.stocks[i].products.length,
+    );
+  return changed
+    ? {
+        ...catalog,
+        stocks,
+        coverage: { ...catalog.coverage, ...coverageSummary(stocks) },
+      }
+    : catalog;
+}
+
 export function parseCsv(input) {
   const rows = [];
   let row = [],
@@ -419,7 +453,11 @@ export function createCatalogLoader(options = {}) {
         options.seedPath === undefined ? defaultSeedPath : options.seedPath,
         { seed: true },
       ));
-    const sources = { ...saved?.sources };
+    const sources = Object.fromEntries(
+      Object.entries(saved?.sources || {}).filter(([, source]) =>
+        eligibleSourceTime(source.retrievedAt, now()),
+      ),
+    );
     const observations = await Promise.allSettled([
       (options.getXstocks ?? xStocksCatalog)(),
       (
@@ -429,20 +467,27 @@ export function createCatalogLoader(options = {}) {
       (options.getDiscovery ?? getDiscovery)(),
     ]);
     const fetchedAt = new Date(now()).toISOString();
-    const [x, o, cg] = observations.map((result, index) => {
+    const [x, o, cg] = observations.map((observation, index) => {
       const key = ["xstocks", "ondo", "coingecko"][index];
+      let result = observation;
       if (result.status === "fulfilled") {
         const retrievedAt =
           key === "coingecko"
             ? result.value.retrievedAt
             : options.sourceRetrievedAt?.[key] || fetchedAt;
-        sources[key] = { value: result.value, retrievedAt };
-        return {
-          ...result,
-          retrievedAt,
-          available: result.value?.stale !== true,
-          stale: result.value?.stale === true,
-          error: result.value?.stale ? result.value.warning || null : null,
+        if (eligibleSourceTime(retrievedAt, now())) {
+          sources[key] = { value: result.value, retrievedAt };
+          return {
+            ...result,
+            retrievedAt,
+            available: result.value?.stale !== true,
+            stale: result.value?.stale === true,
+            error: result.value?.stale ? result.value.warning || null : null,
+          };
+        }
+        result = {
+          status: "rejected",
+          reason: new Error("Catalog source observation is expired or undated."),
         };
       }
       const previous = sources[key];
@@ -486,7 +531,7 @@ export function createCatalogLoader(options = {}) {
     if (o.status === "fulfilled")
       stocks = attachOndoCatalog(stocks, o.value, o.retrievedAt);
     stocks = retainCatalogIdentities(
-      saved?.catalog?.stocks || [],
+      eligibleStocks(saved?.catalog?.stocks || [], now()),
       stocks,
       [x, o, cg].some((r) => r.status === "rejected" || r.stale),
     );
@@ -625,12 +670,14 @@ export function createCachedCatalogLoader(options = {}) {
         !saved?.catalog?.stocks?.length ||
         !Number.isFinite(age) ||
         age < 0 ||
-        age > 72 * 3600000
+        age > CATALOG_MAX_AGE_MS
       )
         continue;
+      const catalog = eligibleCatalog(saved.catalog, now());
+      if (!catalog) continue;
       latest = {
-        ...saved.catalog,
-        stocks: applyCatalogReferences(saved.catalog.stocks),
+        ...catalog,
+        stocks: applyCatalogReferences(catalog.stocks),
         mode: "cached",
         cachedAt: saved.savedAt,
         refreshing: false,
@@ -693,6 +740,7 @@ export function createCachedCatalogLoader(options = {}) {
   return async () => {
     if (!initialization) initialization = initialize();
     await initialization;
+    if (latest) latest = eligibleCatalog(latest, now());
     startRefresh();
     if (latest) return latest;
     if (inFlight) return inFlight;

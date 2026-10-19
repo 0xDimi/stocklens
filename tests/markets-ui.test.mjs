@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as model from "../src/market-model.mjs";
+import * as page from "../src/markets-page.mjs";
 
 const observation = (now) => ({
   value: 2.5,
@@ -229,4 +230,91 @@ test("a failed source refresh keeps the last known company data and premium with
   assert.equal(loader.get("a").reference.peStale, true);
   assert.equal(loader.get("a").premium.value, 2.5);
   assert.match(loader.get("a").reference.staleReason, /unavailable/);
+});
+
+// Minimal DOM boundary: the browser owns focus changes when a focused node is
+// removed. These cases exercise our preservation rules, not browser semantics.
+function focusFixture({ key = "asset:pe:summary", moveDuringRender = false } = {}) {
+  const document = { body: {}, activeElement: null };
+  const old = { dataset: { marketFocus: key } };
+  const replacement = {
+    dataset: { marketFocus: key },
+    focus() {
+      document.activeElement = this;
+    },
+  };
+  const outside = { id: "market-search" };
+  const container = {
+    ownerDocument: document,
+    contains: (element) => element === old,
+    querySelectorAll: () => [replacement],
+    set innerHTML(value) {
+      this.markup = value;
+      if (document.activeElement === old) document.activeElement = document.body;
+      if (moveDuringRender) document.activeElement = outside;
+    },
+  };
+  document.activeElement = old;
+  return { document, old, replacement, outside, container };
+}
+test("market rendering restores the same control identity after replacing table rows", () => {
+  assert.equal(typeof page.renderMarketBody, "function");
+  const state = focusFixture();
+  page.renderMarketBody(state.container, "updated rows");
+  assert.equal(state.document.activeElement, state.replacement);
+  assert.equal(state.container.markup, "updated rows");
+});
+test("market rendering leaves focus outside the table alone", () => {
+  assert.equal(typeof page.renderMarketBody, "function");
+  const state = focusFixture();
+  state.document.activeElement = state.outside;
+  page.renderMarketBody(state.container, "updated rows");
+  assert.equal(state.document.activeElement, state.outside);
+});
+test("market rendering does not steal focus moved while rows were replaced", () => {
+  assert.equal(typeof page.renderMarketBody, "function");
+  const state = focusFixture({ moveDuringRender: true });
+  page.renderMarketBody(state.container, "updated rows");
+  assert.equal(state.document.activeElement, state.outside);
+});
+test("market refresh waits for the feed before requesting forced details", async () => {
+  assert.equal(typeof page.refreshMarketPage, "function");
+  let finish;
+  const events = [];
+  const work = page.refreshMarketPage(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+        events.push("feed pending");
+      }),
+    () => events.push("details refreshed"),
+    (error) => events.push(error.message),
+  );
+  assert.deepEqual(events, ["feed pending"]);
+  finish();
+  await work;
+  assert.deepEqual(events, ["feed pending", "details refreshed"]);
+});
+test("a rejected market refresh reports the error and still refreshes independent details", async () => {
+  assert.equal(typeof page.refreshMarketPage, "function");
+  const events = [];
+  await page.refreshMarketPage(
+    async () => {
+      throw new Error("Feed unavailable");
+    },
+    () => events.push("details refreshed"),
+    (error) => events.push(error.message),
+  );
+  assert.deepEqual(events, ["Feed unavailable", "details refreshed"]);
+});
+test("market rendering restores disclosure state before focusing its nested link", () => {
+  const state = focusFixture({ key: "asset:pe:source" });
+  let disclosureOpen = false;
+  state.replacement.focus = () => {
+    if (disclosureOpen) state.document.activeElement = state.replacement;
+  };
+  page.renderMarketBody(state.container, "updated rows", () => {
+    disclosureOpen = true;
+  });
+  assert.equal(state.document.activeElement, state.replacement);
 });

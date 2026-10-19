@@ -201,25 +201,41 @@ export function persistentCatalog(name, load, options = {}) {
   const key = join(cacheDir, name + ".json");
   if (catalogWork.has(key)) return catalogWork.get(key);
   const work = (async () => {
+    const sourceTime = (value, fallback) =>
+      value?.retrievedAt === undefined ? fallback : Date.parse(value.retrievedAt);
+    const eligible = (at) =>
+      Number.isFinite(at) && at <= Date.now() && Date.now() - at <= 72 * 3600000;
     let saved;
     try {
       saved = JSON.parse(await readFile(key, "utf8"));
     } catch {}
     if (
       !saved ||
-      !Number.isFinite(saved.savedAt) ||
-      saved.savedAt > Date.now() ||
+      !eligible(saved.savedAt) ||
       typeof saved.value !== "object" ||
-      !saved.value
+      !saved.value ||
+      !eligible(sourceTime(saved.value, saved.savedAt))
     )
       saved = null;
-    if (saved && Date.now() - saved.savedAt < 12 * 3600000)
+    if (
+      saved &&
+      saved.value.stale !== true &&
+      Date.now() -
+        Math.min(saved.savedAt, sourceTime(saved.value, saved.savedAt)) <
+        12 * 3600000
+    )
       return { ...saved.value, cachedAt: saved.savedAt };
     let value;
     try {
       value = await load();
+      if (!eligible(sourceTime(value, Date.now())))
+        throw new Error("Catalog source observation is expired or undated.");
     } catch (error) {
-      if (saved && Date.now() - saved.savedAt < 72 * 3600000)
+      if (
+        saved &&
+        eligible(saved.savedAt) &&
+        eligible(sourceTime(saved.value, saved.savedAt))
+      )
         return {
           ...saved.value,
           stale: true,
@@ -228,6 +244,8 @@ export function persistentCatalog(name, load, options = {}) {
         };
       throw error;
     }
+    // Stale-while-revalidate is useful to callers, but is not a new source success.
+    if (value.stale === true) return value;
     const tmp = key + "." + randomUUID() + ".tmp";
     try {
       await mkdir(cacheDir, { recursive: true, mode: 0o700 });

@@ -62,6 +62,7 @@ export async function request(
       redirect: "follow",
     });
     if (!response.ok) {
+      await response.body?.cancel().catch(() => {});
       const error = new Error(
         response.status === 429
           ? "Data provider rate limit reached. Please refresh shortly."
@@ -83,6 +84,7 @@ export async function request(
         chunks.push(value);
       }
     } finally {
+      await reader.cancel().catch(() => {});
       reader.releaseLock();
     }
     const text = Buffer.concat(chunks).toString("utf8");

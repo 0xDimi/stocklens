@@ -1,3 +1,7 @@
+## Portfolio audit — 0.6.0, October 19, 2026
+
+The audit and final public rollout evidence are recorded in [PORTFOLIO_REVIEW.md](PORTFOLIO_REVIEW.md). This release adds source-age enforcement, upstream stream cleanup, an authenticated onchain fallback, HTTP 200 payload validation, and keyboard/refresh fixes. Local Node 22 verification passes all 181 tests and the strict production subprocess smoke with actual readiness HTTP 200. Public rollout is checked separately against the deployed revision.
+
 ## Market refresh status and public feed recovery — 0.5.1, October 19, 2026
 
 The production screener returned dated observations plus a confirmed CoinGecko rate-limit status. The client also incorrectly described every stale-while-revalidate response as a failed refresh. Those states are now distinct. Source cooldowns avoid scheduling redundant background work while the feed is already rate limited.

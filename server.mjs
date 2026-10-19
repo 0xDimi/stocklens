@@ -198,7 +198,7 @@ export function createApp({
         }
         const url = new URL(request.url, "http://localhost");
         if (url.pathname === "/api/health") {
-          send(200, { status: "ok", version: "0.5.1" });
+          send(200, { status: "ok", version: "0.6.0" });
           return;
         }
         if (url.pathname === "/api/ready") {

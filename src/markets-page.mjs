@@ -16,6 +16,26 @@ import {
 import { stockLogo, chainLogo } from "./brands.mjs";
 const signed = (v) =>
   Number.isFinite(v) ? `${v > 0 ? "+" : ""}${number(v)}%` : "—";
+// Keep keyboard position when background observations replace table rows.
+export function renderMarketBody(container, markup, restoreState = () => {}) {
+  const document = container.ownerDocument,
+    focused = document.activeElement,
+    key = container.contains(focused) ? focused.dataset.marketFocus : null;
+  container.innerHTML = markup;
+  restoreState();
+  if (!key || ![document.body, focused].includes(document.activeElement)) return;
+  [...container.querySelectorAll("[data-market-focus]")]
+    .find((node) => node.dataset.marketFocus === key)
+    ?.focus({ preventScroll: true });
+}
+export async function refreshMarketPage(refresh, refreshDetails, onError) {
+  try {
+    await refresh();
+  } catch (error) {
+    onError(error);
+  }
+  refreshDetails();
+}
 export function createMarketsPage({
   getState,
   getMarkets,
@@ -60,18 +80,18 @@ export function createMarketsPage({
       },
     );
   }
-  const sourceLink = (url, label) => {
+  const sourceLink = (url, label, key) => {
     try {
       const parsed = new URL(url);
       if (parsed.protocol !== "https:" || parsed.username || parsed.password)
         return escape(label);
-      return `<a href="${escape(parsed.href)}" target="_blank" rel="noopener noreferrer">${escape(label)} ↗</a>`;
+      return `<a data-market-focus="${escape(key)}" href="${escape(parsed.href)}" target="_blank" rel="noopener noreferrer">${escape(label)} ↗</a>`;
     } catch {
       return escape(label);
     }
   };
   function disclosure(label, text, links = "", key = "") {
-    return `<details data-market-detail="${escape(key)}" title="${escape(text)}"><summary><small>${escape(label)}</small></summary><small>${escape(text)}${links ? " · " + links : ""}</small></details>`;
+    return `<details data-market-detail="${escape(key)}" title="${escape(text)}"><summary data-market-focus="${escape(key)}:summary"><small>${escape(label)}</small></summary><small>${escape(text)}${links ? " · " + links : ""}</small></details>`;
   }
   function premiumCell(stock) {
     const entry = details.get(stock.id),
@@ -103,9 +123,13 @@ export function createMarketsPage({
       return `<span>${signed(observed.value)}</span>${disclosure(
         label,
         reason,
-        sourceLink(p.source, "Price source") +
+        sourceLink(p.source, "Price source", stock.id + ":premium:price-source") +
           " · " +
-          sourceLink(p.conversionSource, "Share conversion"),
+          sourceLink(
+            p.conversionSource,
+            "Share conversion",
+            stock.id + ":premium:conversion-source",
+          ),
         stock.id + ":premium",
       )}`;
     }
@@ -177,7 +201,7 @@ export function createMarketsPage({
                   : label === "N/A"
                     ? "Why N/A"
                     : "Unavailable";
-    return `${label}${disclosure(note, reason, r ? sourceLink(source, "Nasdaq") : "", stock.id + ":" + field)}`;
+    return `${label}${disclosure(note, reason, r ? sourceLink(source, "Nasdaq", stock.id + ":" + field + ":source") : "", stock.id + ":" + field)}`;
   }
   function visibleRows() {
     const data = rows();
@@ -265,7 +289,8 @@ export function createMarketsPage({
       if (node.open) openedDetails.add(node.dataset.marketDetail);
       else openedDetails.delete(node.dataset.marketDetail);
     });
-    $("#markets-body").innerHTML =
+    renderMarketBody(
+      $("#markets-body"),
       visible
         .map((s) => {
           const m = s.market,
@@ -277,18 +302,21 @@ export function createMarketsPage({
             issuers = [
               ...new Map(s.products.map((p) => [p.issuer, p])).values(),
             ];
-          return `<tr><td><div class="market-asset"><button class="market-save" data-market-save="${escape(s.id)}" aria-label="${saved.has(s.id) ? "Unsave" : "Save"} ${escape(s.name)}" aria-pressed="${saved.has(s.id)}">${saved.has(s.id) ? "★" : "☆"}</button><a href="/?stock=${encodeURIComponent(s.id)}" data-open-stock="${escape(s.id)}">${stockLogo(s, m?.image)}<span><strong>${escape(s.ticker)}</strong><small>${escape(s.name)}</small></span></a></div></td><td><strong>${usd(m?.price)}</strong><small>${m?.updatedAt ? stamp(m.updatedAt) : "Not observed"}</small></td><td><span class="market-change ${m?.change24h < 0 ? "negative" : m?.change24h > 0 ? "positive" : ""}">${signed(m?.change24h)}</span></td><td>${premiumCell(s)}</td><td>${compact(m?.marketCap)}</td><td>${compact(m?.volume24h)}</td><td><span class="logo-stack" title="${escape(networks.map((id) => chains.find((c) => c.id === id)?.label || id).join(", "))}">${networks
+          return `<tr><td><div class="market-asset"><button class="market-save" data-market-focus="${escape(s.id)}:save" data-market-save="${escape(s.id)}" aria-label="${saved.has(s.id) ? "Unsave" : "Save"} ${escape(s.name)}" aria-pressed="${saved.has(s.id)}">${saved.has(s.id) ? "★" : "☆"}</button><a data-market-focus="${escape(s.id)}:asset" href="/?stock=${encodeURIComponent(s.id)}" data-open-stock="${escape(s.id)}">${stockLogo(s, m?.image)}<span><strong>${escape(s.ticker)}</strong><small>${escape(s.name)}</small></span></a></div></td><td><strong>${usd(m?.price)}</strong><small>${m?.updatedAt ? stamp(m.updatedAt) : "Not observed"}</small></td><td><span class="market-change ${m?.change24h < 0 ? "negative" : m?.change24h > 0 ? "positive" : ""}">${signed(m?.change24h)}</span></td><td>${premiumCell(s)}</td><td>${compact(m?.marketCap)}</td><td>${compact(m?.volume24h)}</td><td><span class="logo-stack" title="${escape(networks.map((id) => chains.find((c) => c.id === id)?.label || id).join(", "))}">${networks
             .slice(0, 3)
             .map((id) => chainLogo(id))
             .join(
               "",
-            )}<span>${networks.length || "—"}</span></span></td><td><a class="version-link" href="/?stock=${encodeURIComponent(s.id)}" data-open-stock="${escape(s.id)}">${s.products.length || "Check"}${s.products.length ? " →" : ""}</a><small title="${escape(issuers.map((p) => provider(p).name).join(", "))}">${issuers.length} issuers</small></td><td>${companyCell(s, "marketCap")}</td><td>${companyCell(s, "pe")}</td></tr>`;
+            )}<span>${networks.length || "—"}</span></span></td><td><a class="version-link" data-market-focus="${escape(s.id)}:versions" href="/?stock=${encodeURIComponent(s.id)}" data-open-stock="${escape(s.id)}">${s.products.length || "Check"}${s.products.length ? " →" : ""}</a><small title="${escape(issuers.map((p) => provider(p).name).join(", "))}">${issuers.length} issuers</small></td><td>${companyCell(s, "marketCap")}</td><td>${companyCell(s, "pe")}</td></tr>`;
         })
         .join("") ||
-      '<tr><td colspan="10" class="empty-results">No assets match. Clear the search or change your filters.</td></tr>';
-    document.querySelectorAll("[data-market-detail]").forEach((node) => {
-      node.open = openedDetails.has(node.dataset.marketDetail);
-    });
+      '<tr><td colspan="10" class="empty-results">No assets match. Clear the search or change your filters.</td></tr>',
+      () => {
+        document.querySelectorAll("[data-market-detail]").forEach((node) => {
+          node.open = openedDetails.has(node.dataset.marketDetail);
+        });
+      },
+    );
   }
   function initialize() {
     const { stocks, chains } = getState();
@@ -364,10 +392,17 @@ export function createMarketsPage({
     changed();
     $("#markets-table").scrollIntoView({ block: "start" });
   });
-  $("#market-refresh").addEventListener("click", () => {
-    onRefresh(false);
-    scheduleDetails({ immediate: true, force: true });
-  });
+  $("#market-refresh").addEventListener("click", () =>
+    refreshMarketPage(
+      () => onRefresh(false),
+      () => scheduleDetails({ immediate: true, force: true }),
+      (error) => {
+        $("#market-data-warning").textContent =
+          error.message || "Market refresh failed.";
+        $("#market-data-warning").hidden = false;
+      },
+    ),
+  );
   $("#market-next-data").addEventListener("click", () => onRefresh(true));
   $("#market-fundamentals").addEventListener("click", () =>
     scheduleDetails({ immediate: true, force: true }),

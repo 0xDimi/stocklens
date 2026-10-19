@@ -47,6 +47,10 @@ function corroboratesName(stock, companyName) {
   const target = nameWords(stock.name),
     actual = nameWords(companyName);
   if (!target || !actual) return false;
+  // Legal name changed on 2025-08-11; MSTR Class A and its CUSIP remained unchanged.
+  // https://www.strategy.com/press/strategy-announces-legal-name-change-from-microstrategy-incorporated-to-strategy-inc_08-14-2025
+  if (stock.ticker === "MSTR" && target === "microstrategy" && actual === "strategy")
+    return true;
   if (
     target.replace(/ /g, "") === actual.replace(/ /g, "") ||
     actual.startsWith(target + " ") ||

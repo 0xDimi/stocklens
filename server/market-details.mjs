@@ -102,6 +102,9 @@ export async function marketDetailsView(
             venue: observation.venue,
             budget: 1000,
             price: observation.effectivePrice,
+            priceImpactPct: Number.isFinite(observation.priceImpactPct)
+              ? observation.priceImpactPct
+              : null,
             sharesPerToken: observation.sharesPerToken,
             priceAt: observation.fetchedAt,
             referenceAt: reference.at,

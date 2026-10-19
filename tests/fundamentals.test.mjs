@@ -528,3 +528,40 @@ test("manual seed packaging retains source observations as expired cache and rej
     ),
   );
 });
+
+test("MSTR's documented legal name change corroborates only MicroStrategy and Strategy", () => {
+  const former = {
+    id: "MSTR",
+    ticker: "MSTR",
+    name: "MicroStrategy",
+    category: "Stock",
+  };
+  const current = listedInfo("MSTR", "Strategy Inc Common Stock Class A");
+  const result = parseFundamentals(current, null, former, retrievedAt);
+  assert.equal(result.ticker, "MSTR");
+  assert.equal(result.companyName, "Strategy Inc Common Stock Class A");
+  assert.throws(() =>
+    parseFundamentals(
+      current,
+      null,
+      { ...former, name: "MicroStrategy Holdings" },
+      retrievedAt,
+    ),
+  );
+  assert.throws(() =>
+    parseFundamentals(
+      listedInfo("MSTR", "Strategy Asset Management Common Stock"),
+      null,
+      former,
+      retrievedAt,
+    ),
+  );
+  assert.throws(() =>
+    parseFundamentals(
+      listedInfo("MU", "Strategy Inc Common Stock Class A"),
+      null,
+      { ...former, ticker: "MU" },
+      retrievedAt,
+    ),
+  );
+});

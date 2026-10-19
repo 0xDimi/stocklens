@@ -81,9 +81,13 @@ export function createMarketsPage({
       const budget = Number.isFinite(p.budget)
           ? `${compact(p.budget)} buy`
           : "Observed",
-        label = `${observed.stale ? "Last observed" : budget}${p.referenceBasis === "last-close" ? " vs close" : ""} · ${stamp(p.priceAt)}`,
+        impact = Number.isFinite(p.priceImpactPct) ? p.priceImpactPct : null,
+        label = `${impact >= 5 ? "High price impact · " + number(impact) + "% · " : ""}${observed.stale ? "Last observed" : budget}${p.referenceBasis === "last-close" ? " vs close" : ""} · ${stamp(p.priceAt)}`,
         reason = [
           p.basis,
+          impact != null
+            ? `Venue-reported price impact: ${number(impact)}%.${impact >= 5 ? " This order materially moves the pool price; the premium includes that impact." : ""}`
+            : "Venue price impact not supplied.",
           `${p.symbol || "Token"} · ${p.chain || "Network not supplied"}`,
           `Cost per equivalent share ${usd(p.price)}; ${number(p.sharesPerToken, 6)} listed shares per token.`,
           `Token observed ${stamp(p.priceAt)}; Nasdaq reference ${stamp(p.referenceAt)} (minute precision); retrieved ${stamp(p.retrievedAt)}.`,

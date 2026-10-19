@@ -127,3 +127,19 @@ test("outside market hours a fresh official last-close reference produces an exp
   assert.match(data.rows[0].premium.basis, /last close/i);
   assert.ok(data.rows[0].premium.expiresAt > now);
 });
+
+test("premium preserves provider price impact so thin-pool observations can be identified", async () => {
+  const deps = setup();
+  const original = deps.quote;
+  deps.quote = async () => ({ ...(await original()), priceImpactPct: 70.53 });
+  const result = await marketDetailsView(
+    new URLSearchParams({ ids: stock.id }),
+    deps,
+  );
+  assert.equal(result.rows[0].premium.priceImpactPct, 70.53);
+  const unknown = await marketDetailsView(
+    new URLSearchParams({ ids: stock.id }),
+    setup(),
+  );
+  assert.equal(unknown.rows[0].premium.priceImpactPct, null);
+});

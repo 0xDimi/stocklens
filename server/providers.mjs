@@ -214,6 +214,7 @@ export async function getQuote(product, deployment, amount) {
     return {
       id,
       issuer: product.issuer,
+      wrapped: product.wrapped === true,
       issuerName: product.issuerName,
       symbol: product.symbol,
       chain: deployment.chain,
@@ -253,6 +254,7 @@ export async function getQuote(product, deployment, amount) {
   const base = {
     id,
     issuer: product.issuer,
+    wrapped: product.wrapped === true,
     issuerName: product.issuerName,
     symbol: product.symbol,
     chain: deployment.chain,

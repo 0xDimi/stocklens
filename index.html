@@ -25,21 +25,29 @@
           class="brand-dot"
           >.</span
         ></a
-      ><span class="header-caption">Tokenized stocks, compared.</span>
+      >
+      <nav class="page-nav" aria-label="Main navigation">
+        <a href="/" data-page="home" aria-current="page">Home</a
+        ><a href="/?page=markets" data-page="markets">Markets</a>
+      </nav>
       <nav>
         <button id="command-open" class="text-button">
           Quick search <kbd>⌘ K</kbd></button
         ><button id="how-it-works" class="text-button">How it works ↗</button>
       </nav>
     </header>
-    <main class="page">
+    <main class="page" id="home-page">
       <section class="page-intro">
         <div>
-          <h1>Compare tokenized stocks.</h1>
-          <p>Find a company. Compare its tokens, issuers and markets.</p>
+          <h1>One stock. Compare its tokens.</h1>
+          <p>
+            Find your stock, compare verified versions, then open the right
+            venue.
+          </p>
         </div>
         <div class="coverage-note">
-          <span id="coverage">Loading the asset catalog…</span
+          <button class="coverage-link" data-open-coverage id="coverage">
+            Loading the asset catalog…</button
           ><small id="market-status"
             >CoinGecko · GeckoTerminal · issuer data</small
           >
@@ -50,7 +58,7 @@
           <div class="rail-heading">
             <h2>Find an asset</h2>
             <button id="toggle-universe" aria-expanded="false">
-              Browse assets ↓
+              Search stocks ↓
             </button>
           </div>
           <div class="universe-content">
@@ -121,6 +129,7 @@
             <p>Loading company…</p>
           </div>
           <div id="asset-metrics" class="asset-metrics"></div>
+          <p id="verification-note" class="verification-note"></p>
           <div class="view-tabs" role="tablist" aria-label="Comparison views">
             <button
               role="tab"
@@ -184,6 +193,10 @@
               ></select
             ></label>
           </div>
+          <label class="wrapper-filter" id="wrapper-control" hidden
+            ><input type="checkbox" id="include-wrappers" /> Include wrapped
+            versions <span id="wrapper-count"></span
+          ></label>
           <div id="quote-controls" class="controls" hidden>
             <div class="budget-control">
               <label for="budget">I want to spend</label>
@@ -216,8 +229,9 @@
               Prices are in USD per token. Compare buy quotes to see equivalent
               share exposure.
             </p>
-            <button id="methodology">How prices compare ↗</button>
+            <button id="methodology">Price basis ↗</button>
           </div>
+          <p id="view-source-warning" class="view-source-warning" hidden></p>
           <div id="compare-box" class="compare-box" hidden>
             <div class="compare-label">
               Selected <span id="compare-count">0/3</span>
@@ -302,11 +316,181 @@
             <div id="security-profile"></div>
             <div id="source-details"></div>
             <div id="desk-source-state"></div>
-            <button id="enrich">Refresh CoinGecko asset mapping ↗</button>
+            <button id="enrich">Refresh CoinGecko asset mapping ↗</button
+            ><button class="text-button" data-open-coverage>
+              View full coverage audit ↗
+            </button>
           </details>
         </section>
       </div>
     </main>
+    <main class="page markets-page" id="markets-page" hidden>
+      <section class="markets-heading">
+        <div>
+          <h1>Markets</h1>
+          <p id="market-universe-note">Loading the asset catalog…</p>
+        </div>
+        <button class="text-button" data-open-coverage>
+          Coverage & sources ↗
+        </button>
+      </section>
+      <div class="markets-tools">
+        <div class="market-ranking" aria-label="Market ranking">
+          <button data-market-sort="volume" aria-pressed="true">
+            Most traded</button
+          ><button
+            data-market-sort="cap"
+            title="Tokenized capitalization among loaded observations"
+            aria-pressed="false"
+          >
+            Top</button
+          ><button
+            data-market-sort="gainers"
+            title="Gainers among loaded source observations"
+            aria-pressed="false"
+          >
+            Gainers</button
+          ><button
+            data-market-sort="losers"
+            title="Losers among loaded source observations"
+            aria-pressed="false"
+          >
+            Losers
+          </button>
+        </div>
+        <label class="search-field market-search"
+          ><span aria-hidden="true">⌕</span
+          ><input
+            id="market-search"
+            type="search"
+            aria-label="Search markets"
+            placeholder="Search stocks or tokens…"
+        /></label>
+      </div>
+      <div class="markets-filters">
+        <label
+          ><span class="sr-only">Asset type</span
+          ><select id="market-type" aria-label="Market asset type">
+            <option value="all">All assets</option>
+            <option value="Stock">Stocks</option>
+            <option value="ETF">ETFs</option>
+            <option value="Listed security">Other listed securities</option>
+          </select></label
+        ><label
+          ><span class="sr-only">Network</span
+          ><select id="market-chain" aria-label="Market network">
+            <option value="all">All networks</option>
+          </select></label
+        ><label
+          ><span class="sr-only">Issuer</span
+          ><select id="market-issuer" aria-label="Market issuer">
+            <option value="all">All issuers</option>
+          </select></label
+        ><button id="market-watchlist" aria-pressed="false">☆ Watchlist</button
+        ><label class="sr-only" for="market-sort">Market sort</label
+        ><select id="market-sort" aria-label="Market sort">
+          <option value="volume">24h volume</option>
+          <option value="cap">Tokenized cap</option>
+          <option value="price">Tokenized price</option>
+          <option value="gainers">Gainers</option>
+          <option value="losers">Losers</option>
+          <option value="versions">Most versions</option>
+          <option value="chains">Most networks</option>
+          <option value="name">Name A–Z</option>
+        </select>
+        <div class="overview-actions">
+          <button id="market-refresh">↻ Refresh</button
+          ><button id="market-export">Export CSV</button>
+        </div>
+      </div>
+      <div class="market-feed-line">
+        <span id="market-feed-note">Loading source observations…</span
+        ><button id="market-next-data" hidden>Load more price coverage</button>
+      </div>
+      <p id="market-data-warning" class="coverage-warning" hidden></p>
+      <p class="market-table-hint">Swipe to see all market metrics →</p>
+      <div
+        class="market-table-scroll"
+        tabindex="0"
+        role="region"
+        aria-label="Tokenized stock markets. Scroll horizontally for all metrics."
+      >
+        <table id="markets-table" class="overview-table">
+          <thead>
+            <tr>
+              <th scope="col">Stock</th>
+              <th scope="col">Tokenized price</th>
+              <th scope="col">24h</th>
+              <th
+                scope="col"
+                title="Latest supported buy quote vs a fresh Nasdaq reference, before gas, assuming USDC equals $1. Requires verified share conversion. Not a market-wide spot premium."
+              >
+                Onchain premium ⓘ
+              </th>
+              <th
+                scope="col"
+                title="Combined capitalization of tokenized versions, not the company's market capitalization."
+              >
+                Tokenized cap ⓘ
+              </th>
+              <th scope="col">24h volume</th>
+              <th scope="col">Chains</th>
+              <th scope="col">Versions</th>
+              <th scope="col">Company cap</th>
+              <th
+                scope="col"
+                title="P/E for the listed company, only if explicitly supplied by the connected source."
+              >
+                P/E ⓘ
+              </th>
+            </tr>
+          </thead>
+          <tbody id="markets-body">
+            <tr>
+              <td colspan="10" class="empty-results">Loading markets…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="market-pagination">
+        <span id="market-page-status"></span>
+        <div>
+          <button id="market-prev" disabled>← Previous</button
+          ><span id="market-page-number"></span
+          ><button id="market-next" disabled>Next →</button>
+        </div>
+      </div>
+      <div class="market-data-notes">
+        <p>
+          Prices, 24h changes, capitalization and volume describe the tokenized
+          market. Counts reflect mapped versions; opening a stock checks its
+          latest native grouping. Missing values stay empty.
+        </p>
+        <p>
+          Quote premium uses your latest compared order and expires with the
+          quote. It requires a fresh listed-stock reference and verified share
+          conversion. USDC is assumed to equal $1; network costs are excluded.
+        </p>
+        <div>
+          <button id="market-fundamentals">Load company data</button
+          ><span id="market-company-status"
+            >Optional Nasdaq references for the current 25 rows. Company cap and
+            P/E are separate from tokenized metrics.</span
+          >
+        </div>
+      </div>
+    </main>
+    <dialog id="coverage-dialog" class="coverage-dialog">
+      <button
+        class="dialog-close"
+        data-close="coverage-dialog"
+        aria-label="Close coverage"
+      >
+        ×
+      </button>
+      <h2>Coverage & sources</h2>
+      <div id="coverage-content"></div>
+    </dialog>
     <footer class="footer">
       <span
         >Market data by

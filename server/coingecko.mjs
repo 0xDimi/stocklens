@@ -102,6 +102,16 @@ function deployments(platforms) {
       : [];
   });
 }
+export function isWrappedProduct(coin) {
+  const issuer = coin.issuer || coin.issuer_details?.id;
+  return (
+    coin.wrapped === true ||
+    /^wrapped[ -]/i.test(coin.name || coin.coinId || coin.id || "") ||
+    (["st0x", "st0x-ecosystem"].includes(issuer) &&
+      /^wt[a-z0-9]+$/i.test(coin.symbol || "") &&
+      /ST0x Tokenized Stock/i.test(coin.name || ""))
+  );
+}
 function product(coin, issuer, at, mapping) {
   return {
     issuer,
@@ -112,6 +122,14 @@ function product(coin, issuer, at, mapping) {
     source: `https://www.coingecko.com/en/coins/${encodeURIComponent(coin.id)}`,
     sourceAt: at,
     mapping,
+    logo:
+      typeof coin.image === "string"
+        ? coin.image
+        : coin.image?.small || coin.image?.large || null,
+    wrapped: isWrappedProduct({ ...coin, issuer }),
+    unmappedPlatforms: Object.keys(coin.platforms || {}).filter(
+      (platform) => !Object.values(CHAINS).some((c) => c.platform === platform),
+    ),
     halted: false,
     deployments: deployments(coin.platforms),
   };
@@ -163,7 +181,7 @@ export function discoverProducts(rwas, coins, at) {
     );
     if (p.deployments.length) matches[0].products.push(p);
   }
-  return securities.filter((s) => s.products.length);
+  return securities;
 }
 export function mergeDiscovery(existing, discovered) {
   const output = structuredClone(existing);
@@ -193,19 +211,32 @@ export function mergeDiscovery(existing, discovered) {
       output.push(item);
       continue;
     }
-    target.rwaId = item.rwaId;
+    target.rwaId = item.rwaId || target.rwaId;
+    if (item.category) target.category = item.category;
+    if (item.logo) target.logo = item.logo;
+    if (item.nativeCheckedAt) target.nativeCheckedAt = item.nativeCheckedAt;
     for (const p of item.products) {
-      const match = target.products.find(
-        (v) =>
-          v.issuer === p.issuer && symbolKey(v.symbol) === symbolKey(p.symbol),
-      );
+      const match =
+        target.products.find((v) => p.coinId && v.coinId === p.coinId) ||
+        target.products.find(
+          (v) =>
+            v.issuer === p.issuer &&
+            symbolKey(v.symbol) === symbolKey(p.symbol),
+        );
       if (!match) {
         target.products.push(p);
         continue;
       }
+      if (p.mapping === "CoinGecko RWA grouping") {
+        match.issuer = p.issuer;
+        match.issuerName = p.issuerName;
+      }
       match.coinId = p.coinId;
       match.issuerName = p.issuerName;
       match.mapping = p.mapping;
+      if (p.logo) match.logo = p.logo;
+      match.wrapped = p.wrapped === true;
+      match.unmappedPlatforms = p.unmappedPlatforms || [];
       match.marketSource = p.source;
       for (const d of p.deployments)
         if (
@@ -222,7 +253,7 @@ export function mergeDiscovery(existing, discovered) {
   }
   return output;
 }
-export function parseRwaTokens(data, stock) {
+export function parseRwaTokens(data, stock, { includeWrapped = false } = {}) {
   if (
     data?.id !== stock.rwaId ||
     symbolKey(data.symbol) !== symbolKey(stock.ticker) ||
@@ -234,7 +265,7 @@ export function parseRwaTokens(data, stock) {
       (c) =>
         /^[a-z0-9-]+$/.test(c.id) &&
         typeof c.symbol === "string" &&
-        !/^wrapped[ -]/i.test(c.name || c.id),
+        (includeWrapped || !/^wrapped[ -]/i.test(c.name || c.id)),
     )
     .map((c) => {
       const native = c.issuer_details?.id;
@@ -258,7 +289,7 @@ export function parseRwaTokens(data, stock) {
         issuerName: c.issuer_details?.name || issuerName(issuer),
       };
     })
-    .filter((p) => p.deployments.length);
+    .filter((p) => p.deployments.length && (includeWrapped || !p.wrapped));
 }
 export function attachKnownProducts(stocks, coins, at) {
   const registry = new Map();
@@ -313,13 +344,20 @@ export function attachKnownProducts(stocks, coins, at) {
 }
 export async function getDiscovery() {
   return memo("cg-discovery", 3600_000, () =>
-    persistentCatalog("coingecko-discovery-v2", async () => {
+    persistentCatalog("coingecko-discovery-v3", async () => {
       const [r, c] = await Promise.all([
         cg("/rwas/list", 3600_000),
         cg("/coins/list?include_platform=true", 3600_000),
       ]);
       return {
         stocks: discoverProducts(r.data, c.data, c.retrievedAt),
+        universe: {
+          underlyingRecords: r.data.length,
+          securities: r.data.filter((r) =>
+            ["stock", "etf"].includes(r.asset_type),
+          ).length,
+          coinRegistryRecords: c.data.length,
+        },
         registry: c.data.filter(
           (coin) =>
             typeof coin.name === "string" &&
@@ -328,7 +366,16 @@ export async function getDiscovery() {
         ),
         retrievedAt: c.retrievedAt,
       };
-    }),
+    }).then((data) => ({
+      ...data,
+      stocks: data.stocks.map((stock) => ({
+        ...stock,
+        products: stock.products.map((p) => ({
+          ...p,
+          wrapped: isWrappedProduct(p),
+        })),
+      })),
+    })),
   );
 }
 export async function getRwa(stock) {
@@ -339,7 +386,9 @@ export async function getRwa(stock) {
       300_000,
     );
     return {
-      products: parseRwaTokens(result.data, stock),
+      products: parseRwaTokens(result.data, stock, { includeWrapped: true }),
+      logo: result.data.image?.small || result.data.image?.large || null,
+      checkedAt: result.retrievedAt,
       aggregate: result.data.tokenized_market_data || null,
     };
   } catch (error) {

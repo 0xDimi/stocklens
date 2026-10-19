@@ -1,5 +1,21 @@
 # Verification — October 19, 2026 (Europe/Athens)
 
+## Home, Markets, identity and logo update · 2026-10-19
+
+The current UI has Home for comparison and a separate full-catalog Markets table. Real circular stock, issuer, network and venue marks have local retrieval provenance in `assets/logos/sources.json`, strict remote-image allowlisting and text fallbacks. Source-native grouping runs when an asset opens. Additional wrapped xStocks and ST0x wtStock are explicitly classified and opt-in. Held-back issuer mappings remain inspectable in the coverage dialog and cannot enter canonical comparisons or quotes.
+
+**86 tests pass on Node 22.** Regressions cover registry assets without token mappings, wrapper classification (including persisted snapshots), issuer correction without duplicate versions, exact-contract Ondo enrichment without uncorroborated ISIN reassignment, inspectable held-back rows, source counts, safe logos, market search/sort/watchlists, corroborated listed-stock names, ET timestamps, missing P/E, reference retries and premium timestamp/conversion guards. Production subprocess smoke passed with actual readiness 200 and all new client modules. Docker now includes local assets; Docker execution remains unavailable locally.
+
+Final real integration at `2026-10-19T10:11:47Z` passed: 1,963 catalog assets, NVIDIA 13 mapped versions (including wrappers), 12 with prices and 11 native-grouped products; real exact-contract pools/history, normalized quotes and validated venue handoffs for NVDA, AAPL and TSLA. Quote quantities and prices are time-bound observations, not current offers.
+
+Browser checks cover Markets direct links, Home navigation, command search from Markets into NVIDIA comparison, wrapper inclusion (11 → 13 displayed versions), issuer comparison and its quote CTA, a fresh xStocks/Solana quote with exact Raydium input/output mint handoff, shared watchlist save/filter/removal, network filtering, current-page company-data loading, 200 inspectable held-back issuer rows and desktop/mobile layouts. The public Nasdaq feed supplied 17 corroborated company references for one 25-row page; missing fields were not estimated. At 390×844, the first complete NVIDIA product row occupied y642–841; document width stayed inside the viewport. No console errors or visible broken logo images were observed in the completed checks. The Markets quote premium appeared for an actual normalized order and cleared to an expired state after 30 seconds. Independent code and four-screenshot review found no material blockers; the reviewer independently reran all 86 tests.
+
+Markets premium uses the latest fresh, share-normalized supported order, a current USD Nasdaq reference and the stated USDC=$1 assumption. It is cleared when the quote expires. It is not a market-wide spot estimate. P/E remains unavailable unless explicitly supplied by the connected source. Coverage is partial: 160 registry assets had no initial mapped token, 200 issuer records remained held back, 16 networks were observed and 18 are configured; quote adapters cover five. Source timestamps, partial legal disclosures and issuer-identity gaps remain visible.
+
+Evidence: `test-results/upgrade-node22-tests.log`, `comparison-markets-smoke.log`, `comparison-markets-integration-final.log`, `live-integration.json`, `home-personalized-desktop.png`, `home-personalized-mobile.png`, `markets-desktop.png`, `markets-mobile.png`. Earlier sections describe previous releases.
+
+## Previous comparison release
+
 ## Current comparison interface
 
 The user preferred the previous, intuitive comparison layout over a terminal. The current interface restores daylight/teal surfaces, normal page scrolling and a two-column asset finder/comparison. Price per token, 24h volume, issuer structure and networks are visible in product rows. Buy comparison leads with fresh verified share exposure, equivalent-share cost and the exclusion of network costs. Charts and source detail are opened on demand.
@@ -58,4 +74,4 @@ Independent code review identified exact-token chart scope, venue CSV schema, hi
 
 Production runtime, non-root Dockerfile, Compose, Render manifest, CI and operations instructions are supplied. No public service was created. Docker is unavailable on this computer, so the image and Compose have not been executed locally; CI Node 24 and container jobs are configured but have not run. Node 22 is validated locally. HTTPS termination and trusted proxy addresses must be configured for the chosen host as described in DEPLOY.md.
 
-Public APIs can be delayed, partial, rate-limited or unavailable. Market-source observations live in process memory and disappear at restart; catalog snapshots persist. Unverified share ratios stay unranked. This release opens external venues and does not submit trades, custody assets, determine eligibility or provide a stock-exchange reference-price feed.
+Public APIs can be delayed, partial, rate-limited or unavailable. Market-source observations live in process memory and disappear at restart; catalog snapshots persist. Unverified share ratios stay unranked. That earlier release opened external venues without stock-exchange reference data. The current update adds independent Nasdaq references; it still does not submit trades, custody assets or determine eligibility.

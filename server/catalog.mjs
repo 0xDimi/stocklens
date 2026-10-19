@@ -4,6 +4,7 @@ import {
   getRwa,
   attachKnownProducts,
 } from "./coingecko.mjs";
+import { coverageSummary } from "./coverage.mjs";
 import { memo, request } from "./http.mjs";
 import {
   XSTOCKS_API,
@@ -81,12 +82,7 @@ export function buildCatalog(xstocks, ondo, fetchedAt, conflicts = []) {
   };
   for (const node of xstocks) {
     const u = node.underlying;
-    if (
-      !u ||
-      u.currency !== "USD" ||
-      typeof node.symbol !== "string" ||
-      !node.symbol.endsWith("x")
-    )
+    if (!u || typeof node.symbol !== "string" || !node.symbol.endsWith("x"))
       continue;
     add(
       {
@@ -94,11 +90,14 @@ export function buildCatalog(xstocks, ondo, fetchedAt, conflicts = []) {
         ticker: u.symbol,
         name: String(node.name).replace(/ xStock$/, ""),
         category: u.type === "Equity" ? "Stock" : u.type || "Listed security",
+        logo: node.logo || null,
         exchange: u.exchange?.abbreviation || "",
+        currency: u.currency || null,
         sourceAt: fetchedAt,
       },
       {
         issuer: "xstocks",
+        logo: node.logo || null,
         symbol: node.symbol,
         isin: node.isin,
         source: `${XSTOCKS_API}/assets/${encodeURIComponent(node.symbol)}`,
@@ -151,6 +150,8 @@ export function buildCatalog(xstocks, ondo, fetchedAt, conflicts = []) {
           ["Ethereum", "Ethereum Deployed Address"],
           ["BinanceSmartChain", "BSC Deployed Address"],
           ["Solana", "Solana Deployed Address"],
+          ["HyperEVM", "HyperEVM Deployed Address"],
+          ["Robinhood", "Robinhood Chain Deployed Address"],
         ].map(([chain, key]) => ({ chain, address: row[key] || "" })),
       },
     );
@@ -181,7 +182,7 @@ async function xStocksCatalog() {
   for (let page = 0; page < 30; page++) {
     if (Date.now() >= deadline) throw new Error("Identity catalog timed out.");
     const data = await request(
-      `${XSTOCKS_API}/assets?listingCountry=US&pageSize=100&page=${page}`,
+      `${XSTOCKS_API}/assets?pageSize=100&page=${page}`,
       { timeout: Math.min(12_000, deadline - Date.now()) },
     );
     if (
@@ -194,6 +195,110 @@ async function xStocksCatalog() {
     if (!data.page.hasNextPage) return nodes;
   }
   throw new Error("xStocks catalog exceeded the supported page limit.");
+}
+// An issuer record excluded from the xStocks join can still be corroborated by an exact CoinGecko product contract.
+export function attachOndoCatalog(stocks, rows, at) {
+  const copy = structuredClone(stocks);
+  for (const row of rows) {
+    if (
+      !["Stock", "ETF"].includes(row.Type) ||
+      !/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(row.ISIN)
+    )
+      continue;
+    const candidates = copy.filter(
+      (s) =>
+        s.ticker === row["Stock Ticker"] &&
+        s.products.some(
+          (p) =>
+            p.issuer === "ondo" &&
+            p.coinId === row["CoinGecko API ID"] &&
+            p.deployments.some((d) =>
+              [
+                ["Ethereum", "Ethereum Deployed Address"],
+                ["BinanceSmartChain", "BSC Deployed Address"],
+                ["Solana", "Solana Deployed Address"],
+              ].some(
+                ([chain, key]) =>
+                  chain === d.chain &&
+                  (chain === "Solana"
+                    ? d.address === row[key]
+                    : d.address.toLowerCase() ===
+                      (row[key] || "").toLowerCase()),
+              ),
+            ),
+        ),
+    );
+    if (candidates.length !== 1) continue;
+    const stock = candidates[0];
+    if (!stock.id.startsWith("cg:") && stock.id !== row.ISIN) continue;
+    if (copy.some((s) => s !== stock && s.id === row.ISIN)) continue;
+    // CoinGecko does not disclose an independent ISIN. Preserve its canonical ID.
+
+    const p = stock.products.find(
+      (p) => p.issuer === "ondo" && p.coinId === row["CoinGecko API ID"],
+    );
+    p.source = ONDO_SOURCE;
+    p.sourceAt = at;
+    p.reportedUnderlyingIsin = row.ISIN;
+    for (const [chain, key] of [
+      ["Ethereum", "Ethereum Deployed Address"],
+      ["BinanceSmartChain", "BSC Deployed Address"],
+      ["Solana", "Solana Deployed Address"],
+      ["HyperEVM", "HyperEVM Deployed Address"],
+      ["Robinhood", "Robinhood Chain Deployed Address"],
+    ]) {
+      const address = row[key];
+      if (
+        validAddress(chain, address) &&
+        !p.deployments.some(
+          (d) =>
+            d.chain === chain &&
+            d.address.toLowerCase() === address.toLowerCase(),
+        )
+      )
+        p.deployments.push({
+          chain,
+          address,
+          provenance: "Ondo official contract list",
+        });
+    }
+  }
+  return copy;
+}
+export function pendingIssuerRecords(rows, conflicts, at) {
+  return conflicts.flatMap((conflict) => {
+    const row = rows.find(
+      (row) =>
+        row.Symbol === conflict.symbol &&
+        row.ISIN === conflict.isin &&
+        row["Stock Ticker"] === conflict.ticker,
+    );
+    if (!row) return [];
+    return [
+      {
+        issuer: "ondo",
+        symbol: row.Symbol,
+        claimedUnderlying: {
+          ticker: row["Stock Ticker"],
+          name: row["Stock Name"],
+          isin: row.ISIN,
+        },
+        source: ONDO_SOURCE,
+        sourceAt: at,
+        reason:
+          "Issuer identity mapping was not corroborated by the connected registries. Excluded from comparison and quotes.",
+        deployments: [
+          ["Ethereum", "Ethereum Deployed Address"],
+          ["BinanceSmartChain", "BSC Deployed Address"],
+          ["Solana", "Solana Deployed Address"],
+          ["HyperEVM", "HyperEVM Deployed Address"],
+          ["Robinhood", "Robinhood Chain Deployed Address"],
+        ].flatMap(([chain, key]) =>
+          validAddress(chain, row[key]) ? [{ chain, address: row[key] }] : [],
+        ),
+      },
+    ];
+  });
 }
 export async function loadCatalog() {
   return memo("catalog", 600_000, async () => {
@@ -214,7 +319,7 @@ export async function loadCatalog() {
       fetchedAt,
       conflicts,
     );
-    const stocks =
+    let stocks =
       cg.status === "fulfilled"
         ? mergeDiscovery(
             attachKnownProducts(
@@ -225,6 +330,8 @@ export async function loadCatalog() {
             cg.value.stocks,
           )
         : issuerStocks;
+    if (o.status === "fulfilled")
+      stocks = attachOndoCatalog(stocks, o.value, fetchedAt);
     if (!stocks.length)
       throw new Error(
         "Issuer catalogs did not contain verified supported securities.",
@@ -239,16 +346,39 @@ export async function loadCatalog() {
       warnings.push(
         "xStocks identity source unavailable; using independent CoinGecko underlying IDs.",
       );
-    if (conflicts.length)
+    const unresolved = conflicts.filter(
+      (row) =>
+        !stocks.some(
+          (s) =>
+            s.ticker === row.ticker &&
+            s.products.some(
+              (p) =>
+                p.issuer === "ondo" &&
+                p.symbol === row.symbol &&
+                (s.id === row.isin || p.reportedUnderlyingIsin === row.isin),
+            ),
+        ),
+    );
+    if (unresolved.length)
       warnings.push(
-        `${conflicts.length} issuer records held back because identity mappings are unconfirmed or inconsistent.`,
+        `${unresolved.length} issuer records held back because identity mappings are unconfirmed or inconsistent.`,
       );
     if (o.status === "rejected")
       warnings.push(
-        "Ondo catalog unavailable; coverage is limited to xStocks.",
+        "Ondo direct catalog unavailable; independent registry mappings remain available.",
       );
     return {
       stocks,
+      pendingProducts: pendingIssuerRecords(
+        o.status === "fulfilled" ? o.value : [],
+        unresolved,
+        fetchedAt,
+      ),
+      coverage: {
+        ...coverageSummary(stocks),
+        registry: cg.status === "fulfilled" ? cg.value.universe : null,
+        heldBackIssuerRecords: unresolved.length,
+      },
       fetchedAt,
       warnings,
       chains: Object.values(CHAINS).map(({ id, label, explorer, usdc }) => ({
@@ -301,10 +431,20 @@ export async function resolveStock(
   const warnings = [...catalog.warnings];
   if (enrich && stock.rwaId) {
     const native = await getNative(stock);
-    if (native.products.length)
+    if (native.products.length || native.checkedAt)
       Object.assign(
         stock,
-        mergeDiscovery([stock], [{ ...stock, products: native.products }])[0],
+        mergeDiscovery(
+          [stock],
+          [
+            {
+              ...stock,
+              products: native.products,
+              logo: native.logo || stock.logo,
+              nativeCheckedAt: native.checkedAt,
+            },
+          ],
+        )[0],
       );
     if (native.warning) warnings.push(native.warning);
   }

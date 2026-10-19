@@ -1,3 +1,4 @@
+import { getFundamentals } from "./fundamentals.mjs";
 import { resolveStock } from "./catalog.mjs";
 import { getTokenMarkets } from "./coingecko.mjs";
 import { getPools, getHistory } from "./gecko.mjs";
@@ -15,7 +16,7 @@ export function validateView(params) {
 export async function productsView({ id, chain }, params) {
   const { stock, warnings, catalogAt } = await resolveStock(
     id,
-    params?.get("enrich") === "true",
+    params?.get("enrich") !== "false",
   );
   let markets = { rows: [], retrievedAt: null };
   try {
@@ -35,6 +36,7 @@ export async function productsView({ id, chain }, params) {
     }));
   return {
     stock,
+    reference: await getFundamentals(stock),
     rows,
     warnings,
     catalogAt,

@@ -14,10 +14,23 @@ import {
   csvText,
   exportColumns,
 } from "./views.mjs";
+import { createMarketsPage } from "./markets-page.mjs";
+import {
+  stockLogo,
+  issuerLogo,
+  chainLogo,
+  observeLogoErrors,
+} from "./brands.mjs";
 import { createTerminal } from "./terminal.mjs";
-let desk = null;
+let desk = null,
+  marketsPage = null,
+  catalogCoverage = null,
+  pendingProducts = [];
+const quoteSnapshots = new Map();
+observeLogoErrors();
 const $ = (selector) => document.querySelector(selector);
 const params = new URLSearchParams(location.search);
+let page = params.get("page") === "markets" ? "markets" : "home";
 let stocks = [],
   chains = [],
   selected = null,
@@ -58,6 +71,7 @@ function updateUrl() {
   });
   if ($("#issuer").value !== "all") query.set("issuer", $("#issuer").value);
   if (token && view === "markets") query.set("token", token);
+  if (page === "markets") query.set("page", "markets");
   history.replaceState(null, "", "/?" + query);
 }
 function renderStocks() {
@@ -82,7 +96,14 @@ function renderHeading() {
     selected.products.flatMap((p) => p.deployments.map((d) => d.chain)),
   ).size;
   $("#stock-heading").innerHTML =
-    `<div class="company"><span class="company-symbol" aria-hidden="true">${escape(selected.name[0])}</span><div><div class="company-name"><h2>${escape(selected.name)}</h2><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p><b>${escape(selected.ticker)}</b> · ${escape(selected.category)} · ${selected.products.length} ${selected.products.length === 1 ? "product" : "products"} · ${new Set(selected.products.map((p) => p.issuer)).size} ${new Set(selected.products.map((p) => p.issuer)).size === 1 ? "issuer" : "issuers"} · ${chainCount} networks</p></div></div><button class="primary-button" data-action="quotes" ${view === "quotes" ? "hidden" : ""}>Compare buy quotes <span aria-hidden="true">→</span></button>`;
+    `<div class="company">${stockLogo(selected, desk?.getMarkets().get(selected.id)?.image)}<div><div class="company-name"><h2>${escape(selected.name)}</h2><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p><b>${escape(selected.ticker)}</b> · ${escape(selected.category)} · ${selected.products.filter((p) => !p.wrapped).length} issuer versions${selected.products.some((p) => p.wrapped) ? ` + ${selected.products.filter((p) => p.wrapped).length} wrapped` : ""} · ${new Set(selected.products.map((p) => p.issuer)).size} ${new Set(selected.products.map((p) => p.issuer)).size === 1 ? "issuer" : "issuers"} · ${chainCount} networks</p></div></div><button class="primary-button" data-action="quotes" ${view === "quotes" ? "hidden" : ""}>Compare buy quotes <span aria-hidden="true">→</span></button>`;
+  const wrappers = selected.products.filter((p) => p.wrapped).length;
+  $("#wrapper-control").hidden =
+    !wrappers || !["products", "terms", "quotes"].includes(view);
+  $("#wrapper-count").textContent = wrappers ? `(${wrappers})` : "";
+  $("#verification-note").innerHTML = selected.nativeCheckedAt
+    ? `<span class="proof-dot" aria-hidden="true"></span> Asset grouping checked ${stamp(selected.nativeCheckedAt)}<span class="verification-detail"> · contracts and issuer terms below.</span>`
+    : "Source-mapped identity · native asset grouping has not been confirmed.";
   const priorCoin = $("#venue-product").value;
   $("#venue-product").innerHTML = selected.products
     .filter(
@@ -137,6 +158,7 @@ const sortOptions = {
   terms: [["name", "Issuer name"]],
 };
 function setView(next, fetch = true) {
+  if (fetch && page === "markets") setPage("home");
   view = next;
   const prior = $("#sort").value;
   document.querySelectorAll("[data-view]").forEach((b) => {
@@ -179,13 +201,25 @@ function setView(next, fetch = true) {
       terms: "Issuer terms",
     }[view] + ' <span id="result-count">—</span>';
   if (view !== "markets") token = "";
+  $("#wrapper-control").hidden =
+    !selected?.products.some((p) => p.wrapped) ||
+    !["products", "terms", "quotes"].includes(view);
+  document
+    .querySelectorAll(".comparison-path strong")
+    .forEach(
+      (el) =>
+        (el.textContent =
+          view === "quotes" ? "Compare share exposure" : "Compare versions"),
+    );
   if (fetch) loadView();
 }
 function filters(rows) {
   const issuer = $("#issuer").value,
     sort = $("#sort").value;
   const filtered = rows.filter(
-    (r) => view === "venues" || issuer === "all" || r.issuer === issuer,
+    (r) =>
+      (view === "venues" || issuer === "all" || r.issuer === issuer) &&
+      ($("#include-wrappers").checked || !r.wrapped),
   );
   const val = (r) =>
     sort === "liquidity"
@@ -220,6 +254,11 @@ function sourceDetails(data = {}) {
 function renderResults() {
   if (!snapshot) return;
   visibleRows = filters(snapshot.rows);
+  const sourceWarnings = (snapshot.warnings || []).filter((w) =>
+    /CoinGecko prices unavailable|native RWA grouping unavailable/.test(w),
+  );
+  $("#view-source-warning").hidden = !sourceWarnings.length;
+  $("#view-source-warning").textContent = sourceWarnings.join(" ");
   $("#result-count").textContent = visibleRows.length;
   if (view === "products")
     $("#results").innerHTML = visibleRows.length
@@ -245,7 +284,7 @@ function renderResults() {
     quotes = visibleRows.filter((r) => r.status === "quoted").length;
   $("#comparison-status").textContent =
     view === "products"
-      ? `${visibleRows.length} ${visibleRows.length === 1 ? "product" : "products"} · ${prices} with market prices`
+      ? `${visibleRows.length} versions · ${prices} with prices`
       : view === "quotes"
         ? `${quotes} of ${visibleRows.length} routes quoted · ${visibleRows.filter((r) => r.rankable).length} normalized`
         : view === "markets"
@@ -276,6 +315,14 @@ function renderResults() {
     view === "quotes" ? purchaseSummary(visibleRows) : "";
   sourceDetails(snapshot);
   desk?.ingest(view, snapshot);
+  if (snapshot.reference)
+    marketsPage?.ingestReference(selected.id, snapshot.reference);
+  if (view === "quotes") {
+    quoteSnapshots.set(selected.id, { ...snapshot, rows: visibleRows });
+    if (quoteSnapshots.size > 20)
+      quoteSnapshots.delete(quoteSnapshots.keys().next().value);
+  }
+  marketsPage?.render();
   tick();
 }
 async function loadView(enrich = false) {
@@ -283,6 +330,7 @@ async function loadView(enrich = false) {
   controller?.abort();
   const id = ++requestId;
   snapshot = null;
+  $("#view-source-warning").hidden = true;
   $("#decision-summary").innerHTML = "";
   if (view === "quotes") desk?.ingest("quotes", { rows: [] });
   visibleRows = [];
@@ -401,7 +449,9 @@ function loadChart(poolId) {
 function selectStock(id) {
   selected = stocks.find((s) => s.id === id);
   if (!selected) return;
+  setPage("home");
   token = "";
+  $("#include-wrappers").checked = false;
   $("#issuer").value = "all";
   renderHeading();
   renderStocks();
@@ -419,6 +469,8 @@ async function initialize() {
     stocks = data.stocks;
     chains = data.chains;
     catalogSources = data.sources;
+    catalogCoverage = data.coverage;
+    pendingProducts = data.pendingProducts || [];
     catalogWarnings = data.warnings;
     selected =
       stocks.find((s) => s.id === params.get("stock")) ||
@@ -442,9 +494,11 @@ async function initialize() {
     renderStocks();
     setView(view, false);
     sourceDetails();
+    marketsPage.initialize();
+    setPage(page, false);
     desk.start();
     desk.select(selected);
-    loadView();
+    if (page === "home") loadView();
   } catch (error) {
     $("#coverage").textContent = "Catalog unavailable";
     $("#stock-list").innerHTML =
@@ -596,18 +650,109 @@ desk = createTerminal({
   selectStock,
   setView,
   refresh: () => {
-    loadView();
-    desk.refreshChart();
+    if (page === "markets") desk.refreshMarkets();
+    else {
+      loadView();
+      desk.refreshChart();
+    }
   },
   onUniverseUpdate: renderStocks,
+  onMarketsUpdate: () => marketsPage?.render(),
   onWatchlistChange: () => {
     renderStocks();
     renderHeading();
   },
 });
+function setPage(next, write = true) {
+  page = next === "markets" ? "markets" : "home";
+  $("#home-page").hidden = page !== "home";
+  $("#markets-page").hidden = page !== "markets";
+  document.querySelectorAll("[data-page]").forEach((link) => {
+    if (link.dataset.page === page) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  });
+  document.title =
+    page === "markets"
+      ? "Markets — Stocklens"
+      : "Stocklens — Compare tokenized stocks";
+  if (page === "markets") marketsPage?.render();
+  if (write) updateUrl();
+}
+function toggleSaved(id) {
+  saved.has(id) ? saved.delete(id) : saved.add(id);
+  try {
+    localStorage.setItem("stocklens:saved", JSON.stringify([...saved]));
+  } catch {}
+  renderStocks();
+  renderHeading();
+}
+function showCoverage() {
+  const products = stocks.flatMap((s) => s.products),
+    networks = [
+      ...new Set(products.flatMap((p) => p.deployments.map((d) => d.chain))),
+    ],
+    issuerIds = [...new Set(products.map((p) => p.issuer))];
+  $("#coverage-content").innerHTML =
+    `<p class="coverage-lead">${stocks.length.toLocaleString()} assets · ${products.length.toLocaleString()} mapped versions · ${networks.length} observed networks</p><p>Coverage is measured against connected sources. New products, restricted venues and unlisted contracts can be missing. Opening an asset checks CoinGecko’s native grouping, including wrapped versions.</p><h3>Connected discovery sources</h3><div class="source-list">${catalogSources.map((source) => `<p>${external(source.url, source.name)} <strong>${source.available ? "Loaded" : "Unavailable"}</strong></p>`).join("")}</div><h3>Issuer coverage</h3><div class="coverage-issuers">${issuerIds
+      .sort(
+        (a, b) =>
+          products.filter((p) => p.issuer === b).length -
+          products.filter((p) => p.issuer === a).length,
+      )
+      .map((id) => {
+        const ps = products.filter((p) => p.issuer === id),
+          info = provider(ps[0]);
+        return `<div><span class="token-cell">${issuerLogo(ps[0])}<span><strong>${escape(info.name)}</strong><small>${ps.length.toLocaleString()} versions · ${new Set(ps.flatMap((p) => p.deployments.map((d) => d.chain))).size} networks</small></span></span><span>${escape(info.structure)}<small>${info.reviewStatus === "unreviewed" || !info.reviewedAt ? "Terms not confirmed" : info.reviewStatus === "partial" ? "Partial public disclosure" : "Primary-source summary"}${info.reviewedAt ? " · " + escape(info.reviewedAt) : ""}</small></span>${external(info.source, "Source")}</div>`;
+      })
+      .join(
+        "",
+      )}</div><h3>Networks & quote support</h3><div class="coverage-networks">${networks.map((id) => `<span>${chainLogo(id)}${escape(chains.find((c) => c.id === id)?.label || id)}<small>${chains.find((c) => c.id === id)?.quotable ? "Quotes connected" : "Discovery only"}</small></span>`).join("")}</div><h3>Gaps kept visible</h3><p>${stocks.filter((s) => !s.products.length).length} registry assets await a mapped version. ${catalogCoverage?.heldBackIssuerRecords || 0} issuer records were held back pending identity corroboration. ${escape(catalogWarnings.join(" "))}</p><p>Hyperliquid platform identifiers returned by the registry do not match the supported contract format and stay outside contract routing. Quote adapters cover five networks. DEX pool searches and exchange pages are partial. Unconfirmed legal terms and share conversions are never filled with assumptions.</p>`;
+  if (pendingProducts.length)
+    $("#coverage-content").insertAdjacentHTML(
+      "beforeend",
+      `<details class="pending-records"><summary>${pendingProducts.length} issuer records awaiting identity corroboration</summary><p>These records remain visible for audit and are excluded from comparisons and quote ranking. The displayed underlying identifiers are issuer claims.</p><div class="table-scroll"><table><thead><tr><th>Token</th><th>Claimed stock</th><th>Reported ISIN</th><th>Contracts</th></tr></thead><tbody>${pendingProducts.map((p) => `<tr><td>${escape(p.symbol)}</td><td>${escape(p.claimedUnderlying.ticker)}<small>${escape(p.claimedUnderlying.name)}</small></td><td>${escape(p.claimedUnderlying.isin)}</td><td>${p.deployments.map((d) => external(chains.find((c) => c.id === d.chain)?.explorer + d.address, chains.find((c) => c.id === d.chain)?.label || d.chain)).join(" ")}${external(p.source, "Issuer list")}</td></tr>`).join("")}</tbody></table></div></details>`,
+    );
+  $("#coverage-dialog").showModal();
+}
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("[data-page]");
+  if (link) {
+    event.preventDefault();
+    setPage(link.dataset.page);
+    if (page === "home" && !snapshot && selected) loadView();
+  }
+  if (event.target.closest("[data-open-coverage]")) showCoverage();
+  if (event.target.closest('[data-close="coverage-dialog"]'))
+    $("#coverage-dialog").close();
+});
+$("#include-wrappers").addEventListener("change", () => {
+  if (snapshot) renderResults();
+});
+marketsPage = createMarketsPage({
+  getState: () => ({ stocks, chains, saved }),
+  getMarkets: () => desk.getMarkets(),
+  getMarketState: () => desk.marketState(),
+  getQuotes: (id) => quoteSnapshots.get(id),
+  onSelect: (id) => {
+    setPage("home");
+    $("#chain").value = "all";
+    setView("products", false);
+    selectStock(id);
+    $("#comparison").scrollIntoView({ block: "start" });
+  },
+  onSave: toggleSaved,
+  onRefresh: (next) => desk.refreshMarkets(next),
+});
+setPage(page, false);
 setInterval(tick, 1000);
 setInterval(() => {
-  if (!document.hidden && selected && view !== "quotes" && view !== "terms")
+  if (
+    !document.hidden &&
+    page === "home" &&
+    selected &&
+    view !== "quotes" &&
+    view !== "terms"
+  )
     loadView();
 }, 90000);
 initialize();

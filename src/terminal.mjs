@@ -7,6 +7,7 @@ import {
   provider,
   external,
 } from "./views.mjs";
+import { stockLogo, issuerLogo, chainLogo } from "./brands.mjs";
 import { mountChart } from "./chart.mjs";
 import { findStocks } from "./model.mjs";
 
@@ -86,8 +87,10 @@ export function createTerminal({
   refresh,
   onUniverseUpdate,
   onWatchlistChange,
+  onMarketsUpdate = () => {},
 }) {
   const $ = (s) => document.querySelector(s);
+  const references = new Map();
   let markets = new Map(),
     marketPages = new Map(),
     asset = null,
@@ -127,7 +130,7 @@ export function createTerminal({
         .slice(0, limit)
         .map((s) => {
           const m = markets.get(s.id);
-          return `<button class="stock-option ${getState().selected?.id === s.id ? "selected" : ""}" data-stock="${escape(s.id)}" aria-pressed="${getState().selected?.id === s.id}"><span class="asset-symbol"><b>${escape(s.ticker)}</b><small>${escape(s.name)}</small></span><span class="asset-price"><b>${usd(m?.price)}</b><small class="${polarity(m?.change24h)}">${signed(m?.change24h)}${saved.has(s.id) ? " ★" : ""}</small></span></button>`;
+          return `<button class="stock-option ${getState().selected?.id === s.id ? "selected" : ""}" data-stock="${escape(s.id)}" aria-pressed="${getState().selected?.id === s.id}">${stockLogo(s, m?.image)}<span class="asset-symbol"><b>${escape(s.ticker)}</b><small>${escape(s.name)}</small></span><span class="asset-price"><b>${usd(m?.price)}</b><small class="${polarity(m?.change24h)}">${signed(m?.change24h)}${saved.has(s.id) ? " ★" : ""}</small></span></button>`;
         })
         .join("") +
       (rows.length > limit
@@ -137,9 +140,11 @@ export function createTerminal({
   }
   function renderMarket() {
     if (!asset) return;
-    const m = markets.get(asset.id);
-    $("#asset-metrics").innerHTML =
-      `<span>Tokenized reference <strong>${usd(m?.price)}</strong> <span class="${polarity(m?.change24h)}">${signed(m?.change24h)}</span></span><small>${m?.updatedAt ? "Observed " + stamp(m.updatedAt) : "No aggregate observation available"} · not the listed stock price</small>`;
+    const m = markets.get(asset.id),
+      reference = references.get(asset.id);
+    $("#asset-metrics").innerHTML = `
+      <div class="reference-quote"><span class="reference-label" title="CoinGecko aggregate for the tokenized market, not a listed-stock price.">Tokenized reference</span><span class="reference-value"><strong>${usd(m?.price)}</strong><span class="${polarity(m?.change24h)}">${signed(m?.change24h)}</span></span><small>${m?.updatedAt ? stamp(m.updatedAt) : "Not observed"}</small></div>
+      <div class="reference-quote"><span class="reference-label">${reference ? external(reference.source, "Listed stock · Nasdaq") : "Listed stock"}</span><span class="reference-value"><strong>${usd(reference?.price)}</strong><small>${escape(reference?.marketStatus || "")}</small></span><small>${reference?.at ? stamp(reference.at) + (reference.stale ? " · stale" : "") : "Reference not available"}</small></div>`;
     renderInspector();
   }
   async function screener(next = false) {
@@ -178,6 +183,7 @@ export function createTerminal({
       $("#load-markets").textContent = "Load more reference prices";
       renderMarket();
       onUniverseUpdate();
+      onMarketsUpdate();
       renderSources();
     } catch (error) {
       screenWarning = error.message;
@@ -363,7 +369,8 @@ export function createTerminal({
   function ingest(view, data) {
     if (data.stock && asset?.id === data.stock.id) asset = data.stock;
     if (view === "products") productRows = data.rows || [];
-    renderInspector();
+    if (data.reference && asset) references.set(asset.id, data.reference);
+    renderMarket();
   }
   function compare() {
     const rows = shortlist
@@ -376,7 +383,11 @@ export function createTerminal({
     const field = (label, read) =>
       `<tr><th scope="row">${label}</th>${rows.map((p) => `<td>${read(p)}</td>`).join("")}</tr>`;
     $("#compare-content").innerHTML =
-      `<h2>${escape(asset.ticker)} / product comparison</h2><p>Raw token prices have different units. Compare share exposure in Buy comparison.</p><div class="table-scroll"><table class="comparison-matrix"><thead><tr><th>Attribute</th>${rows.map((p) => `<th>${escape(p.symbol)}</th>`).join("")}</tr></thead><tbody>${field("Issuer", (p) => escape(provider(p).name))}${field("USD / token", (p) => usd(p.market?.price))}${field("Price observed", (p) => stamp(p.market?.updatedAt))}${field("Structure", (p) => escape(provider(p).structure))}${field("Holder rights", (p) => escape(provider(p).rights))}${field("Dividends", (p) => escape(provider(p).dividends))}${field("Exit & eligibility", (p) => escape(provider(p).exit))}${field("Networks", (p) => escape(p.deployments.map((d) => d.chain).join(", ")))}${field("Primary terms", (p) => external(provider(p).source, provider(p).sourceLabel))}</tbody></table></div>`;
+      `<h2>${escape(asset.ticker)} / product comparison</h2><p>Raw token prices have different units. Compare share exposure in Buy comparison.</p><div class="table-scroll"><table class="comparison-matrix"><thead><tr><th>Attribute</th>${rows.map((p) => `<th><span class="token-cell">${issuerLogo(p)}${escape(p.symbol)}</span></th>`).join("")}</tr></thead><tbody>${field("Issuer", (p) => escape(provider(p).name))}${field("USD / token", (p) => usd(p.market?.price))}${field("Price observed", (p) => stamp(p.market?.updatedAt))}${field("Structure", (p) => escape(provider(p).structure))}${field("Holder rights", (p) => escape(provider(p).rights))}${field("Dividends", (p) => escape(provider(p).dividends))}${field("Exit & eligibility", (p) => escape(provider(p).exit))}${field("Networks", (p) => `<div class="matrix-networks">${p.deployments.map((d) => `<span class="named-network">${chainLogo(d.chain)}${escape(d.chain)}</span>`).join("")}</div>`)}${field("Primary terms", (p) => external(provider(p).source, provider(p).sourceLabel))}</tbody></table></div>`;
+    $("#compare-content").insertAdjacentHTML(
+      "beforeend",
+      `<div class="matrix-action"><button class="primary-button" data-action="quotes">Compare available buy quotes →</button><small>Compare supported routes for ${escape(asset.ticker)}. Filter by issuer or network on the next view.</small></div>`,
+    );
     $("#compare-dialog").showModal();
   }
   function renderPalette() {
@@ -460,7 +471,8 @@ export function createTerminal({
     }
     const views = ["products", "quotes", "markets", "venues", "terms"];
     if (/^[1-5]$/.test(e.key)) setView(views[Number(e.key) - 1]);
-    if (e.key.toLowerCase() === "w") $("#favorite")?.click();
+    if (e.key.toLowerCase() === "w" && !$("#home-page").hidden)
+      $("#favorite")?.click();
     if (e.key.toLowerCase() === "r") refresh();
   });
   $("#universe-sort").addEventListener("change", onUniverseUpdate);
@@ -491,7 +503,10 @@ export function createTerminal({
       );
       renderInspector();
     }
-    if (e.target.closest('[data-action="quotes"]')) setView("quotes");
+    if (e.target.closest('[data-action="quotes"]')) {
+      e.target.closest("dialog")?.close();
+      setView("quotes");
+    }
   });
   $("#toggle-universe").addEventListener("click", () => {
     const open = document.body.classList.toggle("universe-open");
@@ -550,6 +565,7 @@ export function createTerminal({
   setInterval(() => {
     if (
       !document.hidden &&
+      !$("#home-page").hidden &&
       $("#chart-disclosure").open &&
       $("#chart-pool").value
     )
@@ -584,6 +600,14 @@ export function createTerminal({
     refreshChart: () => {
       if ($("#chart-disclosure").open) loadHistory($("#chart-pool").value);
     },
-    refreshMarkets: () => screener(),
+    getMarkets: () => markets,
+    marketState: () => ({
+      screenAt,
+      screenWarning,
+      screenBusy,
+      screenNext,
+      observed: markets.size,
+    }),
+    refreshMarkets: (next = false) => screener(next),
   };
 }

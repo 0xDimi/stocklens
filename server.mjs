@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { readdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -8,6 +9,7 @@ import {
   validateView,
 } from "./server/workspace.mjs";
 import { screenerView, venuesView } from "./server/market-desk.mjs";
+import { fundamentalsView } from "./server/fundamentals.mjs";
 import { loadCatalog } from "./server/catalog.mjs";
 import { compareStock, validateComparison } from "./server/quotes.mjs";
 import { readRuntime, clientIdentity } from "./server/runtime.mjs";
@@ -21,6 +23,9 @@ const files = new Map([
     "chart.mjs",
     "terminal.mjs",
     "styles.css",
+    "brands.mjs",
+    "market-model.mjs",
+    "markets-page.mjs",
   ].map((name) => [
     "/src/" + name,
     [
@@ -31,6 +36,9 @@ const files = new Map([
     ],
   ]),
 ]);
+for (const name of readdirSync(new URL("./assets/logos/", import.meta.url)))
+  if (/^[a-zA-Z0-9_.-]+\.png$/.test(name))
+    files.set("/assets/logos/" + name, ["assets/logos/" + name, "image/png"]);
 const securityHeaders = {
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
@@ -39,7 +47,7 @@ const securityHeaders = {
   "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
   "Cross-Origin-Opener-Policy": "same-origin",
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://coin-images.coingecko.com https://assets.coingecko.com https://xstocks-metadata.backed.fi https://cdn.ondo.finance; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
 };
 function deadline(work, ms) {
   let timer;
@@ -176,6 +184,13 @@ export function createApp({
           try {
             if (url.pathname === "/api/catalog") {
               send(200, await deadline(getCatalog, 35000));
+              return;
+            }
+            if (url.pathname === "/api/fundamentals") {
+              send(
+                200,
+                await deadline(() => fundamentalsView(url.searchParams), 35000),
+              );
               return;
             }
             if (url.pathname === "/api/screener") {

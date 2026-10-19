@@ -1,0 +1,345 @@
+{
+  "description": "Source URLs and retrieval times for real brand images. Corporate logos are used only for disambiguated US tickers.",
+  "images": [
+    {
+      "file": "chain-Solana.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:48.407Z"
+    },
+    {
+      "file": "chain-Ethereum.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:48.441Z"
+    },
+    {
+      "file": "chain-BinanceSmartChain.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:48.469Z"
+    },
+    {
+      "file": "chain-Base.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:48.496Z"
+    },
+    {
+      "file": "chain-Arbitrum.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:48.525Z"
+    },
+    {
+      "file": "chain-Avalanche.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:48.554Z"
+    },
+    {
+      "file": "chain-Polygon.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:48.585Z"
+    },
+    {
+      "file": "chain-Optimism.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/optimism/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:48.815Z"
+    },
+    {
+      "file": "chain-Tron.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:48.846Z"
+    },
+    {
+      "file": "chain-TON.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ton/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:48.878Z"
+    },
+    {
+      "file": "chain-Mantle.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/mantle/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:49.054Z"
+    },
+    {
+      "file": "chain-Gnosis.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/xdai/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:49.242Z"
+    },
+    {
+      "file": "chain-HyperEVM.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/hyperevm/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:49.421Z"
+    },
+    {
+      "file": "chain-Monad.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/monad/info/logo.png",
+      "checkedAt": "2026-10-19T09:41:49.601Z"
+    },
+    {
+      "file": "stock-NVDA.png",
+      "source": "https://financialmodelingprep.com/image-stock/NVDA.png",
+      "checkedAt": "2026-10-19T09:41:50.914Z"
+    },
+    {
+      "file": "stock-AAPL.png",
+      "source": "https://financialmodelingprep.com/image-stock/AAPL.png",
+      "checkedAt": "2026-10-19T09:41:51.128Z"
+    },
+    {
+      "file": "stock-TSLA.png",
+      "source": "https://financialmodelingprep.com/image-stock/TSLA.png",
+      "checkedAt": "2026-10-19T09:41:51.344Z"
+    },
+    {
+      "file": "stock-MSFT.png",
+      "source": "https://financialmodelingprep.com/image-stock/MSFT.png",
+      "checkedAt": "2026-10-19T09:41:51.640Z"
+    },
+    {
+      "file": "stock-AMZN.png",
+      "source": "https://financialmodelingprep.com/image-stock/AMZN.png",
+      "checkedAt": "2026-10-19T09:41:51.859Z"
+    },
+    {
+      "file": "stock-GOOGL.png",
+      "source": "https://financialmodelingprep.com/image-stock/GOOGL.png",
+      "checkedAt": "2026-10-19T09:41:52.077Z"
+    },
+    {
+      "file": "stock-GOOG.png",
+      "source": "https://financialmodelingprep.com/image-stock/GOOG.png",
+      "checkedAt": "2026-10-19T09:41:52.293Z"
+    },
+    {
+      "file": "stock-META.png",
+      "source": "https://financialmodelingprep.com/image-stock/META.png",
+      "checkedAt": "2026-10-19T09:41:52.537Z"
+    },
+    {
+      "file": "stock-COIN.png",
+      "source": "https://financialmodelingprep.com/image-stock/COIN.png",
+      "checkedAt": "2026-10-19T09:41:52.770Z"
+    },
+    {
+      "file": "stock-AMD.png",
+      "source": "https://financialmodelingprep.com/image-stock/AMD.png",
+      "checkedAt": "2026-10-19T09:41:53.011Z"
+    },
+    {
+      "file": "stock-SPY.png",
+      "source": "https://financialmodelingprep.com/image-stock/SPY.png",
+      "checkedAt": "2026-10-19T09:41:53.224Z"
+    },
+    {
+      "file": "stock-QQQ.png",
+      "source": "https://financialmodelingprep.com/image-stock/QQQ.png",
+      "checkedAt": "2026-10-19T09:41:53.444Z"
+    },
+    {
+      "file": "stock-SOXL.png",
+      "source": "https://financialmodelingprep.com/image-stock/SOXL.png",
+      "checkedAt": "2026-10-19T09:41:53.741Z"
+    },
+    {
+      "file": "stock-MSTR.png",
+      "source": "https://financialmodelingprep.com/image-stock/MSTR.png",
+      "checkedAt": "2026-10-19T09:41:53.961Z"
+    },
+    {
+      "file": "stock-INTC.png",
+      "source": "https://financialmodelingprep.com/image-stock/INTC.png",
+      "checkedAt": "2026-10-19T09:41:54.174Z"
+    },
+    {
+      "file": "stock-CRCL.png",
+      "source": "https://financialmodelingprep.com/image-stock/CRCL.png",
+      "checkedAt": "2026-10-19T09:41:54.422Z"
+    },
+    {
+      "file": "stock-MU.png",
+      "source": "https://financialmodelingprep.com/image-stock/MU.png",
+      "checkedAt": "2026-10-19T09:41:54.641Z"
+    },
+    {
+      "file": "stock-AVGO.png",
+      "source": "https://financialmodelingprep.com/image-stock/AVGO.png",
+      "checkedAt": "2026-10-19T09:41:54.874Z"
+    },
+    {
+      "file": "stock-PLTR.png",
+      "source": "https://financialmodelingprep.com/image-stock/PLTR.png",
+      "checkedAt": "2026-10-19T09:41:55.107Z"
+    },
+    {
+      "file": "stock-ORCL.png",
+      "source": "https://financialmodelingprep.com/image-stock/ORCL.png",
+      "checkedAt": "2026-10-19T09:41:55.325Z"
+    },
+    {
+      "file": "stock-GLD.png",
+      "source": "https://financialmodelingprep.com/image-stock/GLD.png",
+      "checkedAt": "2026-10-19T09:41:55.632Z"
+    },
+    {
+      "file": "stock-NFLX.png",
+      "source": "https://financialmodelingprep.com/image-stock/NFLX.png",
+      "checkedAt": "2026-10-19T09:41:55.847Z"
+    },
+    {
+      "file": "stock-COST.png",
+      "source": "https://financialmodelingprep.com/image-stock/COST.png",
+      "checkedAt": "2026-10-19T09:41:56.061Z"
+    },
+    {
+      "file": "stock-TSM.png",
+      "source": "https://financialmodelingprep.com/image-stock/TSM.png",
+      "checkedAt": "2026-10-19T09:41:56.297Z"
+    },
+    {
+      "file": "stock-JPM.png",
+      "source": "https://financialmodelingprep.com/image-stock/JPM.png",
+      "checkedAt": "2026-10-19T09:41:56.509Z"
+    },
+    {
+      "file": "stock-WMT.png",
+      "source": "https://financialmodelingprep.com/image-stock/WMT.png",
+      "checkedAt": "2026-10-19T09:41:56.739Z"
+    },
+    {
+      "file": "stock-LLY.png",
+      "source": "https://financialmodelingprep.com/image-stock/LLY.png",
+      "checkedAt": "2026-10-19T09:41:56.961Z"
+    },
+    {
+      "file": "stock-BRK-B.png",
+      "source": "https://financialmodelingprep.com/image-stock/BRK-B.png",
+      "checkedAt": "2026-10-19T09:41:57.204Z"
+    },
+    {
+      "file": "issuer-bstocks.png",
+      "source": "https://coin-images.coingecko.com/categories/images/102120896/large/binance-icon-logo-png_seeklogo-598330.png?1781228076",
+      "checkedAt": "2026-10-19T09:42:11.954Z"
+    },
+    {
+      "file": "issuer-robinhood.png",
+      "source": "https://coin-images.coingecko.com/categories/images/102120884/large/robinhood_eu.png?1782269430",
+      "checkedAt": "2026-10-19T09:42:16.971Z"
+    },
+    {
+      "file": "issuer-coinbase.png",
+      "source": "https://coin-images.coingecko.com/categories/images/102120939/large/coinbase.png?1787070829",
+      "checkedAt": "2026-10-19T09:42:21.950Z"
+    },
+    {
+      "file": "venue-uniswap.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984/logo.png",
+      "checkedAt": "2026-10-19T09:42:46.526Z"
+    },
+    {
+      "file": "venue-pancakeswap.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82/logo.png",
+      "checkedAt": "2026-10-19T09:42:46.715Z"
+    },
+    {
+      "file": "venue-kyberswap.png",
+      "source": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xdeFA4e8a7bcBA345F687a2f1456F5Edd9CE97202/logo.png",
+      "checkedAt": "2026-10-19T09:42:47.013Z"
+    },
+    {
+      "file": "issuer-dinari.png",
+      "source": "https://coin-images.coingecko.com/categories/images/10663/large/dinari.png?1785126281",
+      "checkedAt": "2026-10-19T09:43:30.193Z"
+    },
+    {
+      "file": "issuer-backpack.png",
+      "source": "https://coin-images.coingecko.com/categories/images/102120898/large/Backpack_Securities.jpg?1781275108",
+      "checkedAt": "2026-10-19T09:43:37.752Z"
+    },
+    {
+      "file": "issuer-anchored.png",
+      "source": "https://coin-images.coingecko.com/categories/images/102120940/large/anchored.png?1787280054",
+      "checkedAt": "2026-10-19T09:43:45.212Z"
+    },
+    {
+      "file": "issuer-reality.png",
+      "source": "https://coin-images.coingecko.com/categories/images/102120897/large/Reality.jpg?1781274410",
+      "checkedAt": "2026-10-19T09:43:52.783Z"
+    },
+    {
+      "file": "issuer-st0x.png",
+      "source": "https://coin-images.coingecko.com/categories/images/102120833/large/st0x_400x400.png?1777808664",
+      "checkedAt": "2026-10-19T09:44:00.412Z"
+    },
+    {
+      "file": "issuer-stove.png",
+      "source": "https://coin-images.coingecko.com/categories/images/102121121/large/stove-finance.jpg?1791452426",
+      "checkedAt": "2026-10-19T09:44:07.898Z"
+    },
+    {
+      "file": "issuer-xstocks.png",
+      "source": "https://coin-images.coingecko.com/categories/images/20712/large/xstock_400x400.jpg?1777808932",
+      "checkedAt": "2026-10-19T09:51:28.358Z"
+    },
+    {
+      "file": "issuer-ondo.png",
+      "source": "https://coin-images.coingecko.com/categories/images/20724/large/ondo_400x400.jpg?1777809000",
+      "checkedAt": "2026-10-19T09:51:35.370Z"
+    },
+    {
+      "file": "chain-Ink.png",
+      "source": "https://coin-images.coingecko.com/asset_platforms/images/22194/large/ink.jpg?1737600222",
+      "checkedAt": "2026-10-19T09:59:36.033Z"
+    },
+    {
+      "file": "chain-XLayer.png",
+      "source": "https://coin-images.coingecko.com/asset_platforms/images/238/large/x_logo.jpeg?1713243242",
+      "checkedAt": "2026-10-19T09:59:36.658Z"
+    },
+    {
+      "file": "chain-Morph.png",
+      "source": "https://coin-images.coingecko.com/asset_platforms/images/22185/large/morph.jpg?1729659940",
+      "checkedAt": "2026-10-19T09:59:37.337Z"
+    },
+    {
+      "file": "chain-Robinhood.png",
+      "source": "https://coin-images.coingecko.com/asset_platforms/images/102132299/large/robinhood.png?1782921203",
+      "checkedAt": "2026-10-19T09:59:37.354Z"
+    },
+    {
+      "file": "venue-raydium.png",
+      "source": "https://coin-images.coingecko.com/coins/images/13928/large/PSigc4ie_400x400.jpg?1696513668",
+      "checkedAt": "2026-10-19T09:59:43.769Z"
+    },
+    {
+      "file": "venue-jupiter.png",
+      "source": "https://coin-images.coingecko.com/coins/images/34188/large/jup.png?1704266489",
+      "checkedAt": "2026-10-19T09:59:43.788Z"
+    },
+    {
+      "file": "venue-meteora.png",
+      "source": "https://coin-images.coingecko.com/coins/images/69110/large/meteora.png?1757517561",
+      "checkedAt": "2026-10-19T09:59:43.805Z"
+    },
+    {
+      "file": "venue-kraken.png",
+      "source": "https://coin-images.coingecko.com/markets/images/29/small/kraken.jpg?1706864265",
+      "checkedAt": "2026-10-19T09:59:50.162Z"
+    },
+    {
+      "file": "venue-gate.png",
+      "source": "https://coin-images.coingecko.com/markets/images/60/small/Frame_1.png?1747795534",
+      "checkedAt": "2026-10-19T09:59:50.176Z"
+    },
+    {
+      "file": "venue-coinbase.png",
+      "source": "https://coin-images.coingecko.com/markets/images/23/small/Coinbase_Coin_Primary.png?1706864258",
+      "checkedAt": "2026-10-19T09:59:50.192Z"
+    },
+    {
+      "file": "venue-backpack.png",
+      "source": "https://coin-images.coingecko.com/markets/images/1387/small/backpack.jpeg?1708663541",
+      "checkedAt": "2026-10-19T09:59:50.785Z"
+    },
+    {
+      "file": "venue-binance.png",
+      "source": "https://coin-images.coingecko.com/markets/images/52/small/binance.jpg?1706864274",
+      "checkedAt": "2026-10-19T09:59:50.823Z"
+    }
+  ]
+}

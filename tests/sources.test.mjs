@@ -84,7 +84,7 @@ test("discovery merges only corroborated underlying names and symbols, preserves
     "now",
   );
   const result = mergeDiscovery(stocks, d);
-  assert.equal(result.length, 1);
+  assert.equal(result.length, 2); // The unassigned Alphabet registry asset remains searchable.
   assert.equal(result[0].id, "US67066G1040");
   assert.equal(result[0].products[0].source, "issuer");
   assert.equal(result[0].products[0].coinId, "nvidia-xstock");
@@ -107,7 +107,7 @@ test("discovery merges only corroborated underlying names and symbols, preserves
     ],
     d,
   );
-  assert.equal(conflict.length, 2);
+  assert.equal(conflict.length, 3);
 });
 test("native RWA grouping validates the requested asset and does not invent issuer rights", () => {
   const s = { rwaId: "nvidia", ticker: "NVDA" };
@@ -365,15 +365,40 @@ test("native RWA grouping excludes wrapped products as discovery does", () => {
   assert.equal(result.length, 0);
 });
 
-test('OHLCV emits real candle values, rejects malformed bars and does not bridge gaps', () => {
-  const points=parseHistory({data:{attributes:{ohlcv_list:[
-    [10,2,4,1,3,50],[30,3,5,2,4,60],
-    [40,3,2,1,2,10],[50,null,4,1,2,10],[60,2,4,3,2,10],
-  ]}}});
-  assert.deepEqual(points.map(p=>p.time),[10000,30000]);
-  assert.deepEqual(points[0],{time:10000,open:2,high:4,low:1,close:3,price:3,volume:50});
+test("OHLCV emits real candle values, rejects malformed bars and does not bridge gaps", () => {
+  const points = parseHistory({
+    data: {
+      attributes: {
+        ohlcv_list: [
+          [10, 2, 4, 1, 3, 50],
+          [30, 3, 5, 2, 4, 60],
+          [40, 3, 2, 1, 2, 10],
+          [50, null, 4, 1, 2, 10],
+          [60, 2, 4, 3, 2, 10],
+        ],
+      },
+    },
+  });
+  assert.deepEqual(
+    points.map((p) => p.time),
+    [10000, 30000],
+  );
+  assert.deepEqual(points[0], {
+    time: 10000,
+    open: 2,
+    high: 4,
+    low: 1,
+    close: 3,
+    price: 3,
+    volume: 50,
+  });
 });
 
-test('OHLCV rejects boolean fields that could masquerade as a one-dollar price', () => {
-  assert.equal(parseHistory({data:{attributes:{ohlcv_list:[[10,true,2,1,2,3]]}}}).length,0);
+test("OHLCV rejects boolean fields that could masquerade as a one-dollar price", () => {
+  assert.equal(
+    parseHistory({
+      data: { attributes: { ohlcv_list: [[10, true, 2, 1, 2, 3]] } },
+    }).length,
+    0,
+  );
 });

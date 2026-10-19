@@ -1,4 +1,4 @@
-Stocklens runs on Node.js 22 or newer with no runtime packages. It serves the comparison app and its read-only API from one process. Market access requires outbound HTTPS to the configured data providers. Source availability, rate limits and coverage constrain live data.
+Stocklens runs on Node.js 22 or newer with no runtime packages. It serves the comparison app and its read-only API from one process. Market access requires outbound HTTPS to the configured data providers. Source availability, rate limits and coverage constrain live data. Nasdaq public endpoints provide optional listed-stock references; CoinGecko and issuer/CDN image hosts are explicitly allowed for logos. The Docker image includes the local `assets/` directory. Logo refresh is a manual development task, not a runtime dependency.
 
 ## Run directly
 

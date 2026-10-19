@@ -46,6 +46,7 @@ function marketObservation(row) {
     low24h: numeric(data.low_24h),
     updatedAt: timestamp(data.last_updated),
     sparkline,
+    image: typeof row.image === "string" ? row.image : row.image?.small || null,
   };
 }
 function sourceState(result) {

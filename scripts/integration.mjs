@@ -23,8 +23,10 @@ const enriched = await fetchJson(
   "/api/products?stock=NVDA&chain=all&enrich=true",
 );
 assert.ok(
-  enriched.rows.every((p) => !/^wrapped[ -]/i.test(p.name || p.coinId || "")),
-  "Wrapped products cannot bypass discovery exclusions through native grouping",
+  enriched.rows
+    .filter((p) => /^wrapped[ -]/i.test(p.name || p.coinId || ""))
+    .every((p) => p.wrapped === true),
+  "Source-native wrappers must stay explicitly marked and unnormalized",
 );
 const nativeGrouped = enriched.rows.filter(
   (p) => p.mapping === "CoinGecko RWA grouping",

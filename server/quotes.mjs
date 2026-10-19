@@ -1,3 +1,4 @@
+import { getFundamentals } from "./fundamentals.mjs";
 import { resolveStock } from "./catalog.mjs";
 import { getQuote } from "./providers.mjs";
 import { mapLimit } from "./http.mjs";
@@ -19,7 +20,8 @@ export function validateComparison(params) {
   return { id, amount, chain };
 }
 export async function compareStock({ id, amount, chain }) {
-  const { stock, warnings, catalogAt } = await resolveStock(id);
+  const { stock, warnings, catalogAt } = await resolveStock(id, true);
+  const referenceWork = getFundamentals(stock);
   const jobs = stock.products.flatMap((product) =>
     product.deployments
       .filter((d) => chain === "all" || d.chain === chain)
@@ -33,6 +35,7 @@ export async function compareStock({ id, amount, chain }) {
     amount,
     chain,
     rows: rankQuotes(rows),
+    reference: await referenceWork,
     fetchedAt: Date.now(),
     catalogAt,
     warnings,

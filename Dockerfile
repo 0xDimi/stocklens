@@ -4,6 +4,7 @@ WORKDIR /app
 COPY --chown=node:node package.json server.mjs index.html ./
 COPY --chown=node:node server ./server
 COPY --chown=node:node src ./src
+COPY --chown=node:node assets ./assets
 RUN mkdir -p /app/.cache && chown node:node /app/.cache
 USER node
 EXPOSE 4173

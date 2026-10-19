@@ -60,6 +60,9 @@ try {
     "/src/styles.css",
     "/src/chart.mjs",
     "/src/terminal.mjs",
+    "/src/brands.mjs",
+    "/src/market-model.mjs",
+    "/src/markets-page.mjs",
   ]) {
     const response = await fetchLocal(path);
     assert.equal(response.status, 200, path);

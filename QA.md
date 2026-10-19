@@ -1,6 +1,6 @@
 ## Portfolio audit — 0.6.0, October 19, 2026
 
-The audit and final public rollout evidence are recorded in [PORTFOLIO_REVIEW.md](PORTFOLIO_REVIEW.md). This release adds source-age enforcement, upstream stream cleanup, an authenticated onchain fallback, HTTP 200 payload validation, and keyboard/refresh fixes. Local Node 22 verification passes all 181 tests and the strict production subprocess smoke with actual readiness HTTP 200. Public rollout is checked separately against the deployed revision.
+The audit and final public rollout evidence are recorded in [PORTFOLIO_REVIEW.md](PORTFOLIO_REVIEW.md). This release adds source-age enforcement, upstream stream cleanup, an authenticated onchain fallback, HTTP 200 payload validation, and keyboard/refresh fixes. Local Node 22 verification passes all 181 tests and the strict production subprocess smoke with actual readiness HTTP 200. The public rollout passed all five actual-source/access integration scripts on version 0.6.0. GitHub CI passed Node 22/24 and the production Docker image. The full evidence and explicit coverage limits are in the audit report.
 
 ## Market refresh status and public feed recovery — 0.5.1, October 19, 2026
 

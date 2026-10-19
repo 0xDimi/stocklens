@@ -1,6 +1,6 @@
 # Portfolio review — October 19, 2026
 
-Release: 0.6.0. Scope: a public, low-traffic WIP comparison product. Final public rollout results are recorded below after deployment.
+Release: 0.6.0. Scope: a public, low-traffic WIP comparison product. Public release checks passed against the deployed application; details and limits follow.
 
 ## Review and repairs
 
@@ -32,4 +32,25 @@ The deployment remains the existing single Render service. No paid service, data
 
 ## Public rollout verification
 
-Pending deployment of this release. Do not treat this section as production sign-off until actual public checks are recorded here.
+The audited runtime commit `1a52479771bfaa4d54da9490b8eb41b5d12ce08f` was deployed successfully by Render as `dep-dbb1mjp42hec73e57r40`. Public `/api/health` reports version 0.6.0. GitHub [verification run 39260608802](https://github.com/0xDimi/stocklens/actions/runs/39260608802) passed Node 22, Node 24 and an actual non-root, read-only-container startup/shutdown check.
+
+Actual public integration completed at `2026-10-19T13:31:13.875Z`:
+
+| Check | Observed result |
+| --- | --- |
+| Catalog | 1,961 unique assets |
+| NVIDIA products | 13 including wrappers; 12 with token-market prices |
+| NVIDIA pools and history | 16 exact-contract pools; 24 real hourly candles |
+| NVIDIA quotes | 13 routes quoted; 5 with verified share normalization |
+| Apple quotes | 11 routes quoted; 5 with verified share normalization |
+| Tesla quotes | 9 routes quoted; 5 with verified share normalization |
+| Markets feed | 248 source-observed priced rows on page one, fresh server delivery |
+| Public access | No cookies, authorization or login redirect; 11 versioned client modules loaded |
+
+Separate public integrations passed selected-ID retrieval, observed exchange venues, current chart candles, quote arithmetic/order, exact venue handoff addresses, bad-input HTTP responses, and private-file HTTP 404 boundaries. Company capitalization, provider-disclosed fiscal P/E and fresh indicative premium passed for NVIDIA, Apple and Tesla; ETF company metrics were correctly inapplicable. Legacy Apple links resolved correctly. Checked metrics are dated observations, not current financial claims.
+
+The browser rendered the deployed exact-pool chart with 24 candles and the expected token/network; its Markets source disclosure retained keyboard focus across background updates. Actual CSV export produced a valid one-row watchlist file with explicit USD/percent columns. Mobile selection focused the company heading, remained focused through asynchronous enrichment, and kept page width within the tested 375px viewport. The app was browsed without an account or wallet. No transaction was submitted.
+
+Final local evidence: `portfolio-public-integration-final.log`, `portfolio-public-terminal.log`, `portfolio-public-metrics.log`, `portfolio-public-feed.log`, `portfolio-public-access-final.log`, their JSON summaries, and `portfolio-ci.json`. Browser proof is captured separately. The live history request used a fresh GeckoTerminal response; authenticated fallback is regression-covered, but a production fallback was not forced by manufacturing provider failures.
+
+**Portfolio verdict:** ready to present as a public WIP comparison tool. These checks establish the tested flows at the recorded time; they do not guarantee every upstream field, venue or future refresh will be available.

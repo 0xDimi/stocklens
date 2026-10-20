@@ -28,4 +28,4 @@
 - [x] References: reproduce missing closed price; test/repair source timestamp parsing; add exact-contract, share-normalized spot premiums with disclosed provenance. Owned fundamentals, market-details and new source/tests.
 - [x] Stock pages: test bounded asset selection/chart semantics; implement isolated overview, issuer/network details and multi-stock comparison modules. Parent wires route/shell.
 - [x] Home/Markets: regress deployment counting, quote/provider presentation and date precision; implement explicit labels, failed-route disclosure, side-by-side prices, stock selection and history navigation.
-- [ ] Verify: run full regressions and strict production smoke; real HTTP integrations; actual desktop/mobile CUA flows; independent review; CI and public rollout checks. Update release docs with observed limits.
+- [x] Verify: run full regressions and strict production smoke; real HTTP integrations; actual desktop/mobile CUA flows; independent review; CI and public rollout checks. Update release docs with observed limits.

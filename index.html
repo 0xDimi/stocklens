@@ -15,6 +15,8 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23126851'/%3E%3Cpath d='M8 8h16v6H14v4h10v6H8v-6h10v-4H8z' fill='white'/%3E%3C/svg%3E"
     />
     <link rel="stylesheet" href="/src/styles.css" />
+    <link rel="stylesheet" href="/src/comparison-ui.css" />
+    <link rel="stylesheet" href="/src/stock-pages.css" />
     <script type="module" src="/src/app.mjs"></script>
   </head>
   <body>
@@ -139,7 +141,7 @@
               aria-selected="true"
               aria-controls="view-panel"
             >
-              Products</button
+              Token versions</button
             ><button
               role="tab"
               id="tab-quotes"
@@ -148,7 +150,16 @@
               aria-controls="view-panel"
               tabindex="-1"
             >
-              Buy comparison</button
+              Buy quotes</button
+            ><button
+              role="tab"
+              id="tab-terms"
+              data-view="terms"
+              aria-selected="false"
+              aria-controls="view-panel"
+              tabindex="-1"
+            >
+              Product terms</button
             ><button
               role="tab"
               id="tab-markets"
@@ -166,18 +177,10 @@
               aria-controls="view-panel"
               tabindex="-1"
             >
-              Exchanges</button
-            ><button
-              role="tab"
-              id="tab-terms"
-              data-view="terms"
-              aria-selected="false"
-              aria-controls="view-panel"
-              tabindex="-1"
-            >
-              Issuer terms
+              Exchanges
             </button>
           </div>
+          <p id="comparison-intent" class="comparison-intent"></p>
           <div class="view-filters">
             <label
               >Network<select id="chain" aria-label="Chain">
@@ -235,10 +238,10 @@
           <p id="view-source-warning" class="view-source-warning" hidden></p>
           <div id="compare-box" class="compare-box" hidden>
             <div class="compare-label">
-              Selected <span id="compare-count">0/3</span>
+              Product terms <span id="compare-count">0/3</span> selected
             </div>
             <div id="compare-list"></div>
-            <button id="compare-open" disabled>Compare terms ↗</button>
+            <button id="compare-open" disabled>Compare selected terms →</button>
           </div>
           <div id="decision-summary" hidden></div>
           <div id="view-panel" role="tabpanel" aria-labelledby="tab-products">
@@ -331,9 +334,12 @@
           <h1>Markets</h1>
           <p id="market-universe-note">Loading the asset catalog…</p>
         </div>
-        <button class="text-button" data-open-coverage>
-          Coverage & sources ↗
-        </button>
+        <div class="markets-heading-actions">
+          <button id="market-choose-compare">Compare stocks</button
+          ><button class="text-button" data-open-coverage>
+            Coverage & sources ↗
+          </button>
+        </div>
       </section>
       <div class="markets-tools">
         <div class="market-ranking" aria-label="Market ranking">
@@ -420,11 +426,12 @@
           <thead>
             <tr>
               <th scope="col">Stock</th>
+              <th scope="col">Listed price</th>
               <th scope="col">Tokenized price</th>
               <th scope="col">24h</th>
               <th
                 scope="col"
-                title="Automatically observed $1,000 USDC indicative buy premium for one verified representative version, before gas; USDC assumed $1. Expand a cell for price time, Nasdaq reference and share conversion."
+                title="A representative exact-contract pool price normalized to a listed share, compared with the listed price or last close. Expand for sources, dates and conversion. Size-specific buy estimates are labeled separately."
               >
                 Onchain premium ⓘ
               </th>
@@ -448,7 +455,7 @@
           </thead>
           <tbody id="markets-body">
             <tr>
-              <td colspan="10" class="empty-results">Loading markets…</td>
+              <td colspan="11" class="empty-results">Loading markets…</td>
             </tr>
           </tbody>
         </table>
@@ -461,27 +468,55 @@
           ><button id="market-next" disabled>Next →</button>
         </div>
       </div>
+      <div id="market-stock-compare" class="market-stock-compare" hidden>
+        <div>
+          <strong>Compare stocks</strong
+          ><span id="market-compare-selected"></span>
+        </div>
+        <span id="market-compare-status" role="status"></span
+        ><button id="market-compare-clear" class="text-button">Clear</button
+        ><button id="market-compare-open" class="primary-button" disabled>
+          Compare stocks →
+        </button>
+      </div>
       <div class="market-data-notes">
         <p>
-          Prices, 24h changes, capitalization and volume describe the tokenized
-          market. Counts reflect mapped versions; opening a stock checks its
-          latest native grouping. Missing values stay empty.
+          Listed prices describe the underlying security; tokenized prices, 24h
+          changes, tokenized capitalization and volume describe its onchain
+          market. Each observation carries its own date. Select stocks to
+          compare their market metrics, or open a stock to explore its token
+          versions.
         </p>
         <p>
-          Onchain premium observes a $1,000 USDC indicative buy for one verified
-          representative version, before gas, with USDC assumed to equal $1.
-          It is not the best price across all versions. Expired observations are
-          labeled; expand a cell for sources, times and missing-value reasons.
+          Onchain premium uses one verified, share-normalized pool snapshot. It
+          is not an executable order or an average across all versions.
+          Closed-market comparisons say “vs close.” A size-specific buy estimate
+          is labeled separately; expand a cell for its basis.
         </p>
         <div>
           <button id="market-fundamentals">Refresh page data</button
           ><span id="market-company-status"
-            >Nasdaq references and premiums load automatically for the current 25
-            rows. P/E uses the stated fiscal year, rather than current TTM.</span
+            >Nasdaq references and premiums load automatically for the current
+            25 rows. P/E uses the stated fiscal year, rather than current
+            TTM.</span
           >
         </div>
       </div>
     </main>
+    <main
+      class="page stock-page"
+      id="stock-page"
+      tabindex="-1"
+      hidden
+      aria-label="Stock overview"
+    ></main>
+    <main
+      class="page asset-comparison-page"
+      id="asset-comparison-page"
+      tabindex="-1"
+      hidden
+      aria-label="Stock comparison"
+    ></main>
     <dialog id="coverage-dialog" class="coverage-dialog">
       <button
         class="dialog-close"

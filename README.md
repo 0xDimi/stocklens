@@ -19,7 +19,7 @@ No account or wallet connection is needed to explore Stocklens. Purchases happen
 
 The **Markets** page puts tokenized stocks and ETFs in one searchable view. Browse prices, trading volume, networks and available versions, alongside onchain premiums, company market caps and P/E ratios where data is available.
 
-Save assets to your watchlist, filter by issuer or network, and open any stock to compare its versions.
+Open a stock for its price history, issuers, networks and contracts. Select up to five stocks for a side-by-side market comparison, or compare token versions of the same stock. Save assets to your watchlist and filter by issuer or network.
 
 ## Work in progress
 

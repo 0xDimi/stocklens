@@ -3,6 +3,10 @@ import { loadCatalog } from "./catalog.mjs";
 import { mapLimit } from "./http.mjs";
 import { join } from "node:path";
 import { readRuntime } from "./runtime.mjs";
+import { createReferenceRetention } from "./reference-retention.mjs";
+const retainedPrices = createReferenceRetention({
+  file: join(readRuntime().cacheDir, "listed-reference-prices.json"),
+});
 const nasdaq = sourceClient(
   "Nasdaq",
   () => "https://api.nasdaq.com/api",
@@ -104,14 +108,20 @@ function disclosedPe(ratios, ticker) {
 }
 export function easternTime(value) {
   const match = String(value).match(
-    /(?:Closed at )?([A-Z][a-z]{2}) (\d{1,2}), (\d{4}) (\d{1,2}):(\d{2}) (AM|PM) ET/,
+    /^(?:Closed at )?([A-Z][a-z]{2}) (\d{1,2}), (\d{4}) (\d{1,2}):(\d{2}) (AM|PM) ET$/,
   );
   if (!match) return null;
   const [, mon, day, year, hour, minute, period] = match;
+  if (Number(hour) < 1 || Number(hour) > 12 || Number(minute) > 59) return null;
   const date = Date.parse(
     `${mon} ${day} ${year} ${(Number(hour) % 12) + (period === "PM" ? 12 : 0)}:${minute}:00 GMT`,
   );
   if (!Number.isFinite(date)) return null;
+  if (
+    new Date(date).getUTCDate() !== Number(day) ||
+    new Date(date).getUTCFullYear() !== Number(year)
+  )
+    return null;
   const zone = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     timeZoneName: "shortOffset",
@@ -125,6 +135,30 @@ export function easternTime(value) {
           Math.sign(Number(offset[1])) * Number(offset[2] || 0)) *
           60000
     : null;
+}
+function priceTime(value, marketStatus) {
+  const at = easternTime(value);
+  if (at !== null) return { at, timePrecisionMs: 60000, priceDate: null };
+  // Nasdaq's closed-session response sometimes supplies only the session date.
+  // Store its date boundary for ordering, with explicit day precision; never
+  // invent a 4pm close timestamp (early-close days also exist).
+  if (marketStatus !== "Closed") return null;
+  const match = String(value).match(/^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})$/);
+  if (!match) return null;
+  const [, month, day, year] = match;
+  const date = Date.parse(`${month} ${day}, ${year} 00:00:00 GMT`);
+  if (!Number.isFinite(date)) return null;
+  const parsed = new Date(date);
+  if (
+    parsed.getUTCDate() !== Number(day) ||
+    parsed.getUTCFullYear() !== Number(year)
+  )
+    return null;
+  return {
+    at: date,
+    timePrecisionMs: 86400000,
+    priceDate: parsed.toISOString().slice(0, 10),
+  };
 }
 export function parseFundamentals(
   info,
@@ -150,11 +184,11 @@ export function parseFundamentals(
     secondary = d.secondaryData || {};
   const usePrimary =
     positive(primary.lastSalePrice) !== null &&
-    easternTime(primary.lastTradeTimestamp) !== null;
+    priceTime(primary.lastTradeTimestamp, d.marketStatus) !== null;
   const quote = usePrimary ? primary : secondary;
   const price = positive(quote.lastSalePrice),
-    at = easternTime(quote.lastTradeTimestamp);
-  const quoteValid = price !== null && at !== null;
+    time = priceTime(quote.lastTradeTimestamp, d.marketStatus);
+  const quoteValid = price !== null && time !== null;
   const root = `/quote/${encodeURIComponent(stock.ticker)}`;
   const query = "?assetclass=" + (isEtf ? "etf" : "stocks");
   const pePoint = !isEtf ? disclosedPe(ratios, stock.ticker) : null;
@@ -166,10 +200,19 @@ export function parseFundamentals(
     id: stock.id,
     ticker: stock.ticker,
     companyName: d.companyName,
+    exchange: typeof d.exchange === "string" ? d.exchange : null,
+    securityType: typeof d.stockType === "string" ? d.stockType : null,
     available: quoteValid,
     price: quoteValid ? price : null,
-    at: quoteValid ? at : null,
-    timePrecisionMs: 60000,
+    at: quoteValid ? time.at : null,
+    timePrecisionMs: quoteValid ? time.timePrecisionMs : null,
+    priceDate: quoteValid ? time.priceDate : null,
+    priceTimestamp: quoteValid ? quote.lastTradeTimestamp : null,
+    priceTimeBasis: quoteValid
+      ? time.priceDate
+        ? "Source reports the session date only; no trade time is disclosed. The timestamp is the date boundary, not a live trade."
+        : "Nasdaq-reported trade time, to minute precision."
+      : null,
     currency: quoteValid && quote.lastSalePrice?.startsWith("$") ? "USD" : null,
     changePct: quoteValid ? amount(quote.percentageChange) : null,
     marketStatus: d.marketStatus || null,
@@ -232,8 +275,36 @@ function fulfilledObservation(result) {
     ? observation
     : null;
 }
-export async function getFundamentals(stock, { getSource = nasdaq } = {}) {
+export async function getFundamentals(
+  stock,
+  {
+    getSource = nasdaq,
+    retention = getSource === nasdaq ? retainedPrices : null,
+  } = {},
+) {
   if (!/^[A-Z0-9.\-]{1,12}$/.test(stock.ticker)) return null;
+  const retainUnavailable = async () => {
+    if (!retention) return null;
+    const retained = await retention.merge({
+      id: stock.id,
+      ticker: stock.ticker,
+      companyName: stock.name,
+      price: null,
+      at: null,
+      currency: null,
+      available: false,
+      marketCap: null,
+      pe: null,
+      marketCapStatus:
+        stock.category === "ETF" ? "not-applicable" : "unavailable",
+      peStatus: stock.category === "ETF" ? "not-applicable" : "unavailable",
+      marketCapReason:
+        "Company capitalization source is currently unavailable.",
+      peReason: "Fiscal-year P/E source is currently unavailable.",
+      retrievedAt: new Date().toISOString(),
+    });
+    return retained.price > 0 ? retained : null;
+  };
   try {
     const path = `/quote/${encodeURIComponent(stock.ticker)}`,
       isEtf = stock.category === "ETF",
@@ -248,7 +319,7 @@ export async function getFundamentals(stock, { getSource = nasdaq } = {}) {
             900000,
           ),
     ]);
-    if (info.status !== "fulfilled") return null;
+    if (info.status !== "fulfilled") return retainUnavailable();
     const summaryObservation = fulfilledObservation(summary);
     const peObservation = fulfilledObservation(ratios);
     const result = parseFundamentals(
@@ -262,7 +333,7 @@ export async function getFundamentals(stock, { getSource = nasdaq } = {}) {
       marketCapStale =
         result.marketCap !== null && summaryObservation?.stale === true,
       peStale = result.pe !== null && peObservation?.stale === true;
-    return {
+    const reference = {
       ...result,
       marketCapRetrievedAt:
         result.marketCap !== null
@@ -290,8 +361,9 @@ export async function getFundamentals(stock, { getSource = nasdaq } = {}) {
           ? "A previous successful Nasdaq observation is retained because its source refresh failed."
           : null,
     };
+    return retention ? await retention.merge(reference) : reference;
   } catch {
-    return null;
+    return retainUnavailable();
   }
 }
 export async function fundamentalsView(

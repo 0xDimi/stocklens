@@ -3,6 +3,7 @@ import { getFundamentals } from "./fundamentals.mjs";
 import { getQuote, conversionIssuer } from "./providers.mjs";
 import { memo, mapLimit, observeWithin } from "./http.mjs";
 import { premium } from "../src/market-model.mjs";
+import { getSpotObservations } from "./public-spot.mjs";
 
 const BASIS =
   "$1,000 USDC indicative buy premium before gas; USDC assumed $1. A representative verified version, not the best price across all versions. Observed quote, not a market-wide spot price or executable offer.";
@@ -22,9 +23,10 @@ function candidates(stock) {
         order.indexOf(a.deployment.chain) - order.indexOf(b.deployment.chain),
     );
 }
-async function observe(stock, quote) {
+async function observe(stock, quote, deadlineAt) {
   for (const { product, deployment } of candidates(stock).slice(0, 3)) {
-    const result = await quote(product, deployment, "1000");
+    if (Date.now() >= deadlineAt) break;
+    const result = await quote(product, deployment, "1000", { deadlineAt });
     if (
       result.status === "quoted" &&
       result.equivalentShares > 0 &&
@@ -40,6 +42,7 @@ export async function marketDetailsView(
     getCatalog = loadCatalog,
     getReference = getFundamentals,
     quote = getQuote,
+    getSpots = getSpotObservations,
   } = {},
 ) {
   const ids = [...new Set((params.get("ids") || "").split(","))];
@@ -58,9 +61,13 @@ export async function marketDetailsView(
       status: 400,
     });
   const deadline = Date.now() + 26000;
+  const spots = observeWithin(() => getSpots(stocks), 10000).catch(
+    () => new Map(),
+  );
   const rows = await mapLimit(stocks, 5, async (stock) => {
     const remaining = () => Math.max(1, deadline - Date.now());
-    const [reference, observation] = await Promise.all([
+    const quoteDeadline = Math.min(deadline, Date.now() + 10000) - 50;
+    const [reference, observation, spotRows] = await Promise.all([
       observeWithin(
         () => getReference(stock),
         Math.min(18000, remaining()),
@@ -69,12 +76,55 @@ export async function marketDetailsView(
         () =>
           quote === getQuote
             ? memo("market-premium:" + stock.id, 120000, () =>
-                observe(stock, quote),
+                observe(stock, quote, quoteDeadline),
               )
-            : observe(stock, quote),
+            : observe(stock, quote, quoteDeadline),
         Math.min(10000, remaining()),
       ).catch(() => null),
+      spots,
     ]);
+    const spot = spotRows?.get(stock.id) || null;
+    const spotValue = !(reference?.priceStale ?? reference?.stale)
+      ? premium({ ...spot, sharesPerToken: 1 }, reference)
+      : null;
+    const closedSpot = reference?.priceSession === "Closed";
+    const spotMetric =
+      spotValue == null
+        ? null
+        : {
+            value: spotValue,
+            deltaUsd: spot.price - reference.price,
+            price: spot.price,
+            referencePrice: reference.price,
+            rawPrice: spot.rawPrice,
+            symbol: spot.symbol,
+            issuer: spot.issuer,
+            chain: spot.chain,
+            address: spot.address,
+            venue: spot.venue,
+            liquidity: spot.liquidity,
+            priceAt: spot.at,
+            priceTimeBasis: spot.priceTimeBasis,
+            referenceAt: reference.at,
+            referenceDate: reference.priceDate || null,
+            retrievedAt: spot.retrievedAt,
+            source: spot.source,
+            referenceSource: reference.priceSource,
+            conversionSource: spot.conversionSource,
+            sharesPerToken: spot.sharesPerToken,
+            method: spot.method,
+            referenceBasis: closedSpot ? "last-close" : "contemporaneous",
+            basis:
+              spot.basis +
+              (closedSpot
+                ? " Compared with the dated listed-stock last close, not a live listed price."
+                : " Compared with the listed-stock observation."),
+            expiresAt:
+              Math.min(
+                spot.at,
+                closedSpot ? Date.parse(reference.retrievedAt) : reference.at,
+              ) + 300000,
+          };
     const value = !(reference?.priceStale ?? reference?.stale)
       ? premium(
           {
@@ -123,12 +173,23 @@ export async function marketDetailsView(
       id: stock.id,
       reference,
       premium: metric,
-      referenceReason: reference
+      spot,
+      spotPremium: spotMetric,
+      spotPremiumReason: spotMetric
         ? null
+        : !spot
+          ? "No fresh exact-contract pool snapshot with verified underlying-equivalent units is available."
+          : !reference?.price
+            ? "Listed-stock price unavailable."
+            : "Pool snapshot and listed-stock price are not fresh and time-aligned; no current spot premium is asserted.",
+      referenceReason: reference
+        ? reference.price == null
+          ? reference.priceReason
+          : null
         : "No corroborated listed-security reference is currently available.",
       premiumReason: metric
         ? null
-        : !reference
+        : !reference?.price
           ? "Listed-stock reference unavailable."
           : !observation
             ? "No supported quote with verified share conversion for this asset."

@@ -14,6 +14,8 @@ import {
   csvText,
 } from "./views.mjs";
 import { stockLogo, chainLogo } from "./brands.mjs";
+import { listedDate } from "./reference-view.mjs";
+import { canonicalSelection } from "./asset-comparison-model.mjs";
 const signed = (v) =>
   Number.isFinite(v) ? `${v > 0 ? "+" : ""}${number(v)}%` : "—";
 // Keep keyboard position when background observations replace table rows.
@@ -23,7 +25,8 @@ export function renderMarketBody(container, markup, restoreState = () => {}) {
     key = container.contains(focused) ? focused.dataset.marketFocus : null;
   container.innerHTML = markup;
   restoreState();
-  if (!key || ![document.body, focused].includes(document.activeElement)) return;
+  if (!key || ![document.body, focused].includes(document.activeElement))
+    return;
   [...container.querySelectorAll("[data-market-focus]")]
     .find((node) => node.dataset.marketFocus === key)
     ?.focus({ preventScroll: true });
@@ -43,6 +46,11 @@ export function createMarketsPage({
   onSelect,
   onSave,
   onRefresh,
+  onCompareVersions,
+  getComparison = () => [],
+  onCompareChange = () => {},
+  onCompareAssets = () => {},
+  onChooseCompare = () => {},
 }) {
   const $ = (s) => document.querySelector(s);
   let currentPage = 1,
@@ -95,51 +103,39 @@ export function createMarketsPage({
   }
   function premiumCell(stock) {
     const entry = details.get(stock.id),
-      p = entry?.premium,
+      p = entry?.spotPremium || entry?.premium,
       observed = observedPremiumState(p);
     if (observed) {
-      const budget = Number.isFinite(p.budget)
-          ? `${compact(p.budget)} buy`
-          : "Observed",
-        impact = Number.isFinite(p.priceImpactPct) ? p.priceImpactPct : null,
-        label = `${impact >= 5 ? "High price impact · " + number(impact) + "% · " : ""}${observed.stale ? "Last observed" : budget}${p.referenceBasis === "last-close" ? " vs close" : ""} · ${stamp(p.priceAt)}`,
-        reason = [
-          p.basis,
-          impact != null
-            ? `Venue-reported price impact: ${number(impact)}%.${impact >= 5 ? " This order materially moves the pool price; the premium includes that impact." : ""}`
-            : "Venue price impact not supplied.",
-          `${p.symbol || "Token"} · ${p.chain || "Network not supplied"}`,
-          `Cost per equivalent share ${usd(p.price)}; ${number(p.sharesPerToken, 6)} listed shares per token.`,
-          `Token observed ${stamp(p.priceAt)}; Nasdaq reference ${stamp(p.referenceAt)} (minute precision); retrieved ${stamp(p.retrievedAt)}.`,
-          observed.stale
-            ? "Observation expired; refresh for a current comparison."
-            : "",
-          entry.status === "loading" ? "Refreshing…" : "",
-          entry.status === "error" ? `Refresh failed: ${entry.error}` : "",
-          entry.premiumReason || "",
+      const spot = !!entry.spotPremium,
+        label = [
+          observed.stale ? "Last observed" : spot ? "Pool snapshot" : "$1K buy",
+          p.referenceBasis === "last-close" ? "vs close" : "",
         ]
           .filter(Boolean)
-          .join(" ");
-      return `<span>${signed(observed.value)}</span>${disclosure(
-        label,
-        reason,
-        sourceLink(p.source, "Price source", stock.id + ":premium:price-source") +
-          " · " +
-          sourceLink(
-            p.conversionSource,
-            "Share conversion",
-            stock.id + ":premium:conversion-source",
-          ),
-        stock.id + ":premium",
-      )}`;
+          .join(" · ");
+      const reason = [
+        p.basis,
+        `${p.symbol || "Token"} · ${p.chain || "Network not supplied"}.`,
+        `Normalized price ${usd(p.price)}; listed reference ${usd(p.referencePrice || entry.reference?.price)}.`,
+        `Pool observed ${stamp(p.priceAt)}; listed reference ${listedDate(entry.reference)}.`,
+        observed.stale
+          ? "Observation expired; refresh to request current data."
+          : "",
+        entry.status === "loading" ? "Refreshing…" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return `<span class="${observed.value < 0 ? "negative" : observed.value > 0 ? "positive" : ""}">${signed(observed.value)}</span>${disclosure(label, reason, sourceLink(p.source, "Price source", stock.id + ":premium:price-source") + (p.conversionSource ? " · " + sourceLink(p.conversionSource, "Share conversion", stock.id + ":premium:conversion-source") : ""), stock.id + ":premium")}`;
     }
     if (!entry || entry.status === "loading") return "—<small>Loading…</small>";
-    const reason =
-      entry.status === "error"
-        ? entry.error
-        : entry.premiumReason ||
-          "No comparable price and verified share conversion were supplied.";
-    return `—${disclosure(entry.status === "error" ? "Load failed" : "Unavailable", reason, "", stock.id + ":premium")}`;
+    return `—${disclosure(entry.status === "error" ? "Load failed" : "Unavailable", entry.error || entry.spotPremiumReason || entry.premiumReason || "A listed price and verified comparable pool snapshot were not supplied.", "", stock.id + ":premium")}`;
+  }
+  function listedPriceCell(stock) {
+    const entry = details.get(stock.id),
+      reference = entry?.reference;
+    if (Number.isFinite(reference?.price))
+      return `<strong>${usd(reference.price)}</strong><small>${reference.priceStale ? "Older · " : ""}${reference.priceSession === "Closed" ? "Close · " : ""}${escape(listedDate(reference))}</small>${disclosure(reference.exchange || "Listed source", reference.priceStale ? reference.staleReason || "The previous dated price is retained." : "Listed-security observation; separate from tokenized prices.", sourceLink(reference.source, "Listed source", stock.id + ":listed:source"), stock.id + ":listed")}`;
+    return `—<small>${!entry || entry.status === "loading" ? "Loading…" : "Not supplied"}</small>`;
   }
   function companyCell(stock, field) {
     const entry = details.get(stock.id),
@@ -235,6 +231,14 @@ export function createMarketsPage({
   }
   function render() {
     const { stocks, saved, chains } = getState();
+    const compared = canonicalSelection(getComparison(), stocks);
+    $("#market-stock-compare").hidden = !compared.length;
+    $("#market-compare-selected").textContent = compared
+      .map((id) => stocks.find((s) => s.id === id)?.ticker)
+      .join(" · ");
+    $("#market-compare-open").disabled = compared.length < 2;
+    $("#market-compare-open").textContent =
+      `Compare ${compared.length} stocks →`;
     if (!stocks.length) return;
     const data = rows(),
       state = getMarketState();
@@ -302,15 +306,15 @@ export function createMarketsPage({
             issuers = [
               ...new Map(s.products.map((p) => [p.issuer, p])).values(),
             ];
-          return `<tr><td><div class="market-asset"><button class="market-save" data-market-focus="${escape(s.id)}:save" data-market-save="${escape(s.id)}" aria-label="${saved.has(s.id) ? "Unsave" : "Save"} ${escape(s.name)}" aria-pressed="${saved.has(s.id)}">${saved.has(s.id) ? "★" : "☆"}</button><a data-market-focus="${escape(s.id)}:asset" href="/?stock=${encodeURIComponent(s.id)}" data-open-stock="${escape(s.id)}">${stockLogo(s, m?.image)}<span><strong>${escape(s.ticker)}</strong><small>${escape(s.name)}</small></span></a></div></td><td><strong>${usd(m?.price)}</strong><small>${m?.updatedAt ? stamp(m.updatedAt) : "Not observed"}</small></td><td><span class="market-change ${m?.change24h < 0 ? "negative" : m?.change24h > 0 ? "positive" : ""}">${signed(m?.change24h)}</span></td><td>${premiumCell(s)}</td><td>${compact(m?.marketCap)}</td><td>${compact(m?.volume24h)}</td><td><span class="logo-stack" title="${escape(networks.map((id) => chains.find((c) => c.id === id)?.label || id).join(", "))}">${networks
+          return `<tr><td><div class="market-asset"><button class="market-compare-toggle" data-market-focus="${escape(s.id)}:compare" data-stock-compare="${escape(s.id)}" aria-label="${compared.includes(s.id) ? "Remove" : "Add"} ${escape(s.name)} ${compared.includes(s.id) ? "from" : "to"} stock comparison" aria-pressed="${compared.includes(s.id)}">${compared.includes(s.id) ? "✓" : "+"}</button><button class="market-save" data-market-focus="${escape(s.id)}:save" data-market-save="${escape(s.id)}" aria-label="${saved.has(s.id) ? "Unsave" : "Save"} ${escape(s.name)}" aria-pressed="${saved.has(s.id)}">${saved.has(s.id) ? "★" : "☆"}</button><a data-market-focus="${escape(s.id)}:asset" href="/?page=stock&amp;stock=${encodeURIComponent(s.id)}" data-open-stock="${escape(s.id)}">${stockLogo(s, m?.image)}<span><strong>${escape(s.ticker)}</strong><small>${escape(s.name)}</small></span></a></div></td><td>${listedPriceCell(s)}</td><td><strong>${usd(m?.price)}</strong><small>${m?.updatedAt ? stamp(m.updatedAt) : "Not observed"}</small></td><td><span class="market-change ${m?.change24h < 0 ? "negative" : m?.change24h > 0 ? "positive" : ""}">${signed(m?.change24h)}</span></td><td>${premiumCell(s)}</td><td>${compact(m?.marketCap)}</td><td>${compact(m?.volume24h)}</td><td><span class="logo-stack" title="${escape(networks.map((id) => chains.find((c) => c.id === id)?.label || id).join(", "))}">${networks
             .slice(0, 3)
             .map((id) => chainLogo(id))
             .join(
               "",
-            )}<span>${networks.length || "—"}</span></span></td><td><a class="version-link" data-market-focus="${escape(s.id)}:versions" href="/?stock=${encodeURIComponent(s.id)}" data-open-stock="${escape(s.id)}">${s.products.length || "Check"}${s.products.length ? " →" : ""}</a><small title="${escape(issuers.map((p) => provider(p).name).join(", "))}">${issuers.length} issuers</small></td><td>${companyCell(s, "marketCap")}</td><td>${companyCell(s, "pe")}</td></tr>`;
+            )}<span>${networks.length || "—"}</span></span></td><td><a class="version-link" data-market-focus="${escape(s.id)}:versions" href="/?stock=${encodeURIComponent(s.id)}" data-open-versions="${escape(s.id)}">${s.products.length || "Check"}${s.products.length ? " →" : ""}</a><small title="${escape(issuers.map((p) => provider(p).name).join(", "))}">${issuers.length} issuers</small></td><td>${companyCell(s, "marketCap")}</td><td>${companyCell(s, "pe")}</td></tr>`;
         })
         .join("") ||
-      '<tr><td colspan="10" class="empty-results">No assets match. Clear the search or change your filters.</td></tr>',
+        '<tr><td colspan="11" class="empty-results">No assets match. Clear the search or change your filters.</td></tr>',
       () => {
         document.querySelectorAll("[data-market-detail]").forEach((node) => {
           node.open = openedDetails.has(node.dataset.marketDetail);
@@ -367,6 +371,8 @@ export function createMarketsPage({
   $("#markets-page").addEventListener("click", (e) => {
     const order = e.target.closest("[data-market-sort]"),
       open = e.target.closest("[data-open-stock]"),
+      versions = e.target.closest("[data-open-versions]"),
+      compare = e.target.closest("[data-stock-compare]"),
       save = e.target.closest("[data-market-save]");
     if (order) {
       sort = order.dataset.marketSort;
@@ -377,10 +383,36 @@ export function createMarketsPage({
       e.preventDefault();
       onSelect(open.dataset.openStock);
     }
+    if (versions) {
+      e.preventDefault();
+      (onCompareVersions || onSelect)(versions.dataset.openVersions);
+    }
+    if (compare) {
+      const id = compare.dataset.stockCompare,
+        current = canonicalSelection(getComparison(), getState().stocks);
+      if (current.includes(id))
+        onCompareChange(current.filter((value) => value !== id));
+      else if (current.length < 5) onCompareChange([...current, id]);
+      else
+        $("#market-compare-status").textContent =
+          "Choose up to five stocks. Remove one to add another.";
+      render();
+    }
     if (save) {
       onSave(save.dataset.marketSave);
       changed();
     }
+  });
+  $("#market-choose-compare").addEventListener("click", () =>
+    onChooseCompare(getComparison()),
+  );
+  $("#market-compare-open").addEventListener("click", () =>
+    onCompareAssets(getComparison()),
+  );
+  $("#market-compare-clear").addEventListener("click", () => {
+    onCompareChange([]);
+    $("#market-compare-status").textContent = "";
+    render();
   });
   $("#market-prev").addEventListener("click", () => {
     currentPage--;
@@ -411,7 +443,15 @@ export function createMarketsPage({
     const text = csvText(currentRows, [
       ["Stock", (s) => s.ticker],
       ["Asset ID", (s) => s.id],
+      ["Listed price USD", (s) => details.get(s.id)?.reference?.price],
+      [
+        "Listed observed",
+        (s) =>
+          details.get(s.id)?.reference?.priceDate ||
+          details.get(s.id)?.reference?.at,
+      ],
       ["Tokenized price USD", (s) => s.market?.price],
+      ["Pool premium percent", (s) => details.get(s.id)?.spotPremium?.value],
       ["24h change percent", (s) => s.market?.change24h],
       ["Tokenized cap USD", (s) => s.market?.marketCap],
       ["Tokenized volume USD", (s) => s.market?.volume24h],

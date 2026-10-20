@@ -15,6 +15,9 @@ import {
   exportColumns,
 } from "./views.mjs";
 import { createMarketsPage } from "./markets-page.mjs";
+import { createStockPages } from "./stock-pages.mjs";
+import { canonicalSelection } from "./asset-comparison-model.mjs";
+import { quoteComparison, quoteCoverage } from "./comparison-ui.mjs";
 import {
   stockLogo,
   issuerLogo,
@@ -24,13 +27,21 @@ import {
 import { createTerminal } from "./terminal.mjs";
 let desk = null,
   marketsPage = null,
+  stockPages = null,
   catalogCoverage = null,
   pendingProducts = [];
 const quoteSnapshots = new Map();
 observeLogoErrors();
 const $ = (selector) => document.querySelector(selector);
 const params = new URLSearchParams(location.search);
-let page = params.get("page") === "markets" ? "markets" : "home";
+let page = ["markets", "stock", "compare"].includes(params.get("page"))
+  ? params.get("page")
+  : "home";
+let assetCompareIds = (params.get("stocks") || "").split(",").filter(Boolean);
+const homeDetails = new Map();
+let detailAbort = null,
+  detailSequence = 0,
+  homeAssetId = null;
 let stocks = [],
   chains = [],
   selected = null,
@@ -61,7 +72,7 @@ try {
 } catch {}
 if (validBudget(params.get("amount")))
   $("#budget").value = params.get("amount");
-function updateUrl() {
+function updateUrl(mode = "replace") {
   if (!selected) return;
   const query = new URLSearchParams({
     stock: selected.id,
@@ -71,8 +82,13 @@ function updateUrl() {
   });
   if ($("#issuer").value !== "all") query.set("issuer", $("#issuer").value);
   if (token && view === "markets") query.set("token", token);
-  if (page === "markets") query.set("page", "markets");
-  history.replaceState(null, "", "/?" + query);
+  if (page !== "home") query.set("page", page);
+  if (page === "compare" && assetCompareIds.length)
+    query.set("stocks", assetCompareIds.join(","));
+  const url = "/?" + query;
+  if (mode === "push" && location.search !== "?" + query)
+    history.pushState(null, "", url);
+  else history.replaceState(null, "", url);
 }
 function renderStocks() {
   const type = $("#asset-type").value;
@@ -97,7 +113,7 @@ function renderHeading() {
     selected.products.flatMap((p) => p.deployments.map((d) => d.chain)),
   ).size;
   $("#stock-heading").innerHTML =
-    `<div class="company">${stockLogo(selected, desk?.getMarkets().get(selected.id)?.image)}<div><div class="company-name"><h2 id="stock-title" tabindex="-1">${escape(selected.name)}</h2><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p><b>${escape(selected.ticker)}</b> · ${escape(selected.category)} · ${selected.products.filter((p) => !p.wrapped).length} issuer versions${selected.products.some((p) => p.wrapped) ? ` + ${selected.products.filter((p) => p.wrapped).length} wrapped` : ""} · ${new Set(selected.products.map((p) => p.issuer)).size} ${new Set(selected.products.map((p) => p.issuer)).size === 1 ? "issuer" : "issuers"} · ${chainCount} networks</p></div></div><button class="primary-button" data-action="quotes" ${view === "quotes" ? "hidden" : ""}>Compare buy quotes <span aria-hidden="true">→</span></button>`;
+    `<div class="company">${stockLogo(selected, desk?.getMarkets().get(selected.id)?.image)}<div><div class="company-name"><h2 id="stock-title" tabindex="-1">${escape(selected.name)}</h2><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p><b>${escape(selected.ticker)}</b> · ${escape(selected.category)} · ${selected.products.filter((p) => !p.wrapped).length} issuer versions${selected.products.some((p) => p.wrapped) ? ` + ${selected.products.filter((p) => p.wrapped).length} wrapped` : ""} · ${new Set(selected.products.map((p) => p.issuer)).size} ${new Set(selected.products.map((p) => p.issuer)).size === 1 ? "issuer" : "issuers"} · ${chainCount} networks</p></div></div><div class="stock-heading-actions"><a class="text-button" href="/?page=stock&amp;stock=${encodeURIComponent(selected.id)}" data-open-stock-page="${escape(selected.id)}">Stock overview →</a><button class="primary-button" data-action="quotes" ${view === "quotes" ? "hidden" : ""}>Compare buy quotes <span aria-hidden="true">→</span></button></div>`;
   if (focusTitle) $("#stock-title").focus({ preventScroll: true });
   const wrappers = selected.products.filter((p) => p.wrapped).length;
   $("#wrapper-control").hidden =
@@ -160,8 +176,21 @@ const sortOptions = {
   terms: [["name", "Issuer name"]],
 };
 function setView(next, fetch = true) {
-  if (fetch && page === "markets") setPage("home");
+  if (fetch && page !== "home") setPage("home");
   view = next;
+  $("#comparison").dataset.mode = view;
+  $("#comparison-intent").innerHTML = {
+    products:
+      "<strong>Compare product terms.</strong> Select 2–3 versions for rights, dividends and exit rules.",
+    quotes:
+      "<strong>Compare buy quotes.</strong> Set a USDC amount. See each route’s provider, liquidity sources and output.",
+    terms:
+      "<strong>Read the product terms.</strong> These summaries cover rights, dividends and eligibility. Select versions in Token versions for a side-by-side comparison.",
+    markets:
+      "<strong>Explore market liquidity.</strong> These are pool observations, not quotes for your order size.",
+    venues:
+      "<strong>Explore exchange markets.</strong> Select a token to see reported prices and trading venues.",
+  }[view];
   const prior = $("#sort").value;
   document.querySelectorAll("[data-view]").forEach((b) => {
     b.setAttribute("aria-selected", b.dataset.view === view);
@@ -196,11 +225,11 @@ function setView(next, fetch = true) {
   }[view];
   $("#view-heading").innerHTML =
     {
-      products: "Products",
-      quotes: "Buy comparison",
+      products: "Token versions",
+      quotes: "Compare buy quotes",
       markets: "Onchain liquidity",
       venues: "Exchanges",
-      terms: "Issuer terms",
+      terms: "Product terms",
     }[view] + ' <span id="result-count">—</span>';
   if (view !== "markets") token = "";
   $("#wrapper-control").hidden =
@@ -268,7 +297,7 @@ function renderResults() {
       : '<p class="empty-results">No products match these filters.</p>';
   if (view === "quotes")
     $("#results").innerHTML = visibleRows.length
-      ? quoteTable(visibleRows)
+      ? quoteComparison(visibleRows)
       : '<p class="empty-results">No quoted-chain deployments match these filters. Try All chains or explore Markets.</p>';
   if (view === "markets")
     $("#results").innerHTML = visibleRows.length
@@ -288,7 +317,7 @@ function renderResults() {
     view === "products"
       ? `${visibleRows.length} versions · ${prices} with prices`
       : view === "quotes"
-        ? `${quotes} of ${visibleRows.length} routes quoted · ${visibleRows.filter((r) => r.rankable).length} normalized`
+        ? `${quoteCoverage(visibleRows).providers.join(" · ") || "No current quote providers"}`
         : view === "markets"
           ? `${visibleRows.length} exact-contract pools${token ? " · filtered to one deployment" : ""}`
           : view === "venues"
@@ -298,7 +327,7 @@ function renderResults() {
     products:
       "Token-unit prices are not directly comparable share prices. Volume and market cap describe the token, not the underlying company. Expand a product for contracts and access terms.",
     quotes:
-      "Ranked by equivalent shares before network costs. Only source-backed conversions enter ranking. Quote coverage: Raydium on Solana; KyberSwap on Ethereum, BNB Chain, Base and Arbitrum.",
+      "Ranked by verified equivalent shares before network costs. Jupiter and Raydium quote Solana; KyberSwap and Velora quote supported EVM networks. Liquidity sources are shown separately. A route can be unavailable even when its token is listed.",
     markets:
       "Pool prices are observations, not size-specific quotes. Search results can omit venues. Check the exact contract, venue access and final trade quote.",
     venues:
@@ -449,8 +478,10 @@ function loadChart(poolId) {
   desk.loadPool(poolId, snapshot?.rows || []);
 }
 function selectStock(id) {
-  selected = stocks.find((s) => s.id === id);
-  if (!selected) return;
+  const stock = assetById(stocks, id);
+  if (!stock) return;
+  selected = stock;
+  homeAssetId = stock.id;
   setPage("home");
   token = "";
   $("#include-wrappers").checked = false;
@@ -458,6 +489,7 @@ function selectStock(id) {
   renderHeading();
   renderStocks();
   desk.select(selected);
+  loadHomeDetails(selected.id);
   document.body.classList.remove("universe-open");
   $("#toggle-universe").setAttribute("aria-expanded", "false");
   if (matchMedia("(max-width: 760px)").matches)
@@ -502,7 +534,10 @@ async function initialize() {
     setPage(page, false);
     desk.start();
     desk.select(selected);
-    if (page === "home") loadView();
+    if (page === "home") {
+      loadView();
+      loadHomeDetails(selected.id);
+    }
   } catch (error) {
     $("#coverage").textContent = "Catalog unavailable";
     $("#stock-list").innerHTML =
@@ -598,6 +633,7 @@ document.querySelector(".presets").addEventListener("click", (e) => {
 });
 $("#refresh").addEventListener("click", () => {
   loadView();
+  loadHomeDetails(selected?.id, true);
   desk.refreshChart();
 });
 $("#enrich").addEventListener("click", () => {
@@ -654,9 +690,11 @@ desk = createTerminal({
   selectStock,
   setView,
   refresh: () => {
+    if (page === "stock" || page === "compare") return stockPages?.refresh();
     if (page === "markets") desk.refreshMarkets();
     else {
       loadView();
+      loadHomeDetails(selected?.id, true);
       desk.refreshChart();
     }
   },
@@ -675,27 +713,153 @@ desk = createTerminal({
     renderHeading();
   },
 });
+async function loadHomeDetails(id, force = false) {
+  if (!id || page !== "home") return;
+  const cached = homeDetails.get(id);
+  if (!force && cached && Date.now() - cached.checkedAt < 60000) {
+    desk.ingest("details", cached);
+    return;
+  }
+  detailAbort?.abort();
+  detailAbort = new AbortController();
+  const sequence = ++detailSequence;
+  try {
+    const response = await fetch(
+      "/api/market-details?" + new URLSearchParams({ ids: id }),
+      {
+        signal: AbortSignal.any([
+          detailAbort.signal,
+          AbortSignal.timeout(35000),
+        ]),
+      },
+    );
+    const data = await response.json();
+    if (!response.ok)
+      throw new Error(data.error || "Listed price source unavailable");
+    const row = data.rows?.find((r) => r.id === id);
+    if (!row || sequence !== detailSequence) return;
+    const result = { ...row, checkedAt: Date.now() };
+    homeDetails.set(id, result);
+    if (homeDetails.size > 25)
+      homeDetails.delete(homeDetails.keys().next().value);
+    if (selected?.id === id && page === "home") desk.ingest("details", result);
+    if (row.reference) marketsPage?.ingestReference(id, row.reference);
+  } catch (error) {
+    if (
+      error.name !== "AbortError" &&
+      sequence === detailSequence &&
+      selected?.id === id
+    )
+      desk.ingest("details", {});
+  }
+}
 function setPage(next, write = true) {
-  page = next === "markets" ? "markets" : "home";
+  const previous = page;
+  page = ["markets", "stock", "compare"].includes(next) ? next : "home";
   $("#home-page").hidden = page !== "home";
   $("#markets-page").hidden = page !== "markets";
-  $(".skip-link").href = page === "markets" ? "#markets-page" : "#comparison";
-  $(".skip-link").textContent =
-    page === "markets" ? "Skip to markets" : "Skip to comparison";
+  $("#stock-page").hidden = page !== "stock";
+  $("#asset-comparison-page").hidden = page !== "compare";
+  if (page !== "home" && previous === "home") {
+    controller?.abort();
+    ++requestId;
+    detailAbort?.abort();
+  }
+  if (page !== "stock" && page !== "compare") stockPages?.hide();
+  const target = {
+    home: "comparison",
+    markets: "markets-page",
+    stock: "stock-page",
+    compare: "asset-comparison-page",
+  }[page];
+  $(".skip-link").href = "#" + target;
+  $(".skip-link").textContent = {
+    home: "Skip to comparison",
+    markets: "Skip to markets",
+    stock: "Skip to stock overview",
+    compare: "Skip to stock comparison",
+  }[page];
   document.querySelectorAll("[data-page]").forEach((link) => {
-    if (link.dataset.page === page) link.setAttribute("aria-current", "page");
+    if (link.dataset.page === (page === "home" ? "home" : "markets"))
+      link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
   document.title =
-    page === "markets"
-      ? "Markets — Stocklens"
-      : "Stocklens — Compare tokenized stocks";
+    page === "stock"
+      ? `${selected?.ticker || "Stock"} overview — Stocklens`
+      : page === "compare"
+        ? "Compare stocks — Stocklens"
+        : page === "markets"
+          ? "Markets — Stocklens"
+          : "Stocklens — Compare tokenized stocks";
   if (page === "markets") {
     marketsPage?.show();
     if (desk?.marketState().screenNext) desk.refreshMarkets(true);
   }
-  if (write) updateUrl();
+  if (selected && page === "stock") stockPages?.openStock(selected.id);
+  if (stocks.length && page === "compare")
+    stockPages?.openComparison(assetCompareIds);
+  if (write) updateUrl("push");
 }
+function openStockPage(id) {
+  const stock = assetById(stocks, id);
+  if (!stock) return;
+  selected = stock;
+  setPage("stock");
+  $("#stock-page").focus({ preventScroll: true });
+  scrollTo({ top: 0, behavior: "instant" });
+}
+function openAssetComparison(ids) {
+  assetCompareIds = canonicalSelection(ids, stocks);
+  setPage("compare");
+  $("#asset-comparison-page").focus({ preventScroll: true });
+  scrollTo({ top: 0, behavior: "instant" });
+}
+function openHomeComparison(id, mode = "products") {
+  const stock = assetById(stocks, id);
+  if (!stock) return;
+  selected = stock;
+  view = mode;
+  $("#chain").value = "all";
+  $("#issuer").value = "all";
+  setPage("home");
+  setView(mode, false);
+  selectStock(id);
+  $("#comparison").scrollIntoView({ block: "start" });
+}
+window.addEventListener("popstate", () => {
+  const route = new URLSearchParams(location.search);
+  selected = assetById(stocks, route.get("stock")) || selected;
+  assetCompareIds = canonicalSelection(
+    (route.get("stocks") || "").split(","),
+    stocks,
+  );
+  view = ["products", "quotes", "terms", "markets", "venues"].includes(
+    route.get("view"),
+  )
+    ? route.get("view")
+    : "products";
+  $("#chain").value = chains.some((c) => c.id === route.get("chain"))
+    ? route.get("chain")
+    : "all";
+  if (validBudget(route.get("amount")))
+    $("#budget").value = route.get("amount");
+  setPage(route.get("page"), false);
+  if (page === "home" && selected) {
+    homeAssetId = selected.id;
+    renderHeading();
+    $("#issuer").value = selected.products.some(
+      (p) => p.issuer === route.get("issuer"),
+    )
+      ? route.get("issuer")
+      : "all";
+    token = route.get("token") || "";
+    desk.select(selected);
+    setView(view, false);
+    loadView();
+    loadHomeDetails(selected.id);
+  }
+});
 function toggleSaved(id) {
   saved.has(id) ? saved.delete(id) : saved.add(id);
   try {
@@ -737,8 +901,26 @@ document.addEventListener("click", (event) => {
   if (link) {
     event.preventDefault();
     setPage(link.dataset.page);
-    if (page === "home" && !snapshot && selected) loadView();
+    if (page === "home" && selected) {
+      const changed = homeAssetId !== selected.id;
+      if (changed) {
+        snapshot = null;
+        renderHeading();
+        renderStocks();
+        desk.select(selected);
+        setView(view, false);
+        homeAssetId = selected.id;
+      }
+      if (changed || !snapshot) loadView();
+      loadHomeDetails(selected.id);
+    }
   }
+  const overview = event.target.closest("[data-open-stock-page]");
+  if (overview) {
+    event.preventDefault();
+    openStockPage(overview.dataset.openStockPage);
+  }
+  if (event.target.closest('[data-action="terms"]')) setView("terms");
   if (event.target.closest("[data-open-coverage]")) showCoverage();
   if (event.target.closest('[data-close="coverage-dialog"]'))
     $("#coverage-dialog").close();
@@ -751,17 +933,33 @@ marketsPage = createMarketsPage({
   getMarkets: () => desk.getMarkets(),
   getMarketState: () => desk.marketState(),
   getQuotes: (id) => quoteSnapshots.get(id),
-  onSelect: (id) => {
-    setPage("home");
-    $("#chain").value = "all";
-    setView("products", false);
-    selectStock(id);
-    $("#comparison").scrollIntoView({ block: "start" });
+  onSelect: openStockPage,
+  onCompareVersions: (id) => openHomeComparison(id, "products"),
+  getComparison: () => assetCompareIds,
+  onCompareChange: (ids) => {
+    assetCompareIds = canonicalSelection(ids, stocks);
   },
+  onCompareAssets: openAssetComparison,
+  onChooseCompare: (ids) => stockPages.chooseComparison(ids),
   onSave: toggleSaved,
   onRefresh: (next) => desk.refreshMarkets(next),
 });
+stockPages = createStockPages({
+  root: $("#stock-page"),
+  compareRoot: $("#asset-comparison-page"),
+  getStocks: () => stocks,
+  getMarkets: () => desk.getMarkets(),
+  getChains: () => chains,
+  getSaved: () => saved,
+  onToggleSave: toggleSaved,
+  onCompareVersions: openHomeComparison,
+  onOpenStock: openStockPage,
+  onCompareAssets: openAssetComparison,
+});
 setPage(page, false);
+setInterval(() => {
+  if (page === "home") loadHomeDetails(selected?.id);
+}, 60000);
 setInterval(tick, 1000);
 setInterval(() => {
   if (

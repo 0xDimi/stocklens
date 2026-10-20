@@ -1,7 +1,7 @@
 import { getFundamentals } from "./fundamentals.mjs";
 import { resolveStock } from "./catalog.mjs";
-import { getQuote } from "./providers.mjs";
-import { mapLimit } from "./http.mjs";
+import { getQuoteOptions } from "./providers.mjs";
+import { mapLimit, observeWithin } from "./http.mjs";
 import { rankQuotes, validBudget } from "../src/model.mjs";
 import { CHAINS } from "./config.mjs";
 
@@ -19,6 +19,62 @@ export function validateComparison(params) {
     throw new Error("Choose a supported chain.");
   return { id, amount, chain };
 }
+// Keep quote fanout inside the 30-second indicative lifetime. Timed-out work
+// may complete in the shared cache; its original observation time is retained.
+export async function collectQuoteOptions(
+  jobs,
+  amount,
+  { budgetMs = 22_000, concurrency = 6, getOptions = getQuoteOptions } = {},
+) {
+  const deadline = Date.now() + budgetMs;
+  const grouped = await mapLimit(
+    jobs,
+    concurrency,
+    async ({ product, deployment }) => {
+      const remaining = deadline - Date.now();
+      try {
+        if (remaining <= 0)
+          throw new Error("Comparison quote deadline reached.");
+        return await observeWithin(
+          () =>
+            getOptions(product, deployment, amount, {
+              deadlineAt: deadline - 50,
+            }),
+          remaining,
+        );
+      } catch {
+        const chain = CHAINS[deployment.chain];
+        return [
+          {
+            id: `${product.issuer}:${deployment.chain}:${deployment.address}`,
+            issuer: product.issuer,
+            issuerName: product.issuerName,
+            symbol: product.symbol,
+            wrapped: product.wrapped === true,
+            chain: deployment.chain,
+            chainLabel: chain?.label || deployment.chain,
+            address: deployment.address,
+            explorerUrl: chain ? chain.explorer + deployment.address : null,
+            source: product.source,
+            sourceAt: product.sourceAt,
+            status: "unavailable",
+            quoteProvider: null,
+            venue: "—",
+            buyUrl: null,
+            liquidityVenues: [],
+            poolIds: [],
+            fetchedAt: null,
+            expiresAt: null,
+            reason:
+              "Public quote sources did not respond within this comparison's time limit. Refresh or choose one chain to retry.",
+          },
+        ];
+      }
+    },
+  );
+  return grouped.flat();
+}
+
 export async function compareStock({ id, amount, chain }) {
   const { stock, warnings, catalogAt } = await resolveStock(id, true);
   const referenceWork = getFundamentals(stock);
@@ -27,9 +83,7 @@ export async function compareStock({ id, amount, chain }) {
       .filter((d) => chain === "all" || d.chain === chain)
       .map((deployment) => ({ product, deployment })),
   );
-  const rows = await mapLimit(jobs, 6, ({ product, deployment }) =>
-    getQuote(product, deployment, amount),
-  );
+  const rows = await collectQuoteOptions(jobs, amount);
   return {
     stock,
     amount,

@@ -1,10 +1,17 @@
-import { request, memo, rpc } from "./http.mjs";
+import { request, memo, rpc, observeWithin } from "./http.mjs";
 import { CHAINS, XSTOCKS_API, ONDO_SOURCE } from "./config.mjs";
 import {
   activeMultiplier,
   toBaseUnits,
   normalizeQuote,
+  rankQuotes,
 } from "../src/model.mjs";
+
+import {
+  additionalQuoteProviders,
+  settleQuoteProviders,
+} from "./public-quote-providers.mjs";
+export { parseJupiter, parseVelora } from "./public-quote-providers.mjs";
 
 const positiveInteger = (value) =>
   typeof value === "string" && /^\d+$/.test(value) && BigInt(value) > 0n;
@@ -30,7 +37,11 @@ export function parseRaydium(response, deployment, chain, amount) {
         ? Number(q.priceImpactPct)
         : null,
     networkFeeUsd: null,
-    markets: [...new Set((q.routePlan || []).map((r) => r.poolId))],
+    markets: ["Raydium"],
+    liquidityVenues: ["Raydium"],
+    poolIds: [
+      ...new Set((q.routePlan || []).map((r) => r.poolId).filter(Boolean)),
+    ],
   };
 }
 export function parseKyber(response, deployment, chain, amount) {
@@ -53,6 +64,22 @@ export function parseKyber(response, deployment, chain, amount) {
     minimumOutputAmount: null,
     priceImpactPct: null,
     networkFeeUsd: Number.isFinite(gas) && gas >= 0 ? gas : null,
+    liquidityVenues: [
+      ...new Set(
+        (q.route || [])
+          .flat()
+          .map((r) => r.exchange)
+          .filter(Boolean),
+      ),
+    ],
+    poolIds: [
+      ...new Set(
+        (q.route || [])
+          .flat()
+          .map((r) => r.pool)
+          .filter(Boolean),
+      ),
+    ],
     markets: [
       ...new Set(
         (q.route || [])
@@ -68,6 +95,7 @@ export function parseSolanaMint(account, now = Date.now()) {
   if (
     info?.type !== "mint" ||
     !Number.isInteger(info.info?.decimals) ||
+    info.info.decimals < 0 ||
     info.info.decimals > 30
   )
     throw new Error("Token mint metadata could not be verified.");
@@ -93,7 +121,11 @@ export function evmConversion(issuer) {
     : { sharesPerToken: null, outputUnit: "raw-token", conversionSource: null };
 }
 export function conversionIssuer(product) {
-  if (/^wrapped[ -]/i.test(product.name || product.coinId || "")) return null;
+  if (
+    product.wrapped === true ||
+    /^wrapped[ -]/i.test(product.name || product.coinId || "")
+  )
+    return null;
   if (
     product.issuer === "xstocks" &&
     (product.source?.startsWith(XSTOCKS_API + "/assets/") ||
@@ -108,7 +140,7 @@ export function conversionIssuer(product) {
     return "ondo";
   return null;
 }
-async function tokenUnits(product, deployment) {
+export async function getTokenUnits(product, deployment) {
   const chain = CHAINS[deployment.chain];
   const unitIssuer = conversionIssuer(product);
   if (deployment.chain === "Solana") {
@@ -207,31 +239,76 @@ export function purchaseUrl(deployment) {
     ? `https://raydium.io/swap/?${buyParams}`
     : `https://kyberswap.com/swap/${chain.websiteChain}?${buyParams}`;
 }
-export async function getQuote(product, deployment, amount) {
+export async function getQuoteOptions(
+  product,
+  deployment,
+  amount,
+  { deadlineAt = Date.now() + 20_000 } = {},
+) {
   const chain = CHAINS[deployment.chain];
   const id = `${product.issuer}:${deployment.chain}:${deployment.address}`;
+  const base = {
+    id,
+    issuer: product.issuer,
+    wrapped: product.wrapped === true,
+    issuerName: product.issuerName,
+    symbol: product.symbol,
+    chain: deployment.chain,
+    chainLabel: chain?.label || deployment.chain,
+    address: deployment.address,
+    explorerUrl: chain ? chain.explorer + deployment.address : null,
+    source: product.source,
+    sourceAt: product.sourceAt,
+    venue: "—",
+    quoteProvider: null,
+    providerId: null,
+    liquidityVenues: [],
+    poolIds: [],
+    buyUrl: null,
+    inputAsset: chain?.usdc,
+    inputSymbol:
+      deployment.chain === "BinanceSmartChain" ? "Binance-Peg USDC" : "USDC",
+  };
   if (!chain?.usdc)
-    return {
-      id,
-      issuer: product.issuer,
-      wrapped: product.wrapped === true,
-      issuerName: product.issuerName,
-      symbol: product.symbol,
-      chain: deployment.chain,
-      chainLabel: chain?.label || deployment.chain,
-      address: deployment.address,
-      source: product.source,
-      sourceAt: product.sourceAt,
-      explorerUrl: chain?.explorer + deployment.address,
-      status: "unavailable",
-      reason:
-        "Order quotes are not supported on this chain. Explore its listed markets in the Markets tab.",
-      venue: "—",
-      buyUrl: null,
-    };
+    return [
+      {
+        ...base,
+        status: "unavailable",
+        reason:
+          "Order quotes are not supported on this chain. Explore its listed markets in the Markets tab.",
+      },
+    ];
+  if (product.halted)
+    return [
+      {
+        ...base,
+        status: "unavailable",
+        reason: "Issuer reports this product is halted.",
+      },
+    ];
   const inputAmount = toBaseUnits(amount, chain.decimals);
+  let units;
+  try {
+    const remaining = deadlineAt - Date.now();
+    if (remaining <= 0) throw new Error("Quote deadline reached.");
+    units = await observeWithin(
+      () => getTokenUnits(product, deployment),
+      remaining,
+    );
+  } catch (error) {
+    return [
+      {
+        ...base,
+        status: "unavailable",
+        reason: `Token units could not be verified: ${error.message}`,
+        fetchedAt: Date.now(),
+        expiresAt: null,
+      },
+    ];
+  }
+  const solana = deployment.chain === "Solana";
   const params = new URLSearchParams(
-    deployment.chain === "Solana"
+    solana
       ? {
           inputMint: chain.usdc,
           outputMint: deployment.address,
@@ -245,81 +322,119 @@ export async function getQuote(product, deployment, amount) {
           amountIn: inputAmount,
         },
   );
-  const quoteUrl =
-    deployment.chain === "Solana"
+  const primary = {
+    id: solana ? "raydium" : "kyber",
+    name: solana ? "Raydium" : "KyberSwap",
+    url: solana
       ? `https://transaction-v1.raydium.io/compute/swap-base-in?${params}`
-      : `https://aggregator-api.kyberswap.com/${chain.kyber}/api/v1/routes?${params}`;
-  const venue = deployment.chain === "Solana" ? "Raydium" : "KyberSwap";
-  const buyUrl = purchaseUrl(deployment);
-  const base = {
-    id,
-    issuer: product.issuer,
-    wrapped: product.wrapped === true,
-    issuerName: product.issuerName,
-    symbol: product.symbol,
-    chain: deployment.chain,
-    chainLabel: chain.label,
-    address: deployment.address,
-    explorerUrl: chain.explorer + deployment.address,
-    source: product.source,
-    sourceAt: product.sourceAt,
-    venue,
-    buyUrl,
-    quoteSource: quoteUrl,
-    inputAsset: chain.usdc,
-    inputSymbol:
-      deployment.chain === "BinanceSmartChain" ? "Binance-Peg USDC" : "USDC",
+      : `https://aggregator-api.kyberswap.com/${chain.kyber}/api/v1/routes?${params}`,
+    buyUrl: purchaseUrl(deployment),
+    load: (url, options) =>
+      request(url, { ...options, headers: { "x-client-id": "stocklens" } }),
+    parse: solana ? parseRaydium : parseKyber,
   };
-  if (product.halted)
-    return {
+  const adapters = [
+    primary,
+    ...additionalQuoteProviders(deployment, chain, inputAmount, units),
+  ];
+  const results = await settleQuoteProviders(
+    adapters.map(
+      (adapter) => () =>
+        memo(
+          `provider-quote:${id}:${inputAmount}:${conversionIssuer(product)}:${adapter.id}`,
+          10_000,
+          async () => {
+            const remaining = deadlineAt - Date.now();
+            if (remaining <= 0) throw new Error("Quote deadline reached.");
+            // Start freshness at the actual fetch, after any public-rate-limit queue.
+            const response = await adapter.load(adapter.url, {
+              deadlineAt,
+              timeout: Math.min(12_000, remaining),
+            });
+            const fetchedAt = Date.now();
+            const raw = adapter.parse(
+              response,
+              deployment,
+              chain,
+              inputAmount,
+              units,
+            );
+            const result = normalizeQuote({
+              ...raw,
+              ...units,
+              inputDecimals: chain.decimals,
+              fetchedAt,
+            });
+            if (raw.sourceExpiresAt != null)
+              result.expiresAt = Math.min(
+                result.expiresAt,
+                raw.sourceExpiresAt,
+              );
+            const liquidityVenues = raw.liquidityVenues || [];
+            const poolIds = raw.poolIds || [];
+            const routeIdentity = `${adapter.id}:${poolIds.slice().sort().join(",") || liquidityVenues.slice().sort().join(",") || "aggregated"}`;
+            return {
+              ...base,
+              ...result,
+              ...units,
+              id: `${id}:${adapter.id}`,
+              deploymentId: id,
+              venue: adapter.name,
+              quoteProvider: adapter.name,
+              providerId: adapter.id,
+              liquidityVenues,
+              poolIds,
+              routeIdentity,
+              markets: raw.markets,
+              providerRouter: raw.providerRouter || null,
+              providerFeeBps: raw.providerFeeBps ?? null,
+              buyUrl: adapter.buyUrl,
+              quoteSource: adapter.url,
+              inputAmount: raw.inputAmount,
+              inputDecimals: chain.decimals,
+              outputAmount: raw.outputAmount,
+              minimumOutputAmount: raw.minimumOutputAmount,
+              priceImpactPct: raw.priceImpactPct,
+              status: "quoted",
+              conversionWarning:
+                result.equivalentShares == null
+                  ? "Shares-per-token data is unavailable. Token output is shown without cross-product ranking."
+                  : null,
+            };
+          },
+        ),
+    ),
+    deadlineAt,
+  );
+  const quotes = results.flatMap((result) =>
+    result.status === "fulfilled" ? [result.value] : [],
+  );
+  if (quotes.length)
+    return [...new Map(quotes.map((row) => [row.routeIdentity, row])).values()];
+  const failures = results.map((result, index) => ({
+    provider: adapters[index].name,
+    reason:
+      result.reason?.name === "TimeoutError"
+        ? "The public quote service timed out."
+        : result.reason?.message || "No route returned.",
+  }));
+  return [
+    {
       ...base,
       status: "unavailable",
-      reason: "Issuer reports this product is halted.",
-    };
-  return memo(`quote:${id}:${amount}`, 10_000, async () => {
-    try {
-      const fetchedAt = Date.now();
-      const [response, units] = await Promise.all([
-        request(quoteUrl, { headers: { "x-client-id": "stocklens" } }),
-        tokenUnits(product, deployment),
-      ]);
-      const raw =
-        deployment.chain === "Solana"
-          ? parseRaydium(response, deployment, chain, inputAmount)
-          : parseKyber(response, deployment, chain, inputAmount);
-      const result = normalizeQuote({
-        ...raw,
-        ...units,
-        inputDecimals: chain.decimals,
-        fetchedAt,
-      });
-      return {
-        ...base,
-        ...result,
-        ...units,
-        inputAmount: raw.inputAmount,
-        inputDecimals: chain.decimals,
-        outputAmount: raw.outputAmount,
-        status: "quoted",
-        minimumOutputAmount: raw.minimumOutputAmount,
-        priceImpactPct: raw.priceImpactPct,
-        markets: raw.markets,
-        conversionWarning:
-          result.equivalentShares == null
-            ? "Shares-per-token data is unavailable. Token output is shown without cross-product ranking."
-            : null,
-      };
-    } catch (error) {
-      return {
-        ...base,
-        status: "unavailable",
-        reason:
-          error.name === "TimeoutError"
-            ? "The provider timed out. Refresh to try again."
-            : error.message,
-        fetchedAt: Date.now(),
-        expiresAt: null,
-      };
-    }
-  });
+      fetchedAt: Date.now(),
+      expiresAt: null,
+      attemptedProviders: adapters.map((adapter) => adapter.name),
+      quoteFailures: failures,
+      reason: `No verified quote is available for this amount from ${adapters.map((adapter) => adapter.name).join(" or ")}. Try a different amount or chain, or inspect this product's listed markets.`,
+    },
+  ];
+}
+
+// Indicative callers retain one best normalized quote per deployment. Comparison
+// uses all provider options and never promotes an unknown conversion into rank.
+export async function getQuote(product, deployment, amount, options) {
+  return rankQuotes(
+    await getQuoteOptions(product, deployment, amount, options),
+  )[0];
 }

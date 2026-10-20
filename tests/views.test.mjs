@@ -165,5 +165,5 @@ test("product overview exposes issuer structure next to market data before expan
   const summary = html.match(/<summary>(.*?)<\/summary>/s)?.[1];
   assert.match(summary, /Tracker certificate/);
   assert.match(summary, /200.00/);
-  assert.match(summary, /Compare/);
+  assert.match(summary, /Select NVDAx for terms comparison/);
 });

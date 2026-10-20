@@ -20,6 +20,12 @@ const files = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ...[
     "app.mjs",
+    "comparison-ui.mjs",
+    "reference-view.mjs",
+    "stock-pages.mjs",
+    "asset-comparison-model.mjs",
+    "comparison-ui.css",
+    "stock-pages.css",
     "data.mjs",
     "model.mjs",
     "views.mjs",
@@ -198,7 +204,7 @@ export function createApp({
         }
         const url = new URL(request.url, "http://localhost");
         if (url.pathname === "/api/health") {
-          send(200, { status: "ok", version: "0.6.0" });
+          send(200, { status: "ok", version: "0.7.0" });
           return;
         }
         if (url.pathname === "/api/ready") {

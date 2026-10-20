@@ -11,6 +11,7 @@ import { stockLogo, issuerLogo, chainLogo } from "./brands.mjs";
 import { mountChart } from "./chart.mjs";
 import { findStocks } from "./model.mjs";
 import { createMarketFeed } from "./market-feed.mjs";
+import { priceComparison } from "./reference-view.mjs";
 
 export function toggleCompare(ids, id) {
   return ids.includes(id)
@@ -111,7 +112,9 @@ export function createTerminal({
   onMarketsUpdate = () => {},
 }) {
   const $ = (s) => document.querySelector(s);
-  const references = new Map();
+  const references = new Map(),
+    spots = new Map(),
+    detailsSeen = new Set();
   let marketStorage;
   try {
     marketStorage = localStorage;
@@ -168,9 +171,12 @@ export function createTerminal({
     if (!asset) return;
     const m = markets.get(asset.id),
       reference = references.get(asset.id);
-    $("#asset-metrics").innerHTML = `
-      <div class="reference-quote"><span class="reference-label" title="CoinGecko aggregate for the tokenized market, not a listed-stock price.">Tokenized reference</span><span class="reference-value"><strong>${usd(m?.price)}</strong><span class="${polarity(m?.change24h)}">${signed(m?.change24h)}</span></span><small>${m?.updatedAt ? stamp(m.updatedAt) : "Not observed"}</small></div>
-      <div class="reference-quote"><span class="reference-label">${reference ? external(reference.source, "Listed stock · Nasdaq") : "Listed stock"}</span><span class="reference-value"><strong>${usd(reference?.price)}</strong><small>${escape(reference?.marketStatus || "")}</small></span><small>${reference?.at ? stamp(reference.at) + (reference.stale ? " · stale" : "") : "Reference not available"}</small></div>`;
+    $("#asset-metrics").innerHTML = priceComparison({
+      market: m,
+      reference,
+      spotPremium: spots.get(asset.id),
+      loading: !reference && !detailsSeen.has(asset.id),
+    });
     renderInspector();
   }
   async function screener(next = false) {
@@ -257,7 +263,7 @@ export function createTerminal({
     document.querySelectorAll("[data-compare]").forEach((button) => {
       const active = shortlist.includes(button.dataset.compare);
       button.setAttribute("aria-pressed", active);
-      button.textContent = active ? "✓ Selected" : "Compare";
+      button.textContent = active ? "✓ Selected" : "Select for terms";
     });
     renderSources();
   }
@@ -392,7 +398,10 @@ export function createTerminal({
   function ingest(view, data) {
     if (data.stock && asset?.id === data.stock.id) asset = data.stock;
     if (view === "products") productRows = data.rows || [];
+    if (view === "details" && asset) detailsSeen.add(asset.id);
     if (data.reference && asset) references.set(asset.id, data.reference);
+    if (Object.hasOwn(data, "spotPremium") && asset)
+      spots.set(asset.id, data.spotPremium);
     renderMarket();
   }
   function compare() {
@@ -406,7 +415,7 @@ export function createTerminal({
     const field = (label, read) =>
       `<tr><th scope="row">${label}</th>${rows.map((p) => `<td>${read(p)}</td>`).join("")}</tr>`;
     $("#compare-content").innerHTML =
-      `<h2>${escape(asset.ticker)} / product comparison</h2><p>Raw token prices have different units. Compare share exposure in Buy comparison.</p><div class="table-scroll"><table class="comparison-matrix"><thead><tr><th>Attribute</th>${rows.map((p) => `<th><span class="token-cell">${issuerLogo(p)}${escape(p.symbol)}</span></th>`).join("")}</tr></thead><tbody>${field("Issuer", (p) => escape(provider(p).name))}${field("USD / token", (p) => usd(p.market?.price))}${field("Price observed", (p) => stamp(p.market?.updatedAt))}${field("Structure", (p) => escape(provider(p).structure))}${field("Holder rights", (p) => escape(provider(p).rights))}${field("Dividends", (p) => escape(provider(p).dividends))}${field("Exit & eligibility", (p) => escape(provider(p).exit))}${field("Networks", (p) => `<div class="matrix-networks">${p.deployments.map((d) => `<span class="named-network">${chainLogo(d.chain)}${escape(d.chain)}</span>`).join("")}</div>`)}${field("Primary terms", (p) => external(provider(p).source, provider(p).sourceLabel))}</tbody></table></div>`;
+      `<h2>${escape(asset.ticker)} · Compare product terms</h2><p>Compare what each token represents: rights, dividends and exit rules. For prices at your order size, use Compare buy quotes.</p><div class="table-scroll"><table class="comparison-matrix"><thead><tr><th>Attribute</th>${rows.map((p) => `<th><span class="token-cell">${issuerLogo(p)}${escape(p.symbol)}</span></th>`).join("")}</tr></thead><tbody>${field("Issuer", (p) => escape(provider(p).name))}${field("USD / token", (p) => usd(p.market?.price))}${field("Price observed", (p) => stamp(p.market?.updatedAt))}${field("Structure", (p) => escape(provider(p).structure))}${field("Holder rights", (p) => escape(provider(p).rights))}${field("Dividends", (p) => escape(provider(p).dividends))}${field("Exit & eligibility", (p) => escape(provider(p).exit))}${field("Networks", (p) => `<div class="matrix-networks">${p.deployments.map((d) => `<span class="named-network">${chainLogo(d.chain)}${escape(d.chain)}</span>`).join("")}</div>`)}${field("Primary terms", (p) => external(provider(p).source, provider(p).sourceLabel))}</tbody></table></div>`;
     $("#compare-content").insertAdjacentHTML(
       "beforeend",
       `<div class="matrix-action"><button class="primary-button" data-action="quotes">Compare available buy quotes →</button><small>Compare supported routes for ${escape(asset.ticker)}. Filter by issuer or network on the next view.</small></div>`,
@@ -492,8 +501,9 @@ export function createTerminal({
       e.preventDefault();
       openPalette();
     }
-    const views = ["products", "quotes", "markets", "venues", "terms"];
-    if (/^[1-5]$/.test(e.key)) setView(views[Number(e.key) - 1]);
+    const views = ["products", "quotes", "terms", "markets", "venues"];
+    if (/^[1-5]$/.test(e.key) && !$("#home-page").hidden)
+      setView(views[Number(e.key) - 1]);
     if (e.key.toLowerCase() === "w" && !$("#home-page").hidden)
       $("#favorite")?.click();
     if (e.key.toLowerCase() === "r") refresh();

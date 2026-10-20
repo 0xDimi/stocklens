@@ -34,6 +34,11 @@ const metrics = await json(
     new URLSearchParams({ ids: selected.map((s) => s.id).join(",") }),
 );
 for (const row of metrics.rows) {
+  assert.ok(row.reference?.price > 0, `${row.id}: listed price required`);
+  assert.ok(
+    Number.isFinite(row.reference.at),
+    `${row.id}: listed observation required`,
+  );
   assert.ok(
     row.reference?.marketCap > 0,
     `${row.id}: real company cap required`,
@@ -49,6 +54,19 @@ for (const row of metrics.rows) {
   assert.ok(row.premium.source.startsWith("https://"));
   assert.ok(row.premium.conversionSource.startsWith("https://"));
   assert.ok(row.premium.expiresAt > Date.now());
+  const spot = row.spotPremium;
+  assert.ok(
+    Number.isFinite(spot?.value),
+    `${row.id}: share-normalized pool premium required`,
+  );
+  assert.equal(spot.method, "dex-pool-snapshot");
+  assert.ok(spot.price > 0 && spot.referencePrice > 0);
+  assert.ok(
+    Math.abs(spot.value - (spot.price / spot.referencePrice - 1) * 100) < 1e-8,
+  );
+  assert.ok(spot.source.startsWith("https://"));
+  assert.ok(spot.conversionSource.startsWith("https://"));
+  assert.ok(spot.expiresAt > Date.now());
 }
 const etfs = ["SPY", "QQQ", "NVDL"].map((t) =>
   catalog.stocks.find((s) => s.ticker === t),

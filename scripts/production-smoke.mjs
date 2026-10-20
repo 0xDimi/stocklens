@@ -63,6 +63,12 @@ try {
     "/src/brands.mjs",
     "/src/market-model.mjs",
     "/src/markets-page.mjs",
+    "/src/comparison-ui.mjs",
+    "/src/reference-view.mjs",
+    "/src/stock-pages.mjs",
+    "/src/asset-comparison-model.mjs",
+    "/src/comparison-ui.css",
+    "/src/stock-pages.css",
   ]) {
     const response = await fetchLocal(path);
     assert.equal(response.status, 200, path);

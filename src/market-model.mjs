@@ -110,7 +110,9 @@ export function observedPremiumState(observation, now = Date.now()) {
   return {
     value: observation.value,
     stale:
-      !Number.isFinite(observation.expiresAt) || observation.expiresAt <= now,
+      observation.stale === true ||
+      !Number.isFinite(observation.expiresAt) ||
+      observation.expiresAt <= now,
   };
 }
 
@@ -170,6 +172,7 @@ export function createMarketDetailsLoader({
                   ? {
                       ...prior.reference,
                       stale: true,
+                      priceStale: true,
                       marketCapStale: true,
                       peStale: true,
                       staleReason:
@@ -179,6 +182,28 @@ export function createMarketDetailsLoader({
                   : null),
               // Keep the last observation visible if a refresh has no new one.
               premium: row.premium ?? prior?.premium ?? null,
+              spot:
+                row.spot ??
+                (prior?.spot
+                  ? {
+                      ...prior.spot,
+                      stale: true,
+                      staleReason:
+                        row.spotPremiumReason ||
+                        "The latest pool-price refresh returned no observation; the original dated snapshot is retained.",
+                    }
+                  : null),
+              spotPremium:
+                row.spotPremium ??
+                (prior?.spotPremium
+                  ? {
+                      ...prior.spotPremium,
+                      stale: true,
+                      staleReason:
+                        row.spotPremiumReason ||
+                        "The latest spot-premium refresh returned no comparable observation; the original dated comparison is retained.",
+                    }
+                  : null),
               status: "ready",
               error: null,
               checkedAt: now(),
@@ -188,13 +213,25 @@ export function createMarketDetailsLoader({
         })
         .catch((error) => {
           if (controller.signal.aborted) return;
-          for (const id of ids)
+          for (const id of ids) {
+            const prior = cache.get(id);
             cache.set(id, {
-              ...cache.get(id),
+              ...prior,
+              spot: prior?.spot
+                ? { ...prior.spot, stale: true, staleReason: error.message }
+                : null,
+              spotPremium: prior?.spotPremium
+                ? {
+                    ...prior.spotPremium,
+                    stale: true,
+                    staleReason: error.message,
+                  }
+                : null,
               status: "error",
               checkedAt: now(),
               error: error.message || "Market details request failed",
             });
+          }
         })
         .finally(() => {
           active.delete(request);

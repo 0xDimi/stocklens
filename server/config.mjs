@@ -22,6 +22,7 @@ export const CHAINS = {
     usdc: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
     decimals: 6,
     explorer: "https://etherscan.io/token/",
+    evmId: 1,
     kyber: "ethereum",
     websiteChain: "ethereum",
     rpc: () =>
@@ -36,6 +37,7 @@ export const CHAINS = {
     usdc: "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
     decimals: 18,
     explorer: "https://bscscan.com/token/",
+    evmId: 56,
     kyber: "bsc",
     websiteChain: "bnb",
     rpc: () => process.env.BSC_RPC_URL || "https://bsc-rpc.publicnode.com",
@@ -107,6 +109,7 @@ for (const [id, label, platform, gecko, explorer] of extra)
 Object.assign(CHAINS.Base, {
   usdc: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
   decimals: 6,
+  evmId: 8453,
   kyber: "base",
   websiteChain: "base",
   rpc: () => process.env.BASE_RPC_URL || "https://base-rpc.publicnode.com",
@@ -114,6 +117,7 @@ Object.assign(CHAINS.Base, {
 Object.assign(CHAINS.Arbitrum, {
   usdc: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
   decimals: 6,
+  evmId: 42161,
   kyber: "arbitrum",
   websiteChain: "arbitrum",
   rpc: () =>

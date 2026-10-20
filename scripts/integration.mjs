@@ -76,6 +76,10 @@ for (const ticker of ["NVDA", "AAPL", "TSLA"]) {
   assert.ok(data.rows.length > 0);
   const quotes = data.rows.filter((r) => r.status === "quoted");
   assert.ok(
+    new Set(quotes.map((q) => q.providerId)).size >= 2,
+    `${ticker}: real quotes from multiple providers required`,
+  );
+  assert.ok(
     quotes.length > 0,
     `${ticker}: expected at least one real stock-token quote`,
   );
@@ -85,11 +89,23 @@ for (const ticker of ["NVDA", "AAPL", "TSLA"]) {
     `${ticker}: expected verified normalized exposure`,
   );
   for (const q of quotes) {
+    assert.ok(q.quoteProvider && Array.isArray(q.liquidityVenues));
     assert.ok(q.tokenQuantity > 0);
     assert.ok(q.explorerUrl.includes(q.address));
     assert.ok(q.buyUrl.includes(q.address));
-    if (q.chain === "BinanceSmartChain")
-      assert.ok(q.buyUrl.includes("/swap/bnb?"));
+    if (q.chain === "BinanceSmartChain") {
+      const handoff = new URL(q.buyUrl);
+      if (q.providerId === "velora") {
+        assert.equal(handoff.hostname, "app.velora.xyz");
+        const params = new URLSearchParams(handoff.hash.split("?")[1]);
+        assert.equal(params.get("network"), "56");
+        assert.equal(params.get("dest"), q.address);
+      } else {
+        assert.equal(handoff.hostname, "kyberswap.com");
+        assert.ok(handoff.pathname === "/swap/bnb");
+        assert.equal(handoff.searchParams.get("outputCurrency"), q.address);
+      }
+    }
     assert.ok(q.expiresAt > q.fetchedAt);
     if (q.equivalentShares != null)
       assert.ok(

@@ -1,6 +1,6 @@
 ## Comparison-first opening — 0.8.1, October 21, 2026
 
-Final public browser inspection found that the generic Home introduction still pushed desktop product rows below the first view. Removed that introduction, made the selected company the page heading and moved catalog coverage into the asset finder. The comparison now leads directly. All 244 tests and strict production readiness/static/security smoke pass after this adjustment. Runtime data/quote logic is unchanged from the publicly verified 0.8.0 release. Final browser and anonymous deployment evidence is saved under ignored test-results/polish-final-* files.
+Final public browser inspection found that the generic Home introduction still pushed desktop product rows below the first view. Removed that introduction, made the selected company the page heading and moved catalog coverage into the asset finder. The comparison now leads directly. All 245 tests and strict production readiness/static/security smoke pass after this adjustment. Comparison persistence also degrades safely to in-memory state when a browser denies storage access. Runtime data/quote logic is unchanged from the publicly verified 0.8.0 release. Final browser and anonymous deployment evidence is saved under ignored test-results/polish-final-* files.
 
 ## Comparison polish — 0.8.0, October 21, 2026
 

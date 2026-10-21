@@ -20,3 +20,12 @@ export function saveComparison(storage, ids) {
     storage.setItem("stocklens:comparison", JSON.stringify(ids.slice(0, 5)));
   } catch {}
 }
+
+// Browsers may deny the storage property itself, before getItem is called.
+export function comparisonStorage(host = globalThis) {
+  try {
+    return host.localStorage;
+  } catch {
+    return null;
+  }
+}

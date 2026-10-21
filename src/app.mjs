@@ -17,6 +17,7 @@ import { createMarketsPage } from "./markets-page.mjs";
 import { createStockPages } from "./stock-pages.mjs";
 import {
   readComparison,
+  comparisonStorage,
   restoreComparison,
   saveComparison,
 } from "./comparison-state.mjs";
@@ -42,12 +43,13 @@ const quoteSnapshots = new Map();
 observeLogoErrors();
 const $ = (selector) => document.querySelector(selector);
 const params = new URLSearchParams(location.search);
+const comparisonStore = comparisonStorage();
 let page = ["markets", "stock", "compare"].includes(params.get("page"))
   ? params.get("page")
   : "home";
 let assetCompareIds = params.has("stocks")
   ? params.get("stocks").split(",").filter(Boolean)
-  : readComparison(localStorage);
+  : readComparison(comparisonStore);
 const homeDetails = new Map();
 let detailAbort = null,
   detailSequence = 0,
@@ -535,7 +537,7 @@ async function initialize() {
     if (!response.ok) throw new Error(data.error || "Catalog unavailable.");
     stocks = data.stocks;
     assetCompareIds = restoreComparison(params, assetCompareIds, stocks);
-    saveComparison(localStorage, assetCompareIds);
+    saveComparison(comparisonStore, assetCompareIds);
     chains = data.chains;
     catalogSources = data.sources;
     catalogCoverage = data.coverage;
@@ -872,7 +874,7 @@ function openStockPage(id) {
 }
 function openAssetComparison(ids) {
   assetCompareIds = canonicalSelection(ids, stocks);
-  saveComparison(localStorage, assetCompareIds);
+  saveComparison(comparisonStore, assetCompareIds);
   setPage("compare");
   $("#asset-comparison-page").focus({ preventScroll: true });
   scrollTo({ top: 0, behavior: "instant" });
@@ -893,7 +895,7 @@ window.addEventListener("popstate", () => {
   const route = new URLSearchParams(location.search);
   selected = assetById(stocks, route.get("stock")) || selected;
   assetCompareIds = restoreComparison(route, assetCompareIds, stocks);
-  saveComparison(localStorage, assetCompareIds);
+  saveComparison(comparisonStore, assetCompareIds);
   view = ["products", "quotes", "terms", "markets", "venues"].includes(
     route.get("view"),
   )
@@ -1001,7 +1003,7 @@ marketsPage = createMarketsPage({
   getComparison: () => assetCompareIds,
   onCompareChange: (ids) => {
     assetCompareIds = canonicalSelection(ids, stocks);
-    saveComparison(localStorage, assetCompareIds);
+    saveComparison(comparisonStore, assetCompareIds);
     updateUrl();
   },
   onCompareAssets: openAssetComparison,

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { restoreComparison, saveComparison } from "../src/comparison-state.mjs";
+import { restoreComparison, saveComparison, readComparison, comparisonStorage } from "../src/comparison-state.mjs";
 import {
   quoteCoverage,
   quoteCoverageMarkup,
@@ -143,4 +143,16 @@ test("quote rows expose adverse price deviation and unknown fees explicitly", ()
   const expired = quoteTable([{ ...row, expiresAt: now - 1 }]);
   assert.doesNotMatch(expired, /class="provider-link quote-link" href=/);
   assert.match(expired, /Refresh quote to continue/);
+});
+
+test("comparison remains usable when the browser denies storage access", () => {
+  const host = Object.defineProperty({}, "localStorage", {
+    get() {
+      throw new Error("Storage denied");
+    },
+  });
+  const store = comparisonStorage(host);
+  assert.equal(store, null);
+  assert.deepEqual(readComparison(store), []);
+  assert.doesNotThrow(() => saveComparison(store, ["NVDA"]));
 });

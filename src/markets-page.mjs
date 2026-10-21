@@ -7,6 +7,8 @@ import {
   MARKET_COLUMNS,
   DEFAULT_MARKET_COLUMNS,
   normalizeMarketColumns,
+  MARKET_COLUMN_WIDTHS,
+  marketTurnover,
 } from "./market-model.mjs";
 import {
   escape,
@@ -18,13 +20,32 @@ import {
   csvText,
 } from "./views.mjs";
 import { stockLogo, chainLogo } from "./brands.mjs";
-import { listedDate } from "./reference-view.mjs";
+import {
+  listedDate,
+  selectOnchainPrice,
+  comparisonReference,
+} from "./reference-view.mjs";
 import {
   canonicalSelection,
   observationIsStale,
 } from "./asset-comparison-model.mjs";
 const signed = (v) =>
   Number.isFinite(v) ? `${v > 0 ? "+" : ""}${number(v)}%` : "—";
+export function formatTurnoverPercent(value) {
+  if (!Number.isFinite(value)) return "—";
+  if (value > 0 && value < 0.01) return "<0.01%";
+  if (value >= 1e15) return value.toExponential(2) + "%";
+  if (value >= 1000)
+    return (
+      new Intl.NumberFormat("en-US", {
+        notation: "compact",
+        maximumFractionDigits: 2,
+      })
+        .format(value)
+        .replace("K", "k") + "%"
+    );
+  return number(value) + "%";
+}
 // Keep keyboard position when background observations replace table rows.
 export function renderMarketBody(container, markup, restoreState = () => {}) {
   const document = container.ownerDocument,
@@ -66,11 +87,13 @@ export function createMarketsPage({
     sort = "volume",
     savedOnly = false,
     detailsTimer;
-  const columnStorageKey = "stocklens:market-columns:v1";
+  const columnStorageKey = "stocklens:market-columns:v2";
   let columns;
   try {
+    const stored = localStorage.getItem(columnStorageKey);
     columns = normalizeMarketColumns(
-      JSON.parse(localStorage.getItem(columnStorageKey)),
+      JSON.parse(stored ?? localStorage.getItem("stocklens:market-columns:v1")),
+      { upgradeLegacyDefaults: stored === null },
     );
   } catch {
     columns = [...DEFAULT_MARKET_COLUMNS];
@@ -125,13 +148,18 @@ export function createMarketsPage({
     const selected = new Set(columns),
       table = $("#markets-table");
     table.querySelectorAll("thead th").forEach((node, index) => {
-      node.dataset.marketColumn = MARKET_COLUMNS[index][0];
+      const id = MARKET_COLUMNS[index][0];
+      node.dataset.marketColumn = id;
+      node.style.width =
+        id === "stock"
+          ? "var(--market-stock-width)"
+          : `${MARKET_COLUMN_WIDTHS[id]}px`;
     });
     table.querySelectorAll("[data-market-column]").forEach((node) => {
       node.hidden = !selected.has(node.dataset.marketColumn);
     });
     // Table width follows the selected metrics instead of retaining empty space.
-    table.style.minWidth = `${290 + (columns.length - 1) * 125}px`;
+    table.style.minWidth = `calc(var(--market-stock-width) + ${columns.reduce((sum, id) => sum + (MARKET_COLUMN_WIDTHS[id] || 0), 0)}px)`;
     $("#market-column-count").textContent = `${columns.length} columns`;
     $("#market-columns")
       .querySelectorAll("input")
@@ -227,10 +255,14 @@ export function createMarketsPage({
   }
   function premiumCell(stock) {
     const entry = details.get(stock.id),
-      p = entry?.spotPremium || entry?.premium,
-      observed = observedPremiumState(p);
+      selected = selectOnchainPrice(entry),
+      p = selected?.data,
+      state = selected?.metric ? observedPremiumState(p) : null,
+      observed = state
+        ? { ...state, stale: state.stale || selected.older }
+        : null;
     if (observed) {
-      const spot = !!entry.spotPremium,
+      const spot = selected.kind === "pool",
         label = [
           observed.stale ? "Last observed" : spot ? "Pool snapshot" : "$1K buy",
           p.referenceBasis === "last-close" ? "vs close" : "",
@@ -241,7 +273,7 @@ export function createMarketsPage({
         p.basis,
         `${p.symbol || "Token"} · ${p.chain || "Network not supplied"}.`,
         `Normalized price ${usd(p.price)}; listed reference ${usd(p.referencePrice || entry.reference?.price)}.`,
-        `Pool observed ${stamp(p.priceAt)}; listed reference ${listedDate(entry.reference)}.`,
+        `Onchain observed ${stamp(p.priceAt)}; listed reference ${listedDate(comparisonReference(entry.reference, p))}.`,
         observed.stale
           ? "Observation expired; refresh to request current data."
           : "",
@@ -261,6 +293,14 @@ export function createMarketsPage({
     if (Number.isFinite(reference?.price))
       return `<strong>${usd(reference.price)}</strong><small>${stale ? "Older · " : ""}${reference.priceSession === "Closed" ? "Close · " : ""}${escape(listedDate(reference))}</small>${disclosure(reference.exchange || "Listed source", stale ? reference.staleReason || "The previous dated price is retained." : "Listed-security observation; separate from tokenized prices.", sourceLink(reference.source, "Listed source", stock.id + ":listed:source"), stock.id + ":listed")}`;
     return `—<small>${!entry || entry.status === "loading" ? "Loading…" : "Not supplied"}</small>`;
+  }
+  function turnoverCell(stock) {
+    const value = marketTurnover(stock.market),
+      reason =
+        value === null
+          ? "Turnover requires reported 24h tokenized volume and a positive tokenized capitalization."
+          : `${value}% — CoinGecko 24h tokenized volume (${stock.market.volume24h} USD) divided by tokenized capitalization (${stock.market.marketCap} USD). Observed ${stamp(stock.market.updatedAt)}. This ratio does not measure executable liquidity.`;
+    return `<span title="${escape(reason)}">${escape(formatTurnoverPercent(value))}</span>`;
   }
   function companyCell(stock, field) {
     const entry = details.get(stock.id),
@@ -456,7 +496,7 @@ export function createMarketsPage({
             issuers = [
               ...new Map(s.products.map((p) => [p.issuer, p])).values(),
             ];
-          return `<tr><td><div class="market-asset"><button class="market-compare-toggle" data-market-focus="${escape(s.id)}:compare" data-stock-compare="${escape(s.id)}" aria-label="${compared.includes(s.id) ? "Remove" : "Add"} ${escape(s.name)} ${compared.includes(s.id) ? "from" : "to"} stock comparison" aria-pressed="${compared.includes(s.id)}">${compared.includes(s.id) ? "✓" : "+"}</button><button class="market-save" data-market-focus="${escape(s.id)}:save" data-market-save="${escape(s.id)}" aria-label="${saved.has(s.id) ? "Unsave" : "Save"} ${escape(s.name)}" aria-pressed="${saved.has(s.id)}">${saved.has(s.id) ? "★" : "☆"}</button><a data-market-focus="${escape(s.id)}:asset" href="/?page=stock&amp;stock=${encodeURIComponent(s.id)}" data-open-stock="${escape(s.id)}">${stockLogo(s, m?.image)}<span><strong>${escape(s.ticker)}</strong><small>${escape(s.name)}</small></span></a></div></td><td>${listedPriceCell(s)}</td><td><strong>${usd(m?.price)}</strong><small>${m?.updatedAt ? (observationIsStale(m) ? "Older · " : "") + stamp(m.updatedAt) : "Not observed"}</small></td><td><span class="market-change ${m?.change24h < 0 ? "negative" : m?.change24h > 0 ? "positive" : ""}">${signed(m?.change24h)}</span></td><td>${premiumCell(s)}</td><td>${compact(m?.marketCap)}</td><td>${compact(m?.volume24h)}</td><td><span class="logo-stack" title="${escape(networks.map((id) => chains.find((c) => c.id === id)?.label || id).join(", "))}">${networks
+          return `<tr><td><div class="market-asset"><button class="market-compare-toggle" data-market-focus="${escape(s.id)}:compare" data-stock-compare="${escape(s.id)}" aria-label="${compared.includes(s.id) ? "Remove" : "Add"} ${escape(s.name)} ${compared.includes(s.id) ? "from" : "to"} stock comparison" aria-pressed="${compared.includes(s.id)}">${compared.includes(s.id) ? "✓" : "+"}</button><button class="market-save" data-market-focus="${escape(s.id)}:save" data-market-save="${escape(s.id)}" aria-label="${saved.has(s.id) ? "Unsave" : "Save"} ${escape(s.name)}" aria-pressed="${saved.has(s.id)}">${saved.has(s.id) ? "★" : "☆"}</button><a data-market-focus="${escape(s.id)}:asset" href="/?page=stock&amp;stock=${encodeURIComponent(s.id)}" data-open-stock="${escape(s.id)}">${stockLogo(s, m?.image)}<span><strong>${escape(s.ticker)}</strong><small>${escape(s.name)}</small></span></a></div></td><td>${listedPriceCell(s)}</td><td><strong>${usd(m?.price)}</strong><small>${m?.updatedAt ? (observationIsStale(m) ? "Older · " : "") + stamp(m.updatedAt) : "Not observed"}</small></td><td><span class="market-change ${m?.change24h < 0 ? "negative" : m?.change24h > 0 ? "positive" : ""}">${signed(m?.change24h)}</span></td><td>${premiumCell(s)}</td><td>${turnoverCell(s)}</td><td>${compact(m?.marketCap)}</td><td>${compact(m?.volume24h)}</td><td><span class="logo-stack" title="${escape(networks.map((id) => chains.find((c) => c.id === id)?.label || id).join(", "))}">${networks
             .slice(0, 3)
             .map((id) => chainLogo(id))
             .join(
@@ -618,6 +658,7 @@ export function createMarketsPage({
       ["Tokenized price USD", (s) => s.market?.price],
       ["Pool premium percent", (s) => details.get(s.id)?.spotPremium?.value],
       ["24h change percent", (s) => s.market?.change24h],
+      ["24h turnover percent", (s) => marketTurnover(s.market)],
       ["Tokenized cap USD", (s) => s.market?.marketCap],
       ["Tokenized volume USD", (s) => s.market?.volume24h],
       ["Versions", (s) => s.products.length],

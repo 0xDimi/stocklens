@@ -769,7 +769,13 @@ function retainDetails(id, row) {
   const previous = homeDetails.get(id) || {};
   const retained = { ...previous, ...row };
   // A failed refresh must not erase a dated observation or make it current.
-  for (const key of ["reference", "spot", "spotPremium", "premium"])
+  for (const key of [
+    "reference",
+    "spot",
+    "spotPremium",
+    "premium",
+    "buyObservation",
+  ])
     if (Object.hasOwn(row, key) && !row[key] && previous[key])
       retained[key] = { ...previous[key], stale: true };
   homeDetails.set(id, retained);

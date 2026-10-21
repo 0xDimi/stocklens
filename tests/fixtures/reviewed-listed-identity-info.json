@@ -1,0 +1,248 @@
+{
+  "note": "Exact public Nasdaq quote/info observations captured 2026-10-21. Fields retained for real listed-reference identity and price parsing, not live market assertions.",
+  "observations": [
+    {
+      "source": "https://api.nasdaq.com/api/quote/SOXL/info?assetclass=etf",
+      "retrievedAt": "2026-10-21T13:54:42.648Z",
+      "info": {
+        "data": {
+          "symbol": "SOXL",
+          "companyName": "Direxion Daily Semiconductor Bull 3X ETF",
+          "assetClass": "ETF",
+          "primaryData": {
+            "lastSalePrice": "$100.09",
+            "netChange": "+2.54",
+            "percentageChange": "+2.60%",
+            "deltaIndicator": "up",
+            "lastTradeTimestamp": "Oct 21, 2026 9:53 AM ET",
+            "isRealTime": true,
+            "bidPrice": "$100.04",
+            "askPrice": "$100.10",
+            "bidSize": "30",
+            "askSize": "324",
+            "volume": "20,311,381.697134",
+            "currency": null
+          },
+          "secondaryData": null,
+          "marketStatus": "Open"
+        }
+      }
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/PALL/info?assetclass=etf",
+      "retrievedAt": "2026-10-21T13:54:42.536Z",
+      "info": {
+        "data": {
+          "symbol": "PALL",
+          "companyName": "abrdn Physical Palladium Shares ETF",
+          "assetClass": "ETF",
+          "primaryData": {
+            "lastSalePrice": "$19.895",
+            "netChange": "-0.045",
+            "percentageChange": "-0.23%",
+            "deltaIndicator": "down",
+            "lastTradeTimestamp": "Oct 21, 2026 9:54 AM ET",
+            "isRealTime": true,
+            "bidPrice": "$19.89",
+            "askPrice": "$19.90",
+            "bidSize": "125",
+            "askSize": "525",
+            "volume": "156,633.444817",
+            "currency": null
+          },
+          "secondaryData": null,
+          "marketStatus": "Open"
+        }
+      }
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/PPLT/info?assetclass=etf",
+      "retrievedAt": "2026-10-21T13:54:43.049Z",
+      "info": {
+        "data": {
+          "symbol": "PPLT",
+          "companyName": "abrdn Physical Platinum Shares ETF",
+          "assetClass": "ETF",
+          "primaryData": {
+            "lastSalePrice": "$14.845",
+            "netChange": "-0.105",
+            "percentageChange": "-0.70%",
+            "deltaIndicator": "down",
+            "lastTradeTimestamp": "Oct 21, 2026 9:54 AM ET",
+            "isRealTime": true,
+            "bidPrice": "N/A",
+            "askPrice": "N/A",
+            "bidSize": "N/A",
+            "askSize": "N/A",
+            "volume": "62,383.750477",
+            "currency": null
+          },
+          "secondaryData": null,
+          "marketStatus": "Open"
+        }
+      }
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/ASML/info?assetclass=stocks",
+      "retrievedAt": "2026-10-21T13:54:42.534Z",
+      "info": {
+        "data": {
+          "symbol": "ASML",
+          "companyName": "ASML Holding N.V. New York Registry Shares",
+          "assetClass": "STOCKS",
+          "primaryData": {
+            "lastSalePrice": "$1,664.41",
+            "netChange": "+33.57",
+            "percentageChange": "+2.06%",
+            "deltaIndicator": "up",
+            "lastTradeTimestamp": "Oct 21, 2026 9:54 AM ET",
+            "isRealTime": true,
+            "bidPrice": "$1,664.29",
+            "askPrice": "$1,665.07",
+            "bidSize": "10",
+            "askSize": "60",
+            "volume": "345,051.872036",
+            "currency": null
+          },
+          "secondaryData": null,
+          "marketStatus": "Open"
+        }
+      }
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/IEMG/info?assetclass=etf",
+      "retrievedAt": "2026-10-21T13:54:42.898Z",
+      "info": {
+        "data": {
+          "symbol": "IEMG",
+          "companyName": "iShares Core MSCI Emerging Markets ETF",
+          "assetClass": "ETF",
+          "primaryData": {
+            "lastSalePrice": "$77.415",
+            "netChange": "+0.045",
+            "percentageChange": "+0.06%",
+            "deltaIndicator": "up",
+            "lastTradeTimestamp": "Oct 21, 2026 9:54 AM ET",
+            "isRealTime": true,
+            "bidPrice": "$77.42",
+            "askPrice": "$77.43",
+            "bidSize": "531",
+            "askSize": "400",
+            "volume": "793,817.903980",
+            "currency": null
+          },
+          "secondaryData": null,
+          "marketStatus": "Open"
+        }
+      }
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/DELL/info?assetclass=stocks",
+      "retrievedAt": "2026-10-21T13:54:42.653Z",
+      "info": {
+        "data": {
+          "symbol": "DELL",
+          "companyName": "Dell Technologies Inc. Class C Common Stock ",
+          "assetClass": "STOCKS",
+          "primaryData": {
+            "lastSalePrice": "$482.48",
+            "netChange": "+20.92",
+            "percentageChange": "+4.53%",
+            "deltaIndicator": "up",
+            "lastTradeTimestamp": "Oct 21, 2026 9:54 AM ET",
+            "isRealTime": true,
+            "bidPrice": "$482.16",
+            "askPrice": "$483.14",
+            "bidSize": "33",
+            "askSize": "10",
+            "volume": "1,831,522.097610",
+            "currency": null
+          },
+          "secondaryData": null,
+          "marketStatus": "Open"
+        }
+      }
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/DFDV/info?assetclass=stocks",
+      "retrievedAt": "2026-10-21T13:54:42.776Z",
+      "info": {
+        "data": {
+          "symbol": "DFDV",
+          "companyName": "DeFi Development Corp. Common Stock",
+          "assetClass": "STOCKS",
+          "primaryData": {
+            "lastSalePrice": "$3.94",
+            "netChange": "+0.07",
+            "percentageChange": "+1.81%",
+            "deltaIndicator": "up",
+            "lastTradeTimestamp": "Oct 21, 2026 9:54 AM ET",
+            "isRealTime": true,
+            "bidPrice": "$3.90",
+            "askPrice": "$3.94",
+            "bidSize": "10",
+            "askSize": "200",
+            "volume": "56,202.517707",
+            "currency": null
+          },
+          "secondaryData": null,
+          "marketStatus": "Open"
+        }
+      }
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/XLE/info?assetclass=etf",
+      "retrievedAt": "2026-10-21T13:55:27.334Z",
+      "info": {
+        "data": {
+          "symbol": "XLE",
+          "companyName": "State Street Energy Select Sector SPDR ETF",
+          "assetClass": "ETF",
+          "primaryData": {
+            "lastSalePrice": "$67.83",
+            "netChange": "-0.14",
+            "percentageChange": "-0.21%",
+            "deltaIndicator": "down",
+            "lastTradeTimestamp": "Oct 21, 2026 9:55 AM ET",
+            "isRealTime": true,
+            "bidPrice": "$67.82",
+            "askPrice": "$67.83",
+            "bidSize": "4588",
+            "askSize": "2600",
+            "volume": "4,609,220.575219",
+            "currency": null
+          },
+          "secondaryData": null,
+          "marketStatus": "Open"
+        }
+      }
+    },
+    {
+      "source": "https://api.nasdaq.com/api/quote/VCX/info?assetclass=stocks",
+      "retrievedAt": "2026-10-21T13:54:42.722Z",
+      "info": {
+        "data": {
+          "symbol": "VCX",
+          "companyName": "Fundrise Innovation Fund, LLC Common Shares of Limited Liability Company Interests",
+          "assetClass": "STOCKS",
+          "primaryData": {
+            "lastSalePrice": "$24.00",
+            "netChange": "+0.04",
+            "percentageChange": "+0.17%",
+            "deltaIndicator": "up",
+            "lastTradeTimestamp": "Oct 21, 2026 9:54 AM ET",
+            "isRealTime": true,
+            "bidPrice": "$23.84",
+            "askPrice": "$24.00",
+            "bidSize": "100",
+            "askSize": "400",
+            "volume": "43,991.810526",
+            "currency": null
+          },
+          "secondaryData": null,
+          "marketStatus": "Open"
+        }
+      }
+    }
+  ]
+}

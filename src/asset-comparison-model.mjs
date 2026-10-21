@@ -28,6 +28,7 @@ export function mergeProfileDetails(
     "spotPremiumReason",
     "premium",
     "premiumReason",
+    "buyObservation",
     "spot",
     "spotReason",
   ];

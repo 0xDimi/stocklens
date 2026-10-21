@@ -66,6 +66,237 @@
         "address": "0xbd8ee984ca75475161d38facbec2749276012737",
         "source": "https://api.xstocks.fi/api/v2/public/assets/NVDLx"
       }
+    },
+    {
+      "underlyingIsin": "US25459W4583",
+      "ticker": "SOXL",
+      "name": "Direxion Daily Semiconductor Bull 3X ETF",
+      "category": "ETF",
+      "source": "https://api.nasdaq.com/api/quote/SOXL/info?assetclass=etf",
+      "checkedAt": "2026-10-21T13:54:42.648Z",
+      "product": {
+        "issuer": "ondo",
+        "symbol": "SOXLon",
+        "chain": "Ethereum",
+        "address": "0xd318bbbe6b6e83f74e7acaeb5e94c08ddbdb44c0",
+        "source": "https://docs.ondo.finance/addresses#ondo-stocks"
+      },
+      "rwa": {
+        "id": "direxion-daily-semi-bull-3x-etf",
+        "coinId": "direxion-daily-semi-bull-3x-etf-ondo-tokenized",
+        "issuer": "ondo-tokenized-assets",
+        "chain": "Ethereum",
+        "address": "0xd318bbbe6b6e83f74e7acaeb5e94c08ddbdb44c0",
+        "source": "https://api.coingecko.com/api/v3/rwas/direxion-daily-semi-bull-3x-etf?tokens=true&tokenized_market_data=true",
+        "retrievedAt": "2026-10-21T13:34:11.445Z"
+      }
+    },
+    {
+      "underlyingIsin": "US0032621023",
+      "ticker": "PALL",
+      "name": "abrdn Physical Palladium Shares ETF",
+      "category": "ETF",
+      "source": "https://api.nasdaq.com/api/quote/PALL/info?assetclass=etf",
+      "checkedAt": "2026-10-21T13:54:42.536Z",
+      "product": {
+        "issuer": "xstocks",
+        "symbol": "PALLx",
+        "isin": "CH1500008557",
+        "chain": "Ethereum",
+        "address": "0x05473cea3774d898c7b6dda21e1876d6bca7277b",
+        "source": "https://api.xstocks.fi/api/v2/public/assets/PALLx"
+      },
+      "rwa": {
+        "id": "abrdn-physical-palladium-shares-etf",
+        "coinId": "abrdn-physical-palladium-shares-xstock",
+        "issuer": "xstocks-ecosystem",
+        "chain": "Ethereum",
+        "address": "0x05473cea3774d898c7b6dda21e1876d6bca7277b",
+        "source": "https://api.coingecko.com/api/v3/rwas/abrdn-physical-palladium-shares-etf?tokens=true&tokenized_market_data=true",
+        "retrievedAt": "2026-10-21T13:43:28.572Z"
+      }
+    },
+    {
+      "underlyingIsin": "US0032601066",
+      "ticker": "PPLT",
+      "name": "abrdn Physical Platinum Shares ETF",
+      "category": "ETF",
+      "source": "https://api.nasdaq.com/api/quote/PPLT/info?assetclass=etf",
+      "checkedAt": "2026-10-21T13:54:43.049Z",
+      "product": {
+        "issuer": "xstocks",
+        "symbol": "PPLTx",
+        "isin": "CH1500008565",
+        "chain": "Ethereum",
+        "address": "0x8e9e4a8d7f1c65dcb42d9103832b27e75946055d",
+        "source": "https://api.xstocks.fi/api/v2/public/assets/PPLTx"
+      },
+      "rwa": {
+        "id": "abrdn-physical-platinum-shares-etf",
+        "coinId": "abrdn-physical-platinum-shares-xstock",
+        "issuer": "xstocks-ecosystem",
+        "chain": "Ethereum",
+        "address": "0x8e9e4a8d7f1c65dcb42d9103832b27e75946055d",
+        "source": "https://api.coingecko.com/api/v3/rwas/abrdn-physical-platinum-shares-etf?tokens=true&tokenized_market_data=true",
+        "retrievedAt": "2026-10-21T13:43:41.297Z"
+      }
+    },
+    {
+      "underlyingIsin": "USN070592100",
+      "ticker": "ASML",
+      "name": "ASML Holding N.V. New York Registry Shares",
+      "category": "Stock",
+      "source": "https://api.nasdaq.com/api/quote/ASML/info?assetclass=stocks",
+      "checkedAt": "2026-10-21T13:54:42.534Z",
+      "product": {
+        "issuer": "xstocks",
+        "symbol": "ASMLx",
+        "isin": "CH1473121262",
+        "chain": "Ethereum",
+        "address": "0xc0b417e7f83db438631eb5e096684dd742e5294f",
+        "source": "https://api.xstocks.fi/api/v2/public/assets/ASMLx"
+      },
+      "rwa": {
+        "id": "asml-holding-nv",
+        "coinId": "asml-xstock",
+        "issuer": "xstocks-ecosystem",
+        "chain": "Ethereum",
+        "address": "0xc0b417e7f83db438631eb5e096684dd742e5294f",
+        "source": "https://api.coingecko.com/api/v3/rwas/asml-holding-nv?tokens=true&tokenized_market_data=true",
+        "retrievedAt": "2026-10-21T13:44:18.629Z"
+      }
+    },
+    {
+      "underlyingIsin": "US46434G1031",
+      "ticker": "IEMG",
+      "name": "iShares Core MSCI Emerging Markets ETF",
+      "category": "ETF",
+      "source": "https://api.nasdaq.com/api/quote/IEMG/info?assetclass=etf",
+      "checkedAt": "2026-10-21T13:54:42.898Z",
+      "product": {
+        "issuer": "xstocks",
+        "symbol": "IEMGx",
+        "isin": "CH1500008458",
+        "chain": "Ethereum",
+        "address": "0x6a668332825450acd2e449372057d31b3de16a1e",
+        "source": "https://api.xstocks.fi/api/v2/public/assets/IEMGx"
+      },
+      "rwa": {
+        "id": "ishares-core-msci-emerging-markets-etf",
+        "coinId": "core-msci-emerging-markets-xstock",
+        "issuer": "xstocks-ecosystem",
+        "chain": "Ethereum",
+        "address": "0x6a668332825450acd2e449372057d31b3de16a1e",
+        "source": "https://api.coingecko.com/api/v3/rwas/ishares-core-msci-emerging-markets-etf?tokens=true&tokenized_market_data=true",
+        "retrievedAt": "2026-10-21T13:45:33.600Z"
+      }
+    },
+    {
+      "underlyingIsin": "US24703L2025",
+      "ticker": "DELL",
+      "name": "Dell Technologies Inc. Class C Common Stock",
+      "category": "Stock",
+      "source": "https://api.nasdaq.com/api/quote/DELL/info?assetclass=stocks",
+      "checkedAt": "2026-10-21T13:54:42.653Z",
+      "product": {
+        "issuer": "ondo",
+        "symbol": "DELLon",
+        "chain": "Ethereum",
+        "address": "0xeE9f43476C5b7292b114bA1b280A42A8746792d4",
+        "source": "https://docs.ondo.finance/addresses#ondo-stocks"
+      },
+      "rwa": {
+        "id": "dell",
+        "coinId": "dell-technologies-ondo-tokenized",
+        "issuer": "ondo-tokenized-assets",
+        "chain": "Ethereum",
+        "address": "0xeE9f43476C5b7292b114bA1b280A42A8746792d4",
+        "source": "https://api.coingecko.com/api/v3/rwas/dell?tokens=true&tokenized_market_data=true",
+        "retrievedAt": "2026-10-21T13:47:43.504Z",
+        "observedVia": "https://stocklens-osft.onrender.com/api/products?stock=cg%3Adell&chain=all&enrich=true",
+        "observation": "Stocklens backend-validated CoinGecko native passthrough"
+      }
+    },
+    {
+      "underlyingIsin": "US47100L3015",
+      "ticker": "DFDV",
+      "name": "DeFi Development Corp. Common Stock",
+      "category": "Stock",
+      "source": "https://api.nasdaq.com/api/quote/DFDV/info?assetclass=stocks",
+      "checkedAt": "2026-10-21T13:54:42.776Z",
+      "product": {
+        "issuer": "xstocks",
+        "symbol": "DFDVx",
+        "isin": "CH1173294393",
+        "chain": "Ethereum",
+        "address": "0x521860bb5df5468358875266b89bfe90d990c6e7",
+        "source": "https://api.xstocks.fi/api/v2/public/assets/DFDVx"
+      },
+      "rwa": {
+        "id": "defi-development-corp",
+        "coinId": "dfdv-xstock",
+        "issuer": "xstocks-ecosystem",
+        "chain": "Ethereum",
+        "address": "0x521860bb5df5468358875266b89bfe90d990c6e7",
+        "source": "https://api.coingecko.com/api/v3/rwas/defi-development-corp?tokens=true&tokenized_market_data=true",
+        "retrievedAt": "2026-10-21T13:47:48.416Z",
+        "observedVia": "https://stocklens-osft.onrender.com/api/products?stock=cg%3Adefi-development-corp&chain=all&enrich=true",
+        "observation": "Stocklens backend-validated CoinGecko native passthrough"
+      }
+    },
+    {
+      "underlyingIsin": "US81369Y5069",
+      "ticker": "XLE",
+      "name": "State Street Energy Select Sector SPDR ETF",
+      "category": "ETF",
+      "source": "https://api.nasdaq.com/api/quote/XLE/info?assetclass=etf",
+      "checkedAt": "2026-10-21T13:55:27.334Z",
+      "product": {
+        "issuer": "xstocks",
+        "symbol": "XLEx",
+        "isin": "CH1500008763",
+        "chain": "Ethereum",
+        "address": "0x6f75ac3b1b6fbe8bb5f948e25af03620f26ae838",
+        "source": "https://api.xstocks.fi/api/v2/public/assets/XLEx"
+      },
+      "rwa": {
+        "id": "state-street-energy-select-sector-spdr-fund",
+        "coinId": "energy-select-sector-spdr-fund-xstock",
+        "issuer": "xstocks-ecosystem",
+        "chain": "Ethereum",
+        "address": "0x6f75ac3b1b6fbe8bb5f948e25af03620f26ae838",
+        "source": "https://api.coingecko.com/api/v3/rwas/state-street-energy-select-sector-spdr-fund?tokens=true&tokenized_market_data=true",
+        "retrievedAt": "2026-10-21T13:47:58.138Z",
+        "observedVia": "https://stocklens-osft.onrender.com/api/products?stock=cg%3Astate-street-energy-select-sector-spdr-fund&chain=all&enrich=true",
+        "observation": "Stocklens backend-validated CoinGecko native passthrough"
+      }
+    },
+    {
+      "underlyingIsin": "US3608521072",
+      "ticker": "VCX",
+      "name": "Fundrise Innovation Fund, LLC Common Shares of Limited Liability Company Interests",
+      "category": "Stock",
+      "source": "https://api.nasdaq.com/api/quote/VCX/info?assetclass=stocks",
+      "checkedAt": "2026-10-21T13:54:42.722Z",
+      "product": {
+        "issuer": "xstocks",
+        "symbol": "VCXx",
+        "isin": "CH1500008755",
+        "chain": "Ethereum",
+        "address": "0xbac2588d2272ff6e5826e2882042fa2926039cba",
+        "source": "https://api.xstocks.fi/api/v2/public/assets/VCXx"
+      },
+      "rwa": {
+        "id": "fundrise-innovation-fund",
+        "coinId": "fundrise-innovation-fund-llc-xstock",
+        "issuer": "xstocks-ecosystem",
+        "chain": "Ethereum",
+        "address": "0xbac2588d2272ff6e5826e2882042fa2926039cba",
+        "source": "https://api.coingecko.com/api/v3/rwas/fundrise-innovation-fund?tokens=true&tokenized_market_data=true",
+        "retrievedAt": "2026-10-21T13:48:04.711Z",
+        "observedVia": "https://stocklens-osft.onrender.com/api/products?stock=cg%3Afundrise-innovation-fund&chain=all&enrich=true",
+        "observation": "Stocklens backend-validated CoinGecko native passthrough"
+      }
     }
   ]
 }

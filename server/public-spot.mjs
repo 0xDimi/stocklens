@@ -28,6 +28,25 @@ const positive = (value) =>
   Number(value) > 0
     ? Number(value)
     : null;
+const MAX_AGE_MS = 300000;
+// Source requests are batched by the current stock selection. Retain verified
+// deployment observations independently so a different batch cannot erase one.
+const retainedBySource = new WeakMap();
+const observationKey = (row) =>
+  JSON.stringify([
+    row.stock?.id ?? row.id,
+    row.product?.issuer ?? row.issuer,
+    row.product?.symbol ?? row.symbol,
+    row.deployment?.chain ?? row.chain,
+    key(
+      row.deployment?.chain ?? row.chain,
+      row.deployment?.address ?? row.address,
+    ),
+  ]);
+const rank = (a, b) =>
+  b.liquidity - a.liquidity ||
+  observationKey(a).localeCompare(observationKey(b)) ||
+  a.pairAddress.localeCompare(b.pairAddress);
 
 // priceUsd belongs to the pair's base token. Quote-token matches and symbol
 // matches cannot authorize a join. DEX Screener does not disclose trade times:
@@ -78,7 +97,7 @@ export function parseSpotPairs(data, candidates, retrievedAt) {
       });
     }
   }
-  return rows.sort((a, b) => b.liquidity - a.liquidity);
+  return rows.sort(rank);
 }
 
 export async function getSpotObservations(
@@ -92,6 +111,8 @@ export async function getSpotObservations(
 ) {
   const deadline = Date.now() + budgetMs;
   const remaining = () => Math.max(1, deadline - Date.now());
+  const fresh = (at) =>
+    Number.isFinite(at) && at <= now() && now() - at <= MAX_AGE_MS;
   const candidates = stocks.flatMap((stock) =>
     stock.products
       .filter(
@@ -114,14 +135,119 @@ export async function getSpotObservations(
     const addresses = [
       ...new Set(selected.map((c) => c.deployment.address)),
     ].sort();
-    for (let i = 0; i < addresses.length; i += 30)
-      groups.push({ network, selected, addresses: addresses.slice(i, i + 30) });
+    for (let i = 0; i < addresses.length; i += 30) {
+      const batch = addresses.slice(i, i + 30);
+      groups.push({
+        network,
+        batchIndex: i / 30,
+        selected: selected.filter((c) => batch.includes(c.deployment.address)),
+        addresses: batch,
+      });
+    }
   }
-  const snapshots = await mapLimit(
+  // The first request slots cover independent chains before additional batches
+  // from one chain, so a slow large chain cannot delay every other source.
+  groups.sort((a, b) => a.batchIndex - b.batchIndex);
+  if (!retainedBySource.has(getSource))
+    retainedBySource.set(getSource, new WeakMap());
+  const retainedByUnits = retainedBySource.get(getSource);
+  if (!retainedByUnits.has(getUnits)) retainedByUnits.set(getUnits, new Map());
+  const saved = retainedByUnits.get(getUnits);
+  for (const [id, row] of saved) if (!fresh(row.at)) saved.delete(id);
+  const observations = new Map();
+  for (const candidate of candidates) {
+    const id = observationKey(candidate);
+    const row = saved.get(id);
+    if (row) observations.set(id, { ...row, retained: true });
+  }
+  const resolvedStocks = new Set([...observations.values()].map((row) => row.id));
+
+  const normalize = async (row) => {
+    if (Date.now() >= deadline) return;
+    try {
+      const units = await observeWithin(
+        () => getUnits(row.product, row.deployment),
+        Math.min(3000, remaining()),
+      );
+      if (
+        !(units?.sharesPerToken > 0) ||
+        !Number.isFinite(units.sharesPerToken) ||
+        !units.conversionSource ||
+        !fresh(row.at)
+      )
+        return;
+      // Public indexers do not disclose whether a Solana scaled-UI price is
+      // already adjusted. Applying a non-unit multiplier could double-adjust.
+      if (row.chain === "Solana" && units.sharesPerToken !== 1) return;
+      const price = row.rawPrice / units.sharesPerToken;
+      if (!Number.isFinite(price) || price <= 0) return;
+      const { product, deployment, ...observation } = row;
+      const normalized = {
+        ...observation,
+        price,
+        sharesPerToken: units.sharesPerToken,
+        conversionVerified: true,
+        conversionSource: units.conversionSource,
+        currency: "USD",
+        basis:
+          "Representative exact-contract DEX pool snapshot, normalized to one underlying-equivalent share using verified issuer units. Pools need at least $1,000 reported liquidity and nonzero 24h volume. Snapshot retrieval time is shown; last-trade time is not disclosed. Not an executable offer or a market-wide aggregate.",
+      };
+      const id = observationKey(row);
+      observations.set(id, normalized);
+      resolvedStocks.add(row.id);
+      // A slower concurrent refresh must not overwrite a newer snapshot.
+      if (!saved.has(id) || saved.get(id).at <= normalized.at) {
+        if (saved.size >= 1000 && !saved.has(id))
+          saved.delete(saved.keys().next().value);
+        saved.set(id, normalized);
+      }
+    } catch {
+      /* Unsupported units cannot authorize a price comparison. */
+    }
+  };
+  // Start conversions as each chain arrives, with one bounded queue shared by
+  // all chains. A slow conversion must not serialize alternatives for a stock.
+  const queued = [],
+    jobs = [];
+  const chains = Object.keys(NETWORKS);
+  let active = 0,
+    nextChain = 0;
+  const pump = () => {
+    while (active < 6 && queued.length) {
+      // Alternate ready chains when capacity opens instead of letting the first
+      // large response monopolize all subsequent conversion slots.
+      let index = -1;
+      for (let offset = 0; offset < chains.length; offset++) {
+        const chainIndex = (nextChain + offset) % chains.length;
+        const chain = chains[chainIndex];
+        index = queued.findIndex(
+          (job) => job.row.chain === chain && !resolvedStocks.has(job.row.id),
+        );
+        if (index < 0)
+          index = queued.findIndex((job) => job.row.chain === chain);
+        if (index < 0) continue;
+        nextChain = (chainIndex + 1) % chains.length;
+        break;
+      }
+      const [{ row, resolve }] = queued.splice(index, 1);
+      active++;
+      normalize(row).finally(() => {
+        active--;
+        resolve();
+        pump();
+      });
+    }
+  };
+  const enqueue = (row) => {
+    jobs.push(new Promise((resolve) => queued.push({ row, resolve })));
+    pump();
+  };
+  await mapLimit(
     groups,
     3,
     async ({ network, selected, addresses }) => {
       try {
+        if (Date.now() >= deadline) return;
         const result = await observeWithin(
           () =>
             getSource(
@@ -131,61 +257,41 @@ export async function getSpotObservations(
           Math.min(6000, remaining()),
         );
         const at = Date.parse(result?.retrievedAt);
-        if (
-          result?.stale ||
-          !Number.isFinite(at) ||
-          at > now() ||
-          now() - at > 300000
-        )
-          return [];
-        return parseSpotPairs(result.data, selected, result.retrievedAt);
+        if (result?.stale || !fresh(at)) return;
+        const deployments = new Set();
+        for (const row of parseSpotPairs(
+          result.data,
+          selected,
+          result.retrievedAt,
+        )) {
+          const id = observationKey(row);
+          if (deployments.has(id)) continue;
+          deployments.add(id);
+          enqueue(row);
+        }
       } catch {
-        return [];
+        /* Independent chain observations can still be usable. */
       }
     },
   );
-  const pairs = snapshots.flat().sort((a, b) => b.liquidity - a.liquidity);
+  await Promise.all(jobs);
   const output = new Map();
-  await mapLimit(stocks, 5, async (stock) => {
-    const deployments = new Set();
-    const selected = pairs.filter((pair) => {
-      const id = pair.chain + ":" + key(pair.chain, pair.address);
-      if (pair.id !== stock.id || deployments.has(id)) return false;
-      deployments.add(id);
-      return true;
-    });
-    for (const row of selected.slice(0, 6)) {
-      if (Date.now() >= deadline) break;
-      try {
-        const units = await observeWithin(
-          () => getUnits(row.product, row.deployment),
-          Math.min(3000, remaining()),
-        );
-        if (
-          !(units?.sharesPerToken > 0) ||
-          !Number.isFinite(units.sharesPerToken) ||
-          !units.conversionSource
-        )
-          continue;
-        // Public indexers do not disclose whether a Solana scaled-UI price is
-        // already adjusted. Applying a non-unit multiplier could double-adjust.
-        if (row.chain === "Solana" && units.sharesPerToken !== 1) continue;
-        const { product, deployment, ...observation } = row;
-        output.set(stock.id, {
-          ...observation,
-          price: row.rawPrice / units.sharesPerToken,
-          sharesPerToken: units.sharesPerToken,
-          conversionVerified: true,
-          conversionSource: units.conversionSource,
-          currency: "USD",
-          basis:
-            "Representative exact-contract DEX pool snapshot, normalized to one underlying-equivalent share using verified issuer units. Pools need at least $1,000 reported liquidity and nonzero 24h volume. Snapshot retrieval time is shown; last-trade time is not disclosed. Not an executable offer or a market-wide aggregate.",
-        });
-        break;
-      } catch {
-        /* Unsupported units cannot authorize a price comparison. */
-      }
+  for (const row of [...observations.values()]
+    .filter((row) => fresh(row.at))
+    .sort((a, b) => Number(!!a.retained) - Number(!!b.retained) || rank(a, b))) {
+    if (!output.has(row.id)) {
+      output.set(
+        row.id,
+        row.retained
+          ? {
+              ...row,
+              basis:
+                row.basis +
+                " Previously verified observation retained while a current refresh is unavailable or incomplete; original snapshot time is preserved.",
+            }
+          : row,
+      );
     }
-  });
+  }
   return output;
 }

@@ -2755,22 +2755,6 @@ dialog p {
   background: #f8faf9;
   z-index: 2;
 }
-.overview-table th:nth-child(2) {
-  width: 118px;
-}
-.overview-table th:nth-child(3) {
-  width: 90px;
-}
-.overview-table th:nth-child(4) {
-  width: 110px;
-}
-.overview-table th:nth-child(7),
-.overview-table th:nth-child(8) {
-  width: 95px;
-}
-.overview-table th:last-child {
-  width: 65px;
-}
 .overview-table td > small {
   display: block;
   font-size: 10px;

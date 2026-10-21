@@ -364,6 +364,7 @@
         ><select id="market-sort" aria-label="Market sort">
           <option value="volume">24h volume</option>
           <option value="cap">Tokenized cap</option>
+          <option value="turnover">24h turnover</option>
           <option value="price">Tokenized price</option>
           <option value="gainers">Gainers</option>
           <option value="losers">Losers</option>
@@ -403,6 +404,12 @@
               </th>
               <th
                 scope="col"
+                title="CoinGecko 24h tokenized volume divided by tokenized capitalization, expressed as a percentage. This ratio does not measure executable liquidity."
+              >
+                24h turnover ⓘ
+              </th>
+              <th
+                scope="col"
                 title="Combined capitalization of tokenized versions, not the company's market capitalization."
               >
                 Tokenized cap ⓘ
@@ -421,7 +428,7 @@
           </thead>
           <tbody id="markets-body">
             <tr>
-              <td colspan="11" class="empty-results">Loading markets…</td>
+              <td colspan="12" class="empty-results">Loading markets…</td>
             </tr>
           </tbody>
         </table>
@@ -452,6 +459,12 @@
           market. Each observation carries its own date. Select stocks to
           compare their market metrics, or open a stock to explore its token
           versions.
+        </p>
+        <p>
+          24h turnover divides CoinGecko tokenized volume by tokenized
+          capitalization from the same observation. It compares trading
+          activity with tokenized market size; it does not measure executable
+          liquidity. Missing inputs remain unavailable.
         </p>
         <p>
           Onchain premium uses one verified, share-normalized pool snapshot. It

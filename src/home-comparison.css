@@ -437,8 +437,8 @@
 }
 
 @media (max-width: 760px) {
-  #home-page .pool-location {
-    display: none;
+  #home-page .price-kind {
+    display: block;
   }
   #home-page .pool-time {
     display: block;

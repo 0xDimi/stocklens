@@ -1,4 +1,4 @@
-import { loadCatalog } from "./catalog.mjs";
+import { loadCatalog, resolveStock } from "./catalog.mjs";
 import { getFundamentals } from "./fundamentals.mjs";
 import { getQuote, conversionIssuer } from "./providers.mjs";
 import { memo, mapLimit, observeWithin } from "./http.mjs";
@@ -8,7 +8,7 @@ import { getSpotObservations } from "./public-spot.mjs";
 const BASIS =
   "$1,000 USDC indicative buy premium before gas; USDC assumed $1. A representative verified version, not the best price across all versions. Observed quote, not a market-wide spot price or executable offer.";
 function candidates(stock) {
-  const order = ["Solana", "BinanceSmartChain", "Ethereum"];
+  const order = ["Solana", "BinanceSmartChain", "Ethereum", "Base", "Arbitrum"];
   return stock.products
     .filter((p) => !p.wrapped && !p.halted && conversionIssuer(p))
     .flatMap((product) =>
@@ -24,17 +24,50 @@ function candidates(stock) {
     );
 }
 async function observe(stock, quote, deadlineAt) {
-  for (const { product, deployment } of candidates(stock).slice(0, 3)) {
-    if (Date.now() >= deadlineAt) break;
-    const result = await quote(product, deployment, "1000", { deadlineAt });
-    if (
-      result.status === "quoted" &&
-      result.equivalentShares > 0 &&
-      result.effectivePrice > 0
-    )
+  const available = candidates(stock);
+  // Reserve a candidate for another issuer instead of spending every lookup
+  // on the same product's deployments. All three share one strict deadline.
+  const first = available[0];
+  const alternate =
+    available.find(
+      (c) =>
+        c.product.issuer !== first?.product.issuer &&
+        c.deployment.chain !== first?.deployment.chain,
+    ) || available.find((c) => c.product.issuer !== first?.product.issuer);
+  const distinctChain = available.find(
+    (c) =>
+      c.deployment.chain !== first?.deployment.chain &&
+      c.deployment.chain !== alternate?.deployment.chain,
+  );
+  const selected = [...new Set([first, alternate, distinctChain, ...available])]
+    .filter(Boolean)
+    .slice(0, 3);
+  const results = await Promise.allSettled(
+    selected.map(async ({ product, deployment }) => {
+      const remaining = deadlineAt - Date.now();
+      if (remaining <= 0)
+        throw new Error("Price observation deadline reached.");
+      const result = await observeWithin(
+        () => quote(product, deployment, "1000", { deadlineAt }),
+        remaining,
+      );
+      if (
+        result.status !== "quoted" ||
+        !(result.equivalentShares > 0) ||
+        !(result.effectivePrice > 0)
+      )
+        throw new Error("No verified price observation.");
       return result;
-  }
-  return null;
+    }),
+  );
+  // Independent candidates retain their own deadline. A fast expensive route
+  // must not mask a better verified observation that completes in that budget.
+  return (
+    results
+      .filter((r) => r.status === "fulfilled")
+      .map((r) => r.value)
+      .sort((a, b) => a.effectivePrice - b.effectivePrice)[0] || null
+  );
 }
 export async function marketDetailsView(
   params,
@@ -43,6 +76,9 @@ export async function marketDetailsView(
     getReference = getFundamentals,
     quote = getQuote,
     getSpots = getSpotObservations,
+    getEnrichedStock = getCatalog === loadCatalog
+      ? (id) => resolveStock(id, true)
+      : null,
   } = {},
 ) {
   const ids = [...new Set((params.get("ids") || "").split(","))];
@@ -60,6 +96,22 @@ export async function marketDetailsView(
     throw Object.assign(new Error("Choose exact catalog assets."), {
       status: 400,
     });
+  // Home's product lookup may still be loading native versions in parallel.
+  // Join that cached lookup for a single asset rather than declaring no price
+  // from an incomplete registry row. Never fan out native lookups for a page.
+  if (
+    stocks.length === 1 &&
+    stocks[0].rwaId &&
+    getEnrichedStock &&
+    !candidates(stocks[0]).length
+  ) {
+    try {
+      const resolved = await getEnrichedStock(stocks[0].id);
+      if (resolved.stock?.id === stocks[0].id) stocks[0] = resolved.stock;
+    } catch {
+      // Existing verified deployments can still be inspected during an outage.
+    }
+  }
   const deadline = Date.now() + 26000;
   const spots = observeWithin(() => getSpots(stocks), 10000).catch(
     () => new Map(),
@@ -75,9 +127,13 @@ export async function marketDetailsView(
       observeWithin(
         () =>
           quote === getQuote
-            ? memo("market-premium:" + stock.id, 120000, () =>
-                observe(stock, quote, quoteDeadline),
-              )
+            ? memo("market-premium:" + stock.id, 120000, async () => {
+                const result = await observe(stock, quote, quoteDeadline);
+                // Provider failures own their cooldowns; a missing route must
+                // not become a successful two-minute cached observation.
+                if (!result) throw new Error("No verified price observation.");
+                return result;
+              })
             : observe(stock, quote, quoteDeadline),
         Math.min(10000, remaining()),
       ).catch(() => null),
@@ -113,6 +169,7 @@ export async function marketDetailsView(
             conversionSource: spot.conversionSource,
             sharesPerToken: spot.sharesPerToken,
             method: spot.method,
+            retained: spot.retained === true,
             referenceBasis: closedSpot ? "last-close" : "contemporaneous",
             basis:
               spot.basis +
@@ -138,6 +195,26 @@ export async function marketDetailsView(
         )
       : null;
     const lastClose = reference?.priceSession === "Closed";
+    // A verified onchain price does not depend on a listed-stock feed being up.
+    // Keep this size-specific observation separate from the pool-price snapshot.
+    const buyObservation = observation
+      ? {
+          price: observation.effectivePrice,
+          priceAt: observation.fetchedAt,
+          expiresAt: observation.fetchedAt + 300000,
+          symbol: observation.symbol,
+          issuer: observation.issuer,
+          chain: observation.chain,
+          venue: observation.quoteProvider || observation.venue,
+          budget: 1000,
+          sharesPerToken: observation.sharesPerToken,
+          conversionVerified: true,
+          conversionSource: observation.conversionSource,
+          source: observation.quoteSource,
+          method: "indicative-buy",
+          basis: BASIS,
+        }
+      : null;
     const referenceTime = lastClose
       ? Date.parse(reference.retrievedAt)
       : reference?.at;
@@ -152,6 +229,8 @@ export async function marketDetailsView(
             venue: observation.venue,
             budget: 1000,
             price: observation.effectivePrice,
+            referencePrice: reference.price,
+            referenceDate: reference.priceDate || null,
             priceImpactPct: Number.isFinite(observation.priceImpactPct)
               ? observation.priceImpactPct
               : null,
@@ -173,6 +252,7 @@ export async function marketDetailsView(
       id: stock.id,
       reference,
       premium: metric,
+      buyObservation,
       spot,
       spotPremium: spotMetric,
       spotPremiumReason: spotMetric

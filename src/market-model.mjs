@@ -6,6 +6,7 @@ export const MARKET_COLUMNS = [
   ["token", "Tokenized price"],
   ["change", "24h change"],
   ["premium", "Onchain premium"],
+  ["turnover", "24h turnover"],
   ["tokenCap", "Tokenized cap"],
   ["volume", "24h volume"],
   ["networks", "Networks"],
@@ -13,17 +14,49 @@ export const MARKET_COLUMNS = [
   ["companyCap", "Company cap"],
   ["pe", "Fiscal-year P/E"],
 ];
-export const DEFAULT_MARKET_COLUMNS = MARKET_COLUMNS.slice(0, 9).map(
+export const DEFAULT_MARKET_COLUMNS = MARKET_COLUMNS.slice(0, 10).map(
   ([id]) => id,
 );
-export function normalizeMarketColumns(value) {
+// Widths cover values and their short source labels. Every visible column gets
+// a width so the fixed table layout cannot put all spare room in one metric.
+export const MARKET_COLUMN_WIDTHS = {
+  listed: 122,
+  token: 124,
+  change: 76,
+  premium: 140,
+  turnover: 108,
+  tokenCap: 110,
+  volume: 110,
+  networks: 98,
+  versions: 128,
+  companyCap: 126,
+  pe: 138,
+};
+export function normalizeMarketColumns(
+  value,
+  { upgradeLegacyDefaults = false } = {},
+) {
   if (!Array.isArray(value) || !value.length)
     return [...DEFAULT_MARKET_COLUMNS];
   const chosen = new Set(["stock", ...value]);
+  // This migration runs only when reading v1 storage. V2 users may hide the
+  // new column without having their choice reversed on a later visit.
+  if (upgradeLegacyDefaults) chosen.add("turnover");
   const columns = MARKET_COLUMNS.map(([id]) => id).filter((id) =>
     chosen.has(id),
   );
   return columns.length > 1 ? columns : [...DEFAULT_MARKET_COLUMNS];
+}
+export function marketTurnover(market) {
+  if (
+    !Number.isFinite(market?.volume24h) ||
+    market.volume24h < 0 ||
+    !Number.isFinite(market?.marketCap) ||
+    market.marketCap <= 0
+  )
+    return null;
+  const percent = (market.volume24h / market.marketCap) * 100;
+  return Number.isFinite(percent) ? percent : null;
 }
 const sourceURL = (value) => {
   try {
@@ -66,6 +99,11 @@ export function marketReadiness(
     observations = [
       ...(scoped(detail?.spot) && detail.spot.conversionVerified === true
         ? [{ ...detail.spot, observedAt: detail.spot.at }]
+        : []),
+      ...(scoped(detail?.buyObservation) &&
+        detail.buyObservation.conversionVerified === true &&
+        Number.isFinite(detail.buyObservation.expiresAt)
+        ? [{ ...detail.buyObservation, observedAt: detail.buyObservation.priceAt }]
         : []),
       ...[detail?.spotPremium, detail?.premium]
         .filter(scoped)
@@ -152,15 +190,17 @@ export function selectMarketRows(
             ? new Set(
                 r.products.flatMap((p) => p.deployments.map((d) => d.chain)),
               ).size
-            : r.market?.[
-                {
-                  volume: "volume24h",
-                  cap: "marketCap",
-                  price: "price",
-                  gainers: "change24h",
-                  losers: "change24h",
-                }[sort] || "volume24h"
-              ];
+            : sort === "turnover"
+              ? marketTurnover(r.market)
+              : r.market?.[
+                  {
+                    volume: "volume24h",
+                    cap: "marketCap",
+                    price: "price",
+                    gainers: "change24h",
+                    losers: "change24h",
+                  }[sort] || "volume24h"
+                ];
       const av = value(a),
         bv = value(b);
       if (!Number.isFinite(av))

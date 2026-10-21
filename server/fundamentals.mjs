@@ -51,6 +51,19 @@ function corroboratesName(stock, companyName) {
   const target = nameWords(stock.name),
     actual = nameWords(companyName);
   if (!target || !actual) return false;
+  // Catalog / Nasdaq name pair observed 2026-10-21:
+  // https://api.nasdaq.com/api/quote/SOXL/info?assetclass=etf
+  // Keep this exact alias scoped to SOXL. Removing Daily or ETF from every fund
+  // name would weaken checks for reset periods, exposure, and leverage.
+  if (
+    stock.category === "ETF" &&
+    stock.ticker === "SOXL" &&
+    target === "direxion semiconductor bull 3x"
+  ) return [
+    "direxion semiconductor bull 3x",
+    "direxion semiconductor bull 3x etf",
+    "direxion daily semiconductor bull 3x etf",
+  ].includes(actual);
   // Legal name changed on 2025-08-11; MSTR Class A and its CUSIP remained unchanged.
   // https://www.strategy.com/press/strategy-announces-legal-name-change-from-microstrategy-incorporated-to-strategy-inc_08-14-2025
   if (

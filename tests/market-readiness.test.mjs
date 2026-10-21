@@ -109,6 +109,21 @@ test("actual quote snapshots can verify units without a listed-stock reference",
   );
 });
 
+test("a sourced normalized buy observation verifies conversion without a listed reference or pool", () => {
+  const buyObservation = { ...spot, priceAt: now, expiresAt: now + 30000, budgetUsd: 1000 };
+  const state = (changes = {}, scope = {}) => model.marketReadiness(stock, {
+    chains, now, detail: { status: "ready", buyObservation: { ...buyObservation, ...changes } }, ...scope,
+  }).conversion;
+  assert.equal(state(), "verified");
+  assert.equal(state({}, { issuer: "issuer-b" }), "not-verified");
+  assert.equal(state({}, { chain: "Ethereum" }), "not-verified");
+  assert.equal(state({ priceAt: now - 300001, expiresAt: now + 30000 }), "expired");
+  assert.equal(state({ expiresAt: now }), "expired");
+  for (const changes of [{ conversionVerified: false }, { conversionVerified: undefined },
+    { sharesPerToken: 0 }, { conversionSource: null }, { source: "http://untrusted.test" },
+    { priceAt: null }, { priceAt: now + 1 }, { expiresAt: null }]) assert.equal(state(changes), "not-verified");
+});
+
 test("issuer and network filters refer to the same product deployment", () => {
   assert.equal(
     model.selectMarketRows([stock], { chain: "Ethereum", issuer: "issuer-a" })

@@ -161,6 +161,41 @@ test("keeps identity checks for unrelated names, symbols, and asset classes", ()
   );
 });
 
+test("SOXL's observed Nasdaq ETF name corroborates its catalog short name without dropping fund identity", () => {
+  const soxl = {
+    id: "SOXL",
+    ticker: "SOXL",
+    name: "Direxion Semiconductor Bull 3X",
+    category: "ETF",
+  };
+  // Name pair observed from the catalog and Nasdaq /quote/SOXL/info?assetclass=etf
+  // on 2026-10-21. Reuse the dated quote fixture to isolate name validation.
+  const listed = listedInfo("SOXL", "Direxion Daily Semiconductor Bull 3X ETF", "ETF");
+  const result = parseFundamentals(listed, null, soxl, retrievedAt);
+  assert.equal(result.price, 341.876);
+  assert.equal(result.companyName, "Direxion Daily Semiconductor Bull 3X ETF");
+  assert.equal(result.marketCapStatus, "not-applicable");
+  assert.equal(result.peStatus, "not-applicable");
+  for (const companyName of [
+    "Direxion Daily Semiconductor Bear 3X ETF",
+    "Direxion Daily Semiconductor Bull 2X ETF",
+    "Direxion Daily Semiconductor Bull 3X Monthly ETF",
+    "Direxion Daily Technology Bull 3X ETF",
+    "Other Sponsor Daily Semiconductor Bull 3X ETF",
+    "Direxion Semiconductor Bull 3X Bear ETF",
+  ]) {
+    assert.throws(() => parseFundamentals(
+      listedInfo("SOXL", companyName, "ETF"), null, soxl, retrievedAt,
+    ), /name does not corroborate/, companyName);
+  }
+  assert.throws(() => parseFundamentals(
+    { ...listed, data: { ...listed.data, symbol: "SOXS" } }, null, soxl, retrievedAt,
+  ), /identity unavailable/);
+  assert.throws(() => parseFundamentals(
+    { ...listed, data: { ...listed.data, assetClass: "STOCKS" } }, null, soxl, retrievedAt,
+  ), /identity unavailable/);
+});
+
 test("does not substitute forecast P/E, missing values, or another symbol's market cap", () => {
   const forecastOnly = {
     ...ratios,

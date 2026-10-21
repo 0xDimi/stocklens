@@ -1,0 +1,201 @@
+{
+  "note": "Observed official issuer records dated 2026-10-21. Exact contracts corroborated by CoinGecko native RWA observations, including backend-validated native passthrough for DELL, DFDV, XLE, VCX. Public response proofs retained in ignored test-results/.",
+  "stocks": [
+    {
+      "id": "US25459W4583",
+      "ticker": "SOXL",
+      "name": "Direxion Semiconductor Bull 3X",
+      "category": "ETF",
+      "sourceAt": "2026-10-21T13:38:05.560Z",
+      "products": [
+        {
+          "issuer": "ondo",
+          "symbol": "SOXLon",
+          "source": "https://docs.ondo.finance/addresses#ondo-stocks",
+          "sourceAt": "2026-10-21T13:38:05.560Z",
+          "deployments": [
+            {
+              "chain": "Ethereum",
+              "address": "0xd318bBBE6B6E83F74e7aCAEb5e94C08ddbDb44c0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "US0032621023",
+      "ticker": "PALL",
+      "name": "abrdn Physical Palladium Shares",
+      "category": "ETF",
+      "sourceAt": "2026-10-21T13:38:05.560Z",
+      "products": [
+        {
+          "issuer": "xstocks",
+          "symbol": "PALLx",
+          "isin": "CH1500008557",
+          "source": "https://api.xstocks.fi/api/v2/public/assets/PALLx",
+          "sourceAt": "2026-10-21T13:38:05.560Z",
+          "deployments": [
+            {
+              "chain": "Ethereum",
+              "address": "0x05473cea3774d898c7b6dda21e1876d6bca7277b"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "US0032601066",
+      "ticker": "PPLT",
+      "name": "abrdn Physical Platinum Shares",
+      "category": "ETF",
+      "sourceAt": "2026-10-21T13:38:05.560Z",
+      "products": [
+        {
+          "issuer": "xstocks",
+          "symbol": "PPLTx",
+          "isin": "CH1500008565",
+          "source": "https://api.xstocks.fi/api/v2/public/assets/PPLTx",
+          "sourceAt": "2026-10-21T13:38:05.560Z",
+          "deployments": [
+            {
+              "chain": "Ethereum",
+              "address": "0x8e9e4a8d7f1c65dcb42d9103832b27e75946055d"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "USN070592100",
+      "ticker": "ASML",
+      "name": "ASML",
+      "category": "Listed security",
+      "sourceAt": "2026-10-21T13:38:05.560Z",
+      "products": [
+        {
+          "issuer": "xstocks",
+          "symbol": "ASMLx",
+          "isin": "CH1473121262",
+          "source": "https://api.xstocks.fi/api/v2/public/assets/ASMLx",
+          "sourceAt": "2026-10-21T13:38:05.560Z",
+          "deployments": [
+            {
+              "chain": "Ethereum",
+              "address": "0xc0b417e7f83db438631eb5e096684dd742e5294f"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "US46434G1031",
+      "ticker": "IEMG",
+      "name": "Core MSCI Emerging Markets",
+      "category": "ETF",
+      "sourceAt": "2026-10-21T13:38:05.560Z",
+      "products": [
+        {
+          "issuer": "xstocks",
+          "symbol": "IEMGx",
+          "isin": "CH1500008458",
+          "source": "https://api.xstocks.fi/api/v2/public/assets/IEMGx",
+          "sourceAt": "2026-10-21T13:38:05.560Z",
+          "deployments": [
+            {
+              "chain": "Ethereum",
+              "address": "0x6a668332825450acd2e449372057d31b3de16a1e"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "US24703L2025",
+      "ticker": "DELL",
+      "name": "Dell Technologies Inc.",
+      "category": "Stock",
+      "sourceAt": "2026-10-21T13:38:05.560Z",
+      "products": [
+        {
+          "issuer": "ondo",
+          "symbol": "DELLon",
+          "source": "https://docs.ondo.finance/addresses#ondo-stocks",
+          "sourceAt": "2026-10-21T13:38:05.560Z",
+          "deployments": [
+            {
+              "chain": "Ethereum",
+              "address": "0xeE9f43476C5b7292b114bA1b280A42A8746792d4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "US47100L3015",
+      "ticker": "DFDV",
+      "name": "DFDV",
+      "category": "Listed security",
+      "sourceAt": "2026-10-21T13:38:05.560Z",
+      "products": [
+        {
+          "issuer": "xstocks",
+          "symbol": "DFDVx",
+          "isin": "CH1173294393",
+          "source": "https://api.xstocks.fi/api/v2/public/assets/DFDVx",
+          "sourceAt": "2026-10-21T13:38:05.560Z",
+          "deployments": [
+            {
+              "chain": "Ethereum",
+              "address": "0x521860bb5df5468358875266b89bfe90d990c6e7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "US81369Y5069",
+      "ticker": "XLE",
+      "name": "Energy Select Sector SPDR Fund",
+      "category": "Listed security",
+      "sourceAt": "2026-10-21T13:38:05.560Z",
+      "products": [
+        {
+          "issuer": "xstocks",
+          "symbol": "XLEx",
+          "isin": "CH1500008763",
+          "source": "https://api.xstocks.fi/api/v2/public/assets/XLEx",
+          "sourceAt": "2026-10-21T13:38:05.560Z",
+          "deployments": [
+            {
+              "chain": "Ethereum",
+              "address": "0x6f75ac3b1b6fbe8bb5f948e25af03620f26ae838"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "US3608521072",
+      "ticker": "VCX",
+      "name": "Fundrise Innovation Fund, LLC",
+      "category": "ETF",
+      "sourceAt": "2026-10-21T13:38:05.560Z",
+      "products": [
+        {
+          "issuer": "xstocks",
+          "symbol": "VCXx",
+          "isin": "CH1500008755",
+          "source": "https://api.xstocks.fi/api/v2/public/assets/VCXx",
+          "sourceAt": "2026-10-21T13:38:05.560Z",
+          "deployments": [
+            {
+              "chain": "Ethereum",
+              "address": "0xbac2588d2272ff6e5826e2882042fa2926039cba"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

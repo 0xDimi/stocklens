@@ -135,7 +135,7 @@ export function conversionIssuer(product) {
   if (
     product.issuer === "ondo" &&
     (product.source === ONDO_SOURCE ||
-      /\(Ondo Tokenized Stock\)$/i.test(product.name || ""))
+      /\(Ondo Tokenized(?: Stock| ETF)?\)$/i.test(product.name || ""))
   )
     return "ondo";
   return null;

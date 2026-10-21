@@ -144,28 +144,8 @@
   flex-wrap: wrap;
 }
 .overview-table {
+  --market-stock-width: 280px;
   min-width: 1320px;
-}
-.overview-table th:first-child,
-.overview-table td:first-child {
-  width: 255px;
-}
-.overview-table th:nth-child(2),
-.overview-table th:nth-child(3) {
-  width: 122px;
-}
-.overview-table th:nth-child(4) {
-  width: 82px;
-}
-.overview-table th:nth-child(5) {
-  width: 116px;
-}
-.overview-table th:nth-child(7) {
-  width: 95px;
-}
-.overview-table th:nth-child(8),
-.overview-table th:nth-child(9) {
-  width: 85px;
 }
 .market-compare-toggle {
   border: 1px solid var(--line);
@@ -184,7 +164,25 @@
 }
 .overview-table th:first-child,
 .overview-table td:first-child {
-  width: 290px;
+  width: var(--market-stock-width);
+}
+.overview-table [data-market-detail] {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.overview-table [data-market-detail] > summary {
+  cursor: pointer;
+}
+.overview-table [data-market-detail] small {
+  font-size: inherit;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.overview-table [data-market-detail] > small {
+  display: block;
+  margin-top: 6px;
 }
 .markets-page .market-save {
   width: 40px;
@@ -308,9 +306,11 @@
   line-height: 1.5;
 }
 @media (max-width: 760px) {
+  .overview-table {
+    --market-stock-width: 245px;
+  }
   .overview-table th:first-child,
   .overview-table td:first-child {
-    width: 245px;
     border-inline-end: 1px solid var(--line);
   }
   .market-readiness-controls {

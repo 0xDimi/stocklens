@@ -113,9 +113,7 @@ export function createTerminal({
   onMarketsUpdate = () => {},
 }) {
   const $ = (s) => document.querySelector(s);
-  const references = new Map(),
-    spots = new Map(),
-    detailsSeen = new Set();
+  const priceDetails = new Map();
   let marketStorage;
   try {
     marketStorage = localStorage;
@@ -171,12 +169,11 @@ export function createTerminal({
   function renderMarket() {
     if (!asset) return;
     const m = markets.get(asset.id),
-      reference = references.get(asset.id);
+      detail = priceDetails.get(asset.id);
     $("#asset-metrics").innerHTML = priceComparison({
       market: m,
-      reference,
-      spotPremium: spots.get(asset.id),
-      loading: !reference && !detailsSeen.has(asset.id),
+      ...detail,
+      loading: !detail,
     });
     renderInspector();
   }
@@ -399,10 +396,8 @@ export function createTerminal({
   function ingest(view, data) {
     if (data.stock && asset?.id === data.stock.id) asset = data.stock;
     if (view === "products") productRows = data.rows || [];
-    if (view === "details" && asset) detailsSeen.add(asset.id);
-    if (data.reference && asset) references.set(asset.id, data.reference);
-    if (Object.hasOwn(data, "spotPremium") && asset)
-      spots.set(asset.id, data.spotPremium);
+    if (view === "details" && asset)
+      priceDetails.set(asset.id, { ...priceDetails.get(asset.id), ...data });
     renderMarket();
   }
   function compare() {

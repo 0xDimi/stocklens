@@ -530,11 +530,13 @@ export function createCatalogLoader(options = {}) {
         : issuerStocks;
     if (o.status === "fulfilled")
       stocks = attachOndoCatalog(stocks, o.value, o.retrievedAt);
+    stocks = applyCatalogReferences(stocks);
     stocks = retainCatalogIdentities(
       eligibleStocks(saved?.catalog?.stocks || [], now()),
       stocks,
       [x, o, cg].some((r) => r.status === "rejected" || r.stale),
     );
+    stocks = applyCatalogReferences(stocks);
     if (!stocks.length)
       throw new Error(
         "Issuer catalogs did not contain verified supported securities.",
@@ -675,9 +677,11 @@ export function createCachedCatalogLoader(options = {}) {
         continue;
       const catalog = eligibleCatalog(saved.catalog, now());
       if (!catalog) continue;
+      const stocks = applyCatalogReferences(catalog.stocks);
       latest = {
         ...catalog,
-        stocks: applyCatalogReferences(catalog.stocks),
+        stocks,
+        coverage: { ...catalog.coverage, ...coverageSummary(stocks) },
         mode: "cached",
         cachedAt: saved.savedAt,
         refreshing: false,

@@ -3,6 +3,10 @@ import {
   createMarketDetailsLoader,
   observedPremiumState,
   companyMetricState,
+  marketReadiness,
+  MARKET_COLUMNS,
+  DEFAULT_MARKET_COLUMNS,
+  normalizeMarketColumns,
 } from "./market-model.mjs";
 import {
   escape,
@@ -15,7 +19,10 @@ import {
 } from "./views.mjs";
 import { stockLogo, chainLogo } from "./brands.mjs";
 import { listedDate } from "./reference-view.mjs";
-import { canonicalSelection } from "./asset-comparison-model.mjs";
+import {
+  canonicalSelection,
+  observationIsStale,
+} from "./asset-comparison-model.mjs";
 const signed = (v) =>
   Number.isFinite(v) ? `${v > 0 ? "+" : ""}${number(v)}%` : "—";
 // Keep keyboard position when background observations replace table rows.
@@ -43,6 +50,8 @@ export function createMarketsPage({
   getState,
   getMarkets,
   getMarketState,
+  getQuotes = () => null,
+  onDetails = () => {},
   onSelect,
   onSave,
   onRefresh,
@@ -57,6 +66,15 @@ export function createMarketsPage({
     sort = "volume",
     savedOnly = false,
     detailsTimer;
+  const columnStorageKey = "stocklens:market-columns:v1";
+  let columns;
+  try {
+    columns = normalizeMarketColumns(
+      JSON.parse(localStorage.getItem(columnStorageKey)),
+    );
+  } catch {
+    columns = [...DEFAULT_MARKET_COLUMNS];
+  }
   const details = createMarketDetailsLoader({
     fetchDetails: async (ids, signal) => {
       const timeout = AbortSignal.timeout(40000);
@@ -70,10 +88,20 @@ export function createMarketsPage({
       return data;
     },
     onChange: () => render(),
+    onDetails,
   });
   let currentRows = [];
   const openedDetails = new Set();
-  function rows() {
+  function readiness(stock) {
+    return marketReadiness(stock, {
+      chains: getState().chains,
+      detail: details.get(stock.id),
+      quotes: getQuotes(stock.id),
+      chain: $("#market-chain").value,
+      issuer: $("#market-issuer").value,
+    });
+  }
+  function rows({ ignoreConversion = false } = {}) {
     const { stocks, saved } = getState();
     return selectMarketRows(
       stocks.map((s) => ({ ...s, market: getMarkets().get(s.id) || null })),
@@ -85,7 +113,103 @@ export function createMarketsPage({
         sort,
         savedOnly,
         saved,
+        quoteCoverage: $("#market-quote-coverage")?.value || "all",
+        conversion: ignoreConversion
+          ? "all"
+          : $("#market-conversion")?.value || "all",
+        getReadiness: readiness,
       },
+    );
+  }
+  function applyColumns() {
+    const selected = new Set(columns),
+      table = $("#markets-table");
+    table.querySelectorAll("thead th").forEach((node, index) => {
+      node.dataset.marketColumn = MARKET_COLUMNS[index][0];
+    });
+    table.querySelectorAll("[data-market-column]").forEach((node) => {
+      node.hidden = !selected.has(node.dataset.marketColumn);
+    });
+    // Table width follows the selected metrics instead of retaining empty space.
+    table.style.minWidth = `${290 + (columns.length - 1) * 125}px`;
+    $("#market-column-count").textContent = `${columns.length} columns`;
+    $("#market-columns")
+      .querySelectorAll("input")
+      .forEach((input) => {
+        input.checked = selected.has(input.value);
+      });
+  }
+  function setColumns(value) {
+    columns = normalizeMarketColumns(value);
+    try {
+      localStorage.setItem(columnStorageKey, JSON.stringify(columns));
+    } catch {
+      /* Session controls remain usable. */
+    }
+    applyColumns();
+  }
+  function setupControls() {
+    const filters = $("#markets-page .markets-filters");
+    if ($("#market-quote-coverage")) return;
+    const controls = document.createElement("div");
+    controls.className = "market-readiness-controls";
+    controls.innerHTML = `<label><span>Quote networks</span><select id="market-quote-coverage" aria-describedby="market-readiness-note"><option value="all">All network coverage</option><option value="supported">Supported quote network</option><option value="unsupported">No supported quote network</option></select></label><label><span>Share conversion</span><select id="market-conversion" aria-describedby="market-readiness-note"><option value="all">All conversion states</option><option value="verified">Verified current conversion</option><option value="not-verified">No verified conversion observed</option><option value="expired">Older conversion observation</option><option value="unchecked">Not checked yet</option><option value="unavailable">Source unavailable</option></select></label>`;
+    const advanced = document.createElement("details");
+    advanced.id = "market-data-filters";
+    advanced.className = "market-data-filters";
+    advanced.innerHTML = "<summary>Quote &amp; conversion filters</summary>";
+    filters.after(advanced);
+    advanced.append(controls);
+    const note = document.createElement("div");
+    note.className = "market-readiness-note";
+    note.innerHTML = `<p id="market-readiness-note">Supported networks have quote integrations; a route or liquidity is not guaranteed. Conversion filters use checked pool and quote observations.</p><span id="market-readiness-status" role="status"></span><button id="market-check-more" hidden>Check next 25 assets</button>`;
+    advanced.append(note);
+    const picker = document.createElement("details");
+    picker.id = "market-columns";
+    picker.className = "market-column-picker";
+    picker.innerHTML = `<summary><span id="market-column-count">${columns.length} columns</span></summary><div class="market-column-options"><fieldset><legend>Visible table columns</legend>${MARKET_COLUMNS.map(([id, label]) => `<label><input type="checkbox" value="${id}" ${columns.includes(id) ? "checked" : ""} ${id === "stock" ? "disabled" : ""}><span>${label}</span></label>`).join("")}</fieldset><button type="button" id="market-columns-reset">Restore defaults</button></div>`;
+    filters.querySelector(".overview-actions").before(picker);
+    picker.addEventListener("change", () =>
+      setColumns(
+        [...picker.querySelectorAll("input:checked")].map(
+          (input) => input.value,
+        ),
+      ),
+    );
+    $("#market-columns-reset").addEventListener("click", () =>
+      setColumns(DEFAULT_MARKET_COLUMNS),
+    );
+    picker.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        picker.open = false;
+        picker.querySelector("summary").focus();
+      }
+    });
+    for (const id of ["market-quote-coverage", "market-conversion"])
+      $("#" + id).addEventListener("change", () => {
+        const count = [
+          $("#market-quote-coverage"),
+          $("#market-conversion"),
+        ].filter((control) => control.value !== "all").length;
+        advanced.querySelector("summary").textContent =
+          "Quote & conversion filters" + (count ? ` · ${count} active` : "");
+        currentPage = 1;
+        changed();
+      });
+    $("#market-check-more").addEventListener("click", () => {
+      details.load(
+        uncheckedRows()
+          .slice(0, 25)
+          .map((stock) => stock.id),
+      );
+    });
+    const scroll = $("#markets-page .market-table-scroll");
+    scroll.setAttribute("aria-describedby", "market-readiness-note");
+    applyColumns();
+  }
+  function uncheckedRows() {
+    return rows({ ignoreConversion: true }).filter(
+      (stock) => readiness(stock).conversion === "unchecked",
     );
   }
   const sourceLink = (url, label, key) => {
@@ -132,9 +256,10 @@ export function createMarketsPage({
   }
   function listedPriceCell(stock) {
     const entry = details.get(stock.id),
-      reference = entry?.reference;
+      reference = entry?.reference,
+      stale = observationIsStale(reference);
     if (Number.isFinite(reference?.price))
-      return `<strong>${usd(reference.price)}</strong><small>${reference.priceStale ? "Older · " : ""}${reference.priceSession === "Closed" ? "Close · " : ""}${escape(listedDate(reference))}</small>${disclosure(reference.exchange || "Listed source", reference.priceStale ? reference.staleReason || "The previous dated price is retained." : "Listed-security observation; separate from tokenized prices.", sourceLink(reference.source, "Listed source", stock.id + ":listed:source"), stock.id + ":listed")}`;
+      return `<strong>${usd(reference.price)}</strong><small>${stale ? "Older · " : ""}${reference.priceSession === "Closed" ? "Close · " : ""}${escape(listedDate(reference))}</small>${disclosure(reference.exchange || "Listed source", stale ? reference.staleReason || "The previous dated price is retained." : "Listed-security observation; separate from tokenized prices.", sourceLink(reference.source, "Listed source", stock.id + ":listed:source"), stock.id + ":listed")}`;
     return `—<small>${!entry || entry.status === "loading" ? "Loading…" : "Not supplied"}</small>`;
   }
   function companyCell(stock, field) {
@@ -212,11 +337,21 @@ export function createMarketsPage({
     if ($("#markets-page").hidden) return;
     detailsTimer = setTimeout(
       () => {
-        if (!$("#markets-page").hidden && !getMarketState().screenBusy)
+        if (!$("#markets-page").hidden && !getMarketState().screenBusy) {
+          const visible = visibleRows(),
+            unchecked = uncheckedRows();
           details.load(
-            visibleRows().map((s) => s.id),
+            (visible.length
+              ? visible
+              : unchecked.length
+                ? unchecked.slice(0, 25)
+                : force
+                  ? rows({ ignoreConversion: true }).slice(0, 25)
+                  : []
+            ).map((s) => s.id),
             { force },
           );
+        }
       },
       immediate ? 0 : 250,
     );
@@ -263,6 +398,21 @@ export function createMarketsPage({
     $("#market-next").disabled = currentPage === pages;
     $("#market-page-number").textContent = `Page ${currentPage} of ${pages}`;
     $("#market-watchlist").setAttribute("aria-pressed", savedOnly);
+    const candidates = rows({ ignoreConversion: true }),
+      checking = candidates.filter(
+        (stock) => details.get(stock.id)?.status === "loading",
+      ).length,
+      unchecked = candidates.filter(
+        (stock) => readiness(stock).conversion === "unchecked",
+      ).length,
+      currentConversions = candidates.filter(
+        (stock) => readiness(stock).conversion === "verified",
+      ).length;
+    $("#market-readiness-status").textContent =
+      `${currentConversions} with a verified current conversion · ${unchecked} not checked${checking ? ` · ${checking} loading` : ""}.`;
+    $("#market-check-more").hidden =
+      $("#market-conversion").value === "all" || !unchecked;
+    $("#market-check-more").disabled = checking > 0 || state.screenBusy;
     const loading = visible.filter(
         (s) => details.get(s.id)?.status === "loading",
       ).length,
@@ -272,8 +422,8 @@ export function createMarketsPage({
       loaded = visible.filter(
         (s) => details.get(s.id)?.status === "ready",
       ).length;
-    $("#market-fundamentals").disabled = loading > 0 || !visible.length;
-    $("#market-fundamentals").textContent = loading
+    $("#market-fundamentals").disabled = checking > 0 || !candidates.length;
+    $("#market-fundamentals").textContent = checking
       ? "Loading page data…"
       : "Refresh page data";
     $("#market-company-status").textContent = loading
@@ -282,7 +432,7 @@ export function createMarketsPage({
         ? `${failed} row requests failed. Expand a cell for the reason; refresh to retry.`
         : loaded
           ? `Page data loaded automatically. Expand a cell for source, time and missing-value reasons. P/E uses the stated fiscal year.`
-          : "Company data and indicative buy premiums load automatically for this page.";
+          : "Listed prices, company data and sourced conversion observations load for this page.";
     document
       .querySelectorAll("[data-market-sort]")
       .forEach((b) =>
@@ -306,16 +456,30 @@ export function createMarketsPage({
             issuers = [
               ...new Map(s.products.map((p) => [p.issuer, p])).values(),
             ];
-          return `<tr><td><div class="market-asset"><button class="market-compare-toggle" data-market-focus="${escape(s.id)}:compare" data-stock-compare="${escape(s.id)}" aria-label="${compared.includes(s.id) ? "Remove" : "Add"} ${escape(s.name)} ${compared.includes(s.id) ? "from" : "to"} stock comparison" aria-pressed="${compared.includes(s.id)}">${compared.includes(s.id) ? "✓" : "+"}</button><button class="market-save" data-market-focus="${escape(s.id)}:save" data-market-save="${escape(s.id)}" aria-label="${saved.has(s.id) ? "Unsave" : "Save"} ${escape(s.name)}" aria-pressed="${saved.has(s.id)}">${saved.has(s.id) ? "★" : "☆"}</button><a data-market-focus="${escape(s.id)}:asset" href="/?page=stock&amp;stock=${encodeURIComponent(s.id)}" data-open-stock="${escape(s.id)}">${stockLogo(s, m?.image)}<span><strong>${escape(s.ticker)}</strong><small>${escape(s.name)}</small></span></a></div></td><td>${listedPriceCell(s)}</td><td><strong>${usd(m?.price)}</strong><small>${m?.updatedAt ? stamp(m.updatedAt) : "Not observed"}</small></td><td><span class="market-change ${m?.change24h < 0 ? "negative" : m?.change24h > 0 ? "positive" : ""}">${signed(m?.change24h)}</span></td><td>${premiumCell(s)}</td><td>${compact(m?.marketCap)}</td><td>${compact(m?.volume24h)}</td><td><span class="logo-stack" title="${escape(networks.map((id) => chains.find((c) => c.id === id)?.label || id).join(", "))}">${networks
+          return `<tr><td><div class="market-asset"><button class="market-compare-toggle" data-market-focus="${escape(s.id)}:compare" data-stock-compare="${escape(s.id)}" aria-label="${compared.includes(s.id) ? "Remove" : "Add"} ${escape(s.name)} ${compared.includes(s.id) ? "from" : "to"} stock comparison" aria-pressed="${compared.includes(s.id)}">${compared.includes(s.id) ? "✓" : "+"}</button><button class="market-save" data-market-focus="${escape(s.id)}:save" data-market-save="${escape(s.id)}" aria-label="${saved.has(s.id) ? "Unsave" : "Save"} ${escape(s.name)}" aria-pressed="${saved.has(s.id)}">${saved.has(s.id) ? "★" : "☆"}</button><a data-market-focus="${escape(s.id)}:asset" href="/?page=stock&amp;stock=${encodeURIComponent(s.id)}" data-open-stock="${escape(s.id)}">${stockLogo(s, m?.image)}<span><strong>${escape(s.ticker)}</strong><small>${escape(s.name)}</small></span></a></div></td><td>${listedPriceCell(s)}</td><td><strong>${usd(m?.price)}</strong><small>${m?.updatedAt ? (observationIsStale(m) ? "Older · " : "") + stamp(m.updatedAt) : "Not observed"}</small></td><td><span class="market-change ${m?.change24h < 0 ? "negative" : m?.change24h > 0 ? "positive" : ""}">${signed(m?.change24h)}</span></td><td>${premiumCell(s)}</td><td>${compact(m?.marketCap)}</td><td>${compact(m?.volume24h)}</td><td><span class="logo-stack" title="${escape(networks.map((id) => chains.find((c) => c.id === id)?.label || id).join(", "))}">${networks
             .slice(0, 3)
             .map((id) => chainLogo(id))
             .join(
               "",
-            )}<span>${networks.length || "—"}</span></span></td><td><a class="version-link" data-market-focus="${escape(s.id)}:versions" href="/?stock=${encodeURIComponent(s.id)}" data-open-versions="${escape(s.id)}">${s.products.length || "Check"}${s.products.length ? " →" : ""}</a><small title="${escape(issuers.map((p) => provider(p).name).join(", "))}">${issuers.length} issuers</small></td><td>${companyCell(s, "marketCap")}</td><td>${companyCell(s, "pe")}</td></tr>`;
+            )}<span>${networks.length || "—"}</span></span><small class="market-network-names">${escape(
+            networks
+              .slice(0, 2)
+              .map((id) => chains.find((c) => c.id === id)?.label || id)
+              .join(", "),
+          )}${networks.length > 2 ? ` +${networks.length - 2}` : ""}</small></td><td><a class="version-link" data-market-focus="${escape(s.id)}:versions" href="/?stock=${encodeURIComponent(s.id)}" data-open-versions="${escape(s.id)}">${s.products.length || "Check"}${s.products.length ? " →" : ""}</a><small title="${escape(issuers.map((p) => provider(p).name).join(", "))}">${issuers.length} issuers</small><small class="market-conversion-state">${{ verified: "Conversion verified", "not-verified": "No verified conversion", expired: "Older conversion", unavailable: "Source unavailable", loading: "Checking conversion…", unchecked: "Conversion unchecked" }[readiness(s).conversion]}</small></td><td>${companyCell(s, "marketCap")}</td><td>${companyCell(s, "pe")}</td></tr>`;
         })
         .join("") ||
-        '<tr><td colspan="11" class="empty-results">No assets match. Clear the search or change your filters.</td></tr>',
+        `<tr><td colspan="${columns.length}" class="empty-results">${$("#market-conversion").value !== "all" ? (checking ? "Checking conversion observations. Filters remain available." : unchecked ? "No checked observations match. Check the next 25 assets or change the conversion filter." : "No observations match this conversion state. Change the filter or refresh page data.") : "No assets match. Clear the search or change your filters."}</td></tr>`,
       () => {
+        $("#markets-body")
+          .querySelectorAll("tr")
+          .forEach((row) => {
+            if (row.children.length !== MARKET_COLUMNS.length) return;
+            [...row.children].forEach((cell, index) => {
+              cell.dataset.marketColumn = MARKET_COLUMNS[index][0];
+            });
+          });
+        applyColumns();
         document.querySelectorAll("[data-market-detail]").forEach((node) => {
           node.open = openedDetails.has(node.dataset.marketDetail);
         });
@@ -349,6 +513,7 @@ export function createMarketsPage({
     render();
     if (!$("#markets-page").hidden) scheduleDetails({ immediate: true });
   }
+  setupControls();
   $("#market-search").addEventListener("input", () => {
     currentPage = 1;
     changed();
@@ -489,5 +654,7 @@ export function createMarketsPage({
     render,
     show,
     ingestReference: (id, reference) => details.ingestReference(id, reference),
+    getDetails: (id) => details.get(id),
+    ingestDetails: (id, row) => details.ingestDetails(id, row),
   };
 }

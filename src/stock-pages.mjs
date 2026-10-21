@@ -1,3 +1,4 @@
+import { renderProductTerms } from "./product-terms.mjs";
 import { escape, usd, compact, number, stamp, provider } from "./views.mjs";
 import {
   stockLogo,
@@ -12,6 +13,10 @@ import {
   profileMetric,
   profileSpot,
   createVenueLoader,
+  observationIsStale,
+  profileComparisonSelection,
+  mergeProfileDetails,
+  createVisiblePageRefresh,
 } from "./asset-comparison-model.mjs";
 
 const signed = (value) =>
@@ -33,9 +38,7 @@ const referenceTime = (r) =>
   r?.priceDate
     ? `${escape(r.priceDate)} · date supplied by source`
     : stamp(r?.at);
-const older = (at) =>
-  !Number.isFinite(new Date(at).getTime()) ||
-  Date.now() - new Date(at).getTime() > 300000;
+const older = (at) => observationIsStale(at);
 
 // The overview extends Stocklens's daylight table language. Two distinct price
 // bases lead; observed history and expandable contracts carry the evidence.
@@ -46,6 +49,9 @@ export function createStockPages({
   getMarkets,
   getChains = () => [],
   getSaved = () => new Set(),
+  getDetails = () => null,
+  getComparison = () => [],
+  onDetails = () => {},
   onToggleSave,
   onCompareVersions,
   onOpenStock,
@@ -58,7 +64,9 @@ export function createStockPages({
     tab = "overview",
     generation = 0,
     controller = null,
-    destroyed = false;
+    destroyed = false,
+    pendingLoad = null,
+    loadKey = null;
   let comparisonIds = [],
     selectedIds = [],
     chooserOpener = null;
@@ -71,7 +79,7 @@ export function createStockPages({
   observeLogoErrors(compareRoot);
   observeLogoErrors(dialog);
   const find = (id) => getStocks().find((stock) => stock.id === id);
-  const entry = (id) => cache.get(id) || {};
+  const entry = (id) => mergeProfileDetails(cache.get(id), getDetails(id));
   const stockFor = (id) => entry(id).stock || find(id);
   const marketFor = (id) => entry(id).market ?? getMarkets().get(id);
   const chain = (id) =>
@@ -101,7 +109,7 @@ export function createStockPages({
     const key = stockId + ":" + product.coinId,
       data = venues.get(key),
       busy = data?.status === "loading";
-    return `<div class="stock-trading-venues"><button data-stock-venues="${escape(product.coinId)}" data-stock-venue-asset="${escape(stockId)}" ${focusKey("venues:" + key)} ${busy ? "disabled" : ""}>${busy ? "Loading trading venues…" : data?.status === "error" ? "Retry trading venues" : data?.status === "ready" ? "Refresh trading venues" : "Show trading venues"}</button>${data?.status === "error" ? `<p class="stock-venue-error" role="status">${escape(data.error)}</p>` : ""}${data?.rows?.length ? `<p class="stock-venue-basis">Token-wide venue observations across networks, separate from executable buy quotes. ${data.basis ? escape(data.basis) : "The destination sets access rules and refreshes its price."}</p><div class="stock-venue-scroll"><table class="stock-venue-table"><caption class="sr-only">Trading venues observed for ${escape(product.symbol)}</caption><thead><tr><th scope="col">Venue / pair</th><th scope="col">Observed price</th><th scope="col">24h volume</th><th scope="col">Source</th></tr></thead><tbody>${data.rows.map((row) => `<tr><th scope="row"><strong>${escape(row.exchange)}</strong><small>${escape(row.pair)}${row.isAnomaly ? " · Flagged anomaly" : ""}</small></th><td>${Number.isFinite(row.priceUsd) ? usd(row.priceUsd) : "Not supplied"}<small>${row.isStale ? "Older observation · " : ""}${stamp(row.sourceAt)}</small></td><td>${Number.isFinite(row.volumeUsd) ? compact(row.volumeUsd) : "Not supplied"}</td><td>${link(row.url, row.urlKind === "exchange-market" ? "Open exchange" : "View source directory")}</td></tr>`).join("")}</tbody></table></div><p class="stock-muted">${data.total > 10 ? `Showing 10 of ${data.total} returned observations. ` : ""}Retrieved ${stamp(data.retrievedAt)}. Refresh is available once per minute.</p>` : data?.status === "ready" ? '<p class="stock-muted">No venue observations returned for this exact product. Use Compare buy quotes to check supported routes.</p>' : ""}${(data?.warnings || []).length ? `<details class="stock-source-warning" data-stock-detail="venue-notes:${escape(key)}"><summary>Venue coverage notes</summary>${data.warnings.map((warning) => `<p>${escape(warning)}</p>`).join("")}</details>` : ""}</div>`;
+    return `<div class="stock-trading-venues"><button data-stock-venues="${escape(product.coinId)}" data-stock-venue-asset="${escape(stockId)}" ${focusKey("venues:" + key)} ${busy ? "disabled" : ""}>${busy ? "Loading trading venues…" : data?.status === "error" ? "Retry trading venues" : data?.status === "ready" ? "Refresh trading venues" : "Show trading venues"}</button>${data?.status === "error" ? `<p class="stock-venue-error" role="status">${escape(data.error)}</p>` : ""}${data?.rows?.length ? `<p class="stock-venue-basis">Token-wide venue observations across networks, separate from executable buy quotes. ${data.basis ? escape(data.basis) : "The destination sets access rules and refreshes its price."}</p><div class="stock-venue-scroll" data-stock-scroll="venues:${escape(key)}"><table class="stock-venue-table"><caption class="sr-only">Trading venues observed for ${escape(product.symbol)}</caption><thead><tr><th scope="col">Venue / pair</th><th scope="col">Observed price</th><th scope="col">24h volume</th><th scope="col">Source</th></tr></thead><tbody>${data.rows.map((row) => `<tr><th scope="row"><strong>${escape(row.exchange)}</strong><small>${escape(row.pair)}${row.isAnomaly ? " · Flagged anomaly" : ""}</small></th><td>${Number.isFinite(row.priceUsd) ? usd(row.priceUsd) : "Not supplied"}<small>${row.isStale ? "Older observation · " : ""}${stamp(row.sourceAt)}</small></td><td>${Number.isFinite(row.volumeUsd) ? compact(row.volumeUsd) : "Not supplied"}</td><td>${link(row.url, row.urlKind === "exchange-market" ? "Open exchange" : "View source directory")}</td></tr>`).join("")}</tbody></table></div><p class="stock-muted">${data.total > 10 ? `Showing 10 of ${data.total} returned observations. ` : ""}Retrieved ${stamp(data.retrievedAt)}. Refresh is available once per minute.</p>` : data?.status === "ready" ? '<p class="stock-muted">No venue observations returned for this exact product. Use Compare buy quotes to check supported routes.</p>' : ""}${(data?.warnings || []).length ? `<details class="stock-source-warning" data-stock-detail="venue-notes:${escape(key)}"><summary>Venue coverage notes</summary>${data.warnings.map((warning) => `<p>${escape(warning)}</p>`).join("")}</details>` : ""}</div>`;
   }
   const focusKey = (key) => `data-stock-focus="${escape(key)}"`;
   function replace(container, markup) {
@@ -112,7 +120,20 @@ export function createStockPages({
         (node) => node.dataset.stockDetail,
       ),
     );
+    const scrolls = new Map(
+      [...container.querySelectorAll("[data-stock-scroll]")].map((node) => [
+        node.dataset.stockScroll,
+        { left: node.scrollLeft, top: node.scrollTop },
+      ]),
+    );
     container.innerHTML = markup;
+    container.querySelectorAll("[data-stock-scroll]").forEach((node) => {
+      const position = scrolls.get(node.dataset.stockScroll);
+      if (position) {
+        node.scrollLeft = position.left;
+        node.scrollTop = position.top;
+      }
+    });
     container.querySelectorAll("details[data-stock-detail]").forEach((node) => {
       node.open = opened.has(node.dataset.stockDetail);
     });
@@ -125,11 +146,17 @@ export function createStockPages({
     `<button class="stock-primary" data-stock-versions="${escape(id)}" ${focusKey("versions")}>Compare token versions</button><button data-stock-quotes="${escape(id)}" ${focusKey("quotes")}>Compare buy quotes</button>`;
   function listedPrice(stock, data) {
     const r = data.reference;
-    return `<div class="stock-price"><span>Listed ${stock.category === "ETF" ? "ETF" : "stock"} <small>USD</small></span><strong>${Number.isFinite(r?.price) ? usd(r.price) : data.loading ? "Loading…" : "Unavailable"}</strong><p>${r ? `${escape(r.exchange || "Nasdaq reference")} · ${escape(r.priceSession || "Session not supplied")}${r.priceStale || r.stale ? " · Older observation" : ""}` : escape(data.referenceReason || "Listed-security source has not returned a price.")}</p><small>${r ? `${referenceTime(r)} · ${link(r.priceSource || r.source, "Source")}` : "No listed price estimated"}</small></div>`;
+    return `<div class="stock-price"><span>Listed ${stock.category === "ETF" ? "ETF" : "stock"} <small>USD</small></span><strong>${Number.isFinite(r?.price) ? usd(r.price) : data.loading ? "Loading…" : "Unavailable"}</strong><p>${r ? `${escape(r.exchange || "Nasdaq reference")} · ${escape(r.priceSession || "Session not supplied")}${observationIsStale(r) ? " · Older observation" : ""}` : escape(data.referenceReason || "Listed-security source has not returned a price.")}</p><small>${r ? `${referenceTime(r)} · ${link(r.priceSource || r.source, "Source")}` : "No listed price estimated"}</small></div>`;
   }
   function tokenPrice(id) {
     const market = marketFor(id);
-    return `<div class="stock-price"><span>Tokenized market <small>USD aggregate reference</small></span><strong>${Number.isFinite(market?.price) ? usd(market.price) : entry(id).loading ? "Loading…" : "Unavailable"}</strong><p>${Number.isFinite(market?.change24h) ? `<b class="${tone(market.change24h)}">${signed(market.change24h)}</b> past 24h` : "24h change not supplied"}</p><small>${link("https://www.coingecko.com/en/categories/tokenized-stock", "CoinGecko")} · ${market?.updatedAt ? `${older(market.updatedAt) ? "Older observation · " : ""}${stamp(market.updatedAt)}` : "Observation time not supplied"}</small></div>`;
+    return `<div class="stock-price stock-aggregate-reference"><span>Tokenized aggregate <small>USD market reference</small></span><strong>${Number.isFinite(market?.price) ? usd(market.price) : entry(id).loading ? "Loading…" : "Unavailable"}</strong><p>${Number.isFinite(market?.change24h) ? `<b class="${tone(market.change24h)}">${signed(market.change24h)}</b> past 24h` : "24h change not supplied"}</p><small>${link("https://www.coingecko.com/en/categories/tokenized-stock", "CoinGecko")} · ${market?.updatedAt ? `${older(market) ? "Older observation · " : ""}${stamp(market.updatedAt)}` : "Observation time not supplied"}</small></div>`;
+  }
+  function poolPrice(data) {
+    const p = data.spotPremium,
+      observed = profileSpot(data);
+    const available = Number.isFinite(p?.price) && p.price > 0;
+    return `<div class="stock-price stock-pool-price"><span>Representative pool <small>USD per equivalent share</small></span><strong>${available ? usd(p.price) : data.loading ? "Loading…" : "Unavailable"}</strong><p>${available ? `${observed?.stale ? "Older observation · " : ""}${escape(p.symbol || "Representative token")}${p.chain ? " on " + escape(networkName(p.chain)) : ""}` : escape(data.spotPremiumReason || "A pool price with verified share conversion is required.")}</p><small>${available ? `${stamp(p.priceAt)} · ${link(p.source, "Pool source")}` : "No pool price estimated"}</small></div>`;
   }
   function spotPanel(data) {
     const observed = profileSpot(data),
@@ -188,7 +215,7 @@ export function createStockPages({
           )
           .join(
             "",
-          )}${coverage.networks.length > 3 ? `<small>+${coverage.networks.length - 3} more</small>` : ""}</span><span class="stock-expand" aria-hidden="true">⌄</span></summary><div class="stock-issuer-expanded"><div class="stock-issuer-terms"><div><h3>Holder rights</h3><p>${escape(info.rights)}</p>${link(info.source, info.sourceLabel || "Issuer disclosure")}</div><div><h3>Dividends & access</h3><p>${escape(info.dividends)}</p><p>${escape(info.exit)}</p>${link(info.eligibility, "Eligibility & redemption")}</div></div>${products.map((product) => `<section class="stock-product-contracts"><div class="stock-product-heading"><h3>${escape(product.symbol)} <small>${product.wrapped ? "Wrapped version" : "Token version"}</small></h3><span>${usd(product.market?.price)} <small>/ token${product.market?.priceType === "indicative-buy" ? " · $1,000 buy estimate" : ""}${product.market?.updatedAt ? " · " + stamp(product.market.updatedAt) : ""}</small></span></div>${product.market?.basis ? '<p class="stock-muted">' + escape(product.market.basis) + "</p>" : ""}${deploymentRows(product)}<p>${link(product.marketSource || product.source, "Product source")}</p>${venueMarkup(stock.id, product)}</section>`).join("")}<p class="stock-muted">${info.reviewedAt ? `Disclosure reviewed ${escape(info.reviewedAt)}.` : "Issuer terms have not been independently reviewed."} Identity mapping does not establish holder rights or venue access.</p></div></details>`;
+          )}${coverage.networks.length > 3 ? `<small>+${coverage.networks.length - 3} more</small>` : ""}</span><span class="stock-expand" aria-hidden="true">⌄</span></summary><div class="stock-issuer-expanded">${products.map((product) => `<section class="stock-product-contracts"><div class="stock-product-heading"><h3>${escape(product.symbol)} <small>${product.wrapped ? "Wrapped version" : "Token version"}</small></h3><span>${usd(product.market?.price)} <small>/ token${product.market?.priceType === "indicative-buy" ? " · $1,000 buy estimate" : ""}${product.market?.updatedAt ? " · " + stamp(product.market.updatedAt) : ""}</small></span></div>${product.market?.basis ? '<p class="stock-muted">' + escape(product.market.basis) + "</p>" : ""}${renderProductTerms(product)}${deploymentRows(product)}<p>${link(product.marketSource || product.source, "Product source")}</p>${venueMarkup(stock.id, product)}</section>`).join("")}<p class="stock-muted">${info.reviewedAt ? `Disclosure reviewed ${escape(info.reviewedAt)}.` : "Issuer terms have not been independently reviewed."} Identity mapping does not establish holder rights or venue access.</p></div></details>`;
       })
       .join("");
   }
@@ -227,7 +254,7 @@ export function createStockPages({
     root.setAttribute("aria-busy", String(!!data.loading));
     replace(
       root,
-      `<div class="stock-page-inner"><a class="stock-back" href="/?page=markets" data-stock-markets>← Markets</a><header class="stock-profile-heading"><div class="stock-profile-identity">${stockLogo(stock, marketFor(id)?.image)}<div><div class="stock-title-line"><h1>${escape(stock.name)}</h1><span class="stock-security-type">${escape(stock.ticker)} · ${escape(stock.category || "Security")}</span></div><p>${coverage.issuers} issuers · ${coverage.networks.length} networks · ${coverage.versions} mapped versions</p></div></div><div class="stock-header-actions"><button data-stock-save="${escape(id)}" aria-pressed="${saved}" aria-label="${saved ? "Unsave" : "Save"} ${escape(stock.name)}" ${focusKey("save")}>${saved ? "★ Saved" : "☆ Save"}</button><button data-stock-choose ${focusKey("choose")}>Compare stocks</button><button data-stock-refresh ${focusKey("refresh")} ${data.loading ? "disabled" : ""}>${data.loading ? "Updating…" : "Refresh"}</button></div></header><div class="stock-price-band">${listedPrice(stock, data)}${tokenPrice(id)}${spotPanel(data)}</div><p class="stock-price-basis">CoinGecko does not disclose aggregate share normalization. The spot premium uses a separate representative token with verified share conversion, rather than the aggregate price.</p><div class="stock-profile-actions">${actions(id)}</div>${status(data)}<div class="stock-tabs" role="tablist" aria-label="Stock details">${[
+      `<div class="stock-page-inner"><a class="stock-back" href="/?page=markets" data-stock-markets>← Markets</a><header class="stock-profile-heading"><div class="stock-profile-identity">${stockLogo(stock, marketFor(id)?.image)}<div><div class="stock-title-line"><h1>${escape(stock.name)}</h1><span class="stock-security-type">${escape(stock.ticker)} · ${escape(stock.category || "Security")}</span></div><p>${coverage.issuers} issuers · ${coverage.networks.length} networks · ${coverage.versions} mapped versions</p></div></div><div class="stock-header-actions"><button data-stock-save="${escape(id)}" aria-pressed="${saved}" aria-label="${saved ? "Unsave" : "Save"} ${escape(stock.name)}" ${focusKey("save")}>${saved ? "★ Saved" : "☆ Save"}</button><button data-stock-choose ${focusKey("choose")}>Compare stocks</button><button data-stock-refresh ${focusKey("refresh")} ${data.loading ? "disabled" : ""}>${data.loading ? "Updating…" : "Refresh"}</button></div></header><div class="stock-price-band">${listedPrice(stock, data)}${poolPrice(data)}${spotPanel(data)}</div>${tokenPrice(id)}<p class="stock-price-basis">The representative pool price uses verified share conversion. The aggregate is a separate market reference; CoinGecko does not disclose its share normalization. Neither is an executable buy quote.</p><div class="stock-profile-actions">${actions(id)}</div>${status(data)}<div class="stock-tabs" role="tablist" aria-label="Stock details">${[
         ["overview", "Overview"],
         ["issuers", `Issuers (${coverage.issuers})`],
         ["networks", `Networks (${coverage.networks.length})`],
@@ -247,9 +274,13 @@ export function createStockPages({
       coverage = productCoverage(stock.products),
       spot = profileSpot(data);
     if (metric === "listed")
-      return `<strong>${Number.isFinite(data.reference?.price) ? usd(data.reference.price) : data.loading ? "Loading…" : "Unavailable"}</strong><small>${data.reference ? `${escape(data.reference.priceSession || "Session not supplied")}${data.reference.priceStale || data.reference.stale ? " · Older observation" : ""} · ${referenceTime(data.reference)}` : escape(data.referenceReason || "Listed reference not supplied")}</small>${data.reference ? `<small>${link(data.reference.source, "Nasdaq reference")}</small>` : ""}`;
+      return `<strong>${Number.isFinite(data.reference?.price) ? usd(data.reference.price) : data.loading ? "Loading…" : "Unavailable"}</strong><small>${data.reference ? `${escape(data.reference.priceSession || "Session not supplied")}${observationIsStale(data.reference) ? " · Older observation" : ""} · ${referenceTime(data.reference)}` : escape(data.referenceReason || "Listed reference not supplied")}</small>${data.reference ? `<small>${link(data.reference.source, "Nasdaq reference")}</small>` : ""}`;
+    if (metric === "pool") {
+      const p = data.spotPremium;
+      return `<strong>${Number.isFinite(p?.price) && p.price > 0 ? usd(p.price) : data.loading ? "Loading…" : "Unavailable"}</strong><small>USD per equivalent share${spot?.stale ? " · Older observation" : ""}</small><small>${p?.price ? `${escape(p.symbol || "Representative token")}${p.chain ? " · " + escape(networkName(p.chain)) : ""} · ${stamp(p.priceAt)}` : escape(data.spotPremiumReason || "Verified pool conversion not supplied")}</small>${p?.source ? `<small>${link(p.source, "Pool source")}</small>` : ""}`;
+    }
     if (metric === "token")
-      return `<strong>${Number.isFinite(market?.price) ? usd(market.price) : "Unavailable"}</strong><small>USD aggregate reference · ${market?.updatedAt ? `${older(market.updatedAt) ? "Older observation · " : ""}${stamp(market.updatedAt)}` : "Not observed"}</small>`;
+      return `<strong>${Number.isFinite(market?.price) ? usd(market.price) : "Unavailable"}</strong><small>USD aggregate reference · ${market?.updatedAt ? `${older(market) ? "Older observation · " : ""}${stamp(market.updatedAt)}` : "Not observed"}</small>`;
     if (metric === "change")
       return `<strong class="${tone(market?.change24h)}">${signed(market?.change24h)}</strong><small>Tokenized aggregate</small>`;
     if (metric === "premium")
@@ -272,7 +303,8 @@ export function createStockPages({
     );
     const rows = [
       ["Listed price", "listed"],
-      ["Tokenized market", "token"],
+      ["Normalized pool price", "pool"],
+      ["Tokenized aggregate", "token"],
       ["24h change", "change"],
       ["Spot premium", "premium"],
       ["Company market cap", "marketCap"],
@@ -285,7 +317,7 @@ export function createStockPages({
     ];
     replace(
       compareRoot,
-      `<div class="stock-comparison-inner"><a class="stock-back" href="/?page=markets" data-stock-markets>← Markets</a><header class="stock-comparison-heading"><div><h1>Compare stocks</h1><p>Different underlying assets. One consistent view.</p></div><div class="stock-header-actions"><button class="stock-primary" data-stock-choose ${focusKey("choose")}>${stocks.length ? "Edit stocks" : "Choose stocks"} <span aria-hidden="true">+</span></button>${stocks.length ? `<button data-stock-refresh ${focusKey("refresh")} ${stocks.some((stock) => entry(stock.id).loading) ? "disabled" : ""}>Refresh</button>` : ""}</div></header>${stocks.length ? `<p class="stock-comparison-note">${stocks.length} of 5 assets selected. Prices are in USD. Aggregate share normalization is not disclosed; spot premiums use a separate representative token and verified share conversion.</p>${stocks.length < 2 ? '<p class="stock-comparison-hint">Add another stock to compare it side by side.</p>' : ""}<p class="stock-scroll-hint">Swipe across to compare all selected stocks →</p><div class="stock-comparison-scroll" tabindex="0" role="region" aria-label="Stock comparison table, scroll horizontally for all assets"><table class="stock-comparison-table"><caption class="sr-only">Underlying stock and tokenized market comparison</caption><thead><tr><th scope="col">Metric</th>${stocks.map((stock) => `<th scope="col"><div class="stock-comparison-company"><button class="stock-comparison-remove" data-stock-remove="${escape(stock.id)}" aria-label="Remove ${escape(stock.name)} from comparison" ${focusKey("remove:" + stock.id)}>×</button><a href="/?page=stock&stock=${encodeURIComponent(stock.id)}" data-stock-open="${escape(stock.id)}" ${focusKey("open:" + stock.id)}>${stockLogo(stock, marketFor(stock.id)?.image)}<strong>${escape(stock.ticker)}</strong><span>${escape(stock.name)}</span></a><small>${escape(stock.category || "Security")}</small></div></th>`).join("")}</tr></thead><tbody>${rows.map(([label, metric]) => `<tr><th scope="row">${label}</th>${stocks.map((stock) => `<td>${compareCell(stock, metric)}</td>`).join("")}</tr>`).join("")}<tr class="stock-comparison-actions"><th scope="row">Inspect products</th>${stocks.map((stock) => `<td><button data-stock-versions="${escape(stock.id)}">Compare token versions</button><button data-stock-quotes="${escape(stock.id)}">Compare buy quotes</button></td>`).join("")}</tr></tbody></table></div>${stocks.map((stock) => status(entry(stock.id))).join("")}<footer class="stock-page-footer"><p>Fiscal-year P/E is historical, not a current trailing-twelve-month ratio. Tokenized market cap and volume describe the connected provider’s aggregate. Product counts follow connected catalogs and may be incomplete.</p><p>The aggregate token price does not establish equivalent share exposure. Inspect issuer terms and verified conversion before comparing costs.</p></footer>` : '<div class="stock-comparison-empty"><h2>Put your next comparison in view.</h2><p>Choose two to five stocks or ETFs to compare listed prices, tokenized activity, issuers and network coverage.</p><button class="stock-primary" data-stock-choose>Choose stocks</button></div>'}</div>`,
+      `<div class="stock-comparison-inner"><a class="stock-back" href="/?page=markets" data-stock-markets>← Markets</a><header class="stock-comparison-heading"><div><h1>Compare stocks</h1><p>Different underlying assets. One consistent view.</p></div><div class="stock-header-actions"><button class="stock-primary" data-stock-choose ${focusKey("choose")}>${stocks.length ? "Edit stocks" : "Choose stocks"} <span aria-hidden="true">+</span></button>${stocks.length ? `<button data-stock-refresh ${focusKey("refresh")} ${stocks.some((stock) => entry(stock.id).loading) ? "disabled" : ""}>Refresh</button>` : ""}</div></header>${stocks.length ? `<p class="stock-comparison-note">${stocks.length} of 5 assets selected. Prices are in USD. Aggregate share normalization is not disclosed; spot premiums use a separate representative token and verified share conversion.</p>${stocks.length < 2 ? '<p class="stock-comparison-hint">Add another stock to compare it side by side.</p>' : ""}<p class="stock-scroll-hint">Swipe across to compare all selected stocks →</p><div class="stock-comparison-scroll" data-stock-scroll="comparison" tabindex="0" role="region" aria-label="Stock comparison table, scroll horizontally for all assets"><table class="stock-comparison-table"><caption class="sr-only">Underlying stock and tokenized market comparison</caption><thead><tr><th scope="col">Metric</th>${stocks.map((stock) => `<th scope="col"><div class="stock-comparison-company"><button class="stock-comparison-remove" data-stock-remove="${escape(stock.id)}" aria-label="Remove ${escape(stock.name)} from comparison" ${focusKey("remove:" + stock.id)}>×</button><a href="/?page=stock&stock=${encodeURIComponent(stock.id)}" data-stock-open="${escape(stock.id)}" ${focusKey("open:" + stock.id)}>${stockLogo(stock, marketFor(stock.id)?.image)}<strong>${escape(stock.ticker)}</strong><span>${escape(stock.name)}</span></a><small>${escape(stock.category || "Security")}</small></div></th>`).join("")}</tr></thead><tbody>${rows.map(([label, metric]) => `<tr><th scope="row">${label}</th>${stocks.map((stock) => `<td>${compareCell(stock, metric)}</td>`).join("")}</tr>`).join("")}<tr class="stock-comparison-actions"><th scope="row">Inspect products</th>${stocks.map((stock) => `<td><button data-stock-versions="${escape(stock.id)}">Compare token versions</button><button data-stock-quotes="${escape(stock.id)}">Compare buy quotes</button></td>`).join("")}</tr></tbody></table></div>${stocks.map((stock) => status(entry(stock.id))).join("")}<footer class="stock-page-footer"><p>Fiscal-year P/E is historical, not a current trailing-twelve-month ratio. Tokenized market cap and volume describe the connected provider’s aggregate. Product counts follow connected catalogs and may be incomplete.</p><p>The aggregate token price does not establish equivalent share exposure. Inspect issuer terms and verified conversion before comparing costs.</p></footer>` : '<div class="stock-comparison-empty"><h2>Put your next comparison in view.</h2><p>Choose two to five stocks or ETFs to compare listed prices, tokenized activity, issuers and network coverage.</p><button class="stock-primary" data-stock-choose>Choose stocks</button></div>'}</div>`,
     );
   }
   function render() {
@@ -293,7 +325,21 @@ export function createStockPages({
     if (active?.kind === "stock") renderStock();
     else if (active?.kind === "comparison") renderComparison();
   }
-  async function load(ids, { products = false, force = false } = {}) {
+  function load(ids, options = {}) {
+    const key = ids.join(",") + ":" + Boolean(options.products);
+    if (pendingLoad && loadKey === key && !controller?.signal.aborted)
+      return pendingLoad;
+    loadKey = key;
+    const task = performLoad(ids, options);
+    pendingLoad = task;
+    return task.finally(() => {
+      if (pendingLoad === task) {
+        pendingLoad = null;
+        loadKey = null;
+      }
+    });
+  }
+  async function performLoad(ids, { products = false, force = false } = {}) {
     controller?.abort();
     for (const [id, data] of cache)
       if (data.loading) cache.set(id, { ...data, loading: false });
@@ -304,7 +350,7 @@ export function createStockPages({
       (id) =>
         force ||
         !entry(id).checkedAt ||
-        Date.now() - entry(id).checkedAt > 60000 ||
+        Date.now() - entry(id).checkedAt >= 60000 ||
         (products && !entry(id).productsLoaded),
     );
     if (!wanted.length) {
@@ -315,6 +361,12 @@ export function createStockPages({
       cache.set(id, { ...entry(id), loading: true, errors: {} });
     render();
     const query = new URLSearchParams({ ids: wanted.join(",") });
+    const detailIds = wanted.filter(
+      (id) =>
+        force ||
+        !entry(id).detailsCheckedAt ||
+        Date.now() - entry(id).detailsCheckedAt >= 60000,
+    );
     const tasks = [
       [
         "screener",
@@ -330,7 +382,10 @@ export function createStockPages({
               );
             cache.set(id, {
               ...entry(id),
-              market: row.market,
+              market:
+                row.market && data.stale
+                  ? { ...row.market, stale: true }
+                  : row.market,
               warnings: [
                 ...new Set([
                   ...(entry(id).warnings || []),
@@ -341,22 +396,25 @@ export function createStockPages({
           }
         },
       ],
-      [
+    ];
+    if (detailIds.length)
+      tasks.push([
         "details",
-        `/api/market-details?${query}`,
+        `/api/market-details?${new URLSearchParams({ ids: detailIds.join(",") })}`,
         (data) => {
           if (!Array.isArray(data?.rows))
             throw new Error("Invalid listed-security response.");
-          for (const id of wanted) {
+          for (const id of detailIds) {
             const row = data.rows.find((row) => row.id === id);
             if (!row)
               throw new Error("Asset missing from listed-security response.");
-            cache.set(id, { ...entry(id), ...row });
+            const checkedAt = Date.now();
+            cache.set(id, mergeProfileDetails(entry(id), row, checkedAt));
+            onDetails(id, { ...row, checkedAt });
           }
         },
-      ],
-    ];
-    if (products)
+      ]);
+    if (products && (force || !entry(wanted[0]).productsLoaded))
       tasks.push([
         "products",
         `/api/products?${new URLSearchParams({ stock: wanted[0], chain: "all", enrich: "true" })}`,
@@ -367,7 +425,9 @@ export function createStockPages({
           cache.set(wanted[0], {
             ...current,
             stock: { ...data.stock, products: data.rows },
-            reference: current.reference || data.reference,
+            reference: Object.hasOwn(current, "reference")
+              ? current.reference
+              : data.reference,
             productsLoaded: true,
             warnings: [
               ...new Set([
@@ -386,9 +446,26 @@ export function createStockPages({
           apply(data);
         } catch (error) {
           if (signal.aborted || token !== generation || destroyed) return;
-          for (const id of wanted)
+          for (const id of kind === "details" ? detailIds : wanted)
             cache.set(id, {
               ...entry(id),
+              ...(kind === "screener" && entry(id).market
+                ? { market: { ...entry(id).market, stale: true } }
+                : {}),
+              ...(kind === "details"
+                ? {
+                    reference: entry(id).reference
+                      ? {
+                          ...entry(id).reference,
+                          priceStale: true,
+                          stale: true,
+                        }
+                      : null,
+                    spotPremium: entry(id).spotPremium
+                      ? { ...entry(id).spotPremium, stale: true }
+                      : null,
+                  }
+                : {}),
               errors: {
                 ...entry(id).errors,
                 [kind]: `${kind === "screener" ? "Tokenized market" : kind === "products" ? "Issuer product" : "Listed-security"} source: ${error.message || "Request failed."}`,
@@ -445,7 +522,11 @@ export function createStockPages({
   }
   function choose(ids) {
     chooserOpener = document.activeElement;
-    selectedIds = canonicalSelection(ids, getStocks());
+    selectedIds = profileComparisonSelection(
+      ids ?? getComparison(),
+      active?.kind === "stock" ? active.id : null,
+      getStocks(),
+    );
     dialog.querySelector("input").value = "";
     renderChooser();
     if (!dialog.open) dialog.showModal();
@@ -456,7 +537,7 @@ export function createStockPages({
     if (!button) return;
     const data = button.dataset;
     if ("stockChoose" in data)
-      choose(active?.kind === "stock" ? [active.id] : comparisonIds);
+      choose(active?.kind === "stock" ? getComparison() : comparisonIds);
     if ("stockRefresh" in data)
       void load(active.kind === "stock" ? [active.id] : comparisonIds, {
         products: active.kind === "stock",
@@ -546,14 +627,31 @@ export function createStockPages({
     if (chooserOpener?.isConnected)
       chooserOpener.focus({ preventScroll: true });
   });
-  const freshnessTimer = setInterval(() => {
-    if (active && !document.hidden) render();
-  }, 30000);
+  const automaticRefresh = createVisiblePageRefresh({
+    isVisible: () =>
+      !!active &&
+      !destroyed &&
+      !document.hidden &&
+      !(active.kind === "stock" ? root : compareRoot).hidden,
+    isBusy: () => !!pendingLoad,
+    refresh: () =>
+      load(active.kind === "stock" ? [active.id] : comparisonIds, {
+        force: true,
+      }),
+  });
+  function refreshVisible() {
+    if (!active || document.hidden || destroyed) return;
+    render();
+    void automaticRefresh.tick();
+  }
+  const freshnessTimer = setInterval(refreshVisible, 15000);
+  document.addEventListener("visibilitychange", refreshVisible);
   return {
     openStock(id) {
       if (destroyed) return;
       venues.cancel();
       active = { kind: "stock", id };
+      automaticRefresh.reset();
       tab = "overview";
       root.hidden = false;
       compareRoot.hidden = true;
@@ -565,13 +663,28 @@ export function createStockPages({
       venues.cancel();
       comparisonIds = canonicalSelection(ids, getStocks());
       active = { kind: "comparison" };
+      automaticRefresh.reset();
       root.hidden = true;
       compareRoot.hidden = false;
       renderComparison();
       return load(comparisonIds);
     },
-    chooseComparison(ids = []) {
+    chooseComparison(ids) {
       choose(ids);
+    },
+    ingestDetails(id, data) {
+      if (destroyed || !data) return;
+      cache.set(
+        id,
+        mergeProfileDetails(cache.get(id), data, data.checkedAt ?? Date.now()),
+      );
+      render();
+    },
+    details(id) {
+      const data = cache.get(id);
+      return data
+        ? { ...data, checkedAt: data.detailsCheckedAt || 0 }
+        : undefined;
     },
     refresh() {
       if (!active || destroyed) return;
@@ -600,6 +713,7 @@ export function createStockPages({
       root.removeEventListener("click", click);
       compareRoot.removeEventListener("click", click);
       root.removeEventListener("keydown", keydown);
+      document.removeEventListener("visibilitychange", refreshVisible);
       dialog.remove();
     },
   };

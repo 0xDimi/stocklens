@@ -6,7 +6,6 @@ import {
   provider,
   external,
   productsTable,
-  quoteTable,
   purchaseSummary,
   marketsTable,
   termsTable,
@@ -16,8 +15,17 @@ import {
 } from "./views.mjs";
 import { createMarketsPage } from "./markets-page.mjs";
 import { createStockPages } from "./stock-pages.mjs";
+import {
+  readComparison,
+  restoreComparison,
+  saveComparison,
+} from "./comparison-state.mjs";
 import { canonicalSelection } from "./asset-comparison-model.mjs";
-import { quoteComparison, quoteCoverage } from "./comparison-ui.mjs";
+import {
+  quoteComparison,
+  quoteCoverage,
+  quoteCoverageMarkup,
+} from "./comparison-ui.mjs";
 import {
   stockLogo,
   issuerLogo,
@@ -37,7 +45,9 @@ const params = new URLSearchParams(location.search);
 let page = ["markets", "stock", "compare"].includes(params.get("page"))
   ? params.get("page")
   : "home";
-let assetCompareIds = (params.get("stocks") || "").split(",").filter(Boolean);
+let assetCompareIds = params.has("stocks")
+  ? params.get("stocks").split(",").filter(Boolean)
+  : readComparison(localStorage);
 const homeDetails = new Map();
 let detailAbort = null,
   detailSequence = 0,
@@ -81,10 +91,10 @@ function updateUrl(mode = "replace") {
     view,
   });
   if ($("#issuer").value !== "all") query.set("issuer", $("#issuer").value);
+  if ($("#include-wrappers").checked) query.set("wrappers", "1");
   if (token && view === "markets") query.set("token", token);
   if (page !== "home") query.set("page", page);
-  if (page === "compare" && assetCompareIds.length)
-    query.set("stocks", assetCompareIds.join(","));
+  query.set("stocks", assetCompareIds.join(","));
   const url = "/?" + query;
   if (mode === "push" && location.search !== "?" + query)
     history.pushState(null, "", url);
@@ -113,7 +123,7 @@ function renderHeading() {
     selected.products.flatMap((p) => p.deployments.map((d) => d.chain)),
   ).size;
   $("#stock-heading").innerHTML =
-    `<div class="company">${stockLogo(selected, desk?.getMarkets().get(selected.id)?.image)}<div><div class="company-name"><h2 id="stock-title" tabindex="-1">${escape(selected.name)}</h2><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p><b>${escape(selected.ticker)}</b> · ${escape(selected.category)} · ${selected.products.filter((p) => !p.wrapped).length} issuer versions${selected.products.some((p) => p.wrapped) ? ` + ${selected.products.filter((p) => p.wrapped).length} wrapped` : ""} · ${new Set(selected.products.map((p) => p.issuer)).size} ${new Set(selected.products.map((p) => p.issuer)).size === 1 ? "issuer" : "issuers"} · ${chainCount} networks</p></div></div><div class="stock-heading-actions"><a class="text-button" href="/?page=stock&amp;stock=${encodeURIComponent(selected.id)}" data-open-stock-page="${escape(selected.id)}">Stock overview →</a><button class="primary-button" data-action="quotes" ${view === "quotes" ? "hidden" : ""}>Compare buy quotes <span aria-hidden="true">→</span></button></div>`;
+    `<div class="company">${stockLogo(selected, desk?.getMarkets().get(selected.id)?.image)}<div><div class="company-name"><h2 id="stock-title" tabindex="-1">${escape(selected.name)}</h2><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p><b>${escape(selected.ticker)}</b> · ${escape(selected.category)} · ${selected.products.filter((p) => !p.wrapped).length} issuer versions${selected.products.some((p) => p.wrapped) ? ` + ${selected.products.filter((p) => p.wrapped).length} wrapped` : ""} · ${new Set(selected.products.map((p) => p.issuer)).size} ${new Set(selected.products.map((p) => p.issuer)).size === 1 ? "issuer" : "issuers"} · ${chainCount} networks</p></div></div><div class="stock-heading-actions"><a class="text-button" href="/?page=stock&amp;stock=${encodeURIComponent(selected.id)}" data-open-stock-page="${escape(selected.id)}">Overview →</a><button class="primary-button" data-action="quotes" ${view === "quotes" ? "hidden" : ""}>Compare buy quotes <span aria-hidden="true">→</span></button></div>`;
   if (focusTitle) $("#stock-title").focus({ preventScroll: true });
   const wrappers = selected.products.filter((p) => p.wrapped).length;
   $("#wrapper-control").hidden =
@@ -180,10 +190,8 @@ function setView(next, fetch = true) {
   view = next;
   $("#comparison").dataset.mode = view;
   $("#comparison-intent").innerHTML = {
-    products:
-      "<strong>Compare product terms.</strong> Select 2–3 versions for rights, dividends and exit rules.",
-    quotes:
-      "<strong>Compare buy quotes.</strong> Set a USDC amount. See each route’s provider, liquidity sources and output.",
+    products: "Select 2–3 tokens for a terms comparison.",
+    quotes: "Compare what the same USDC budget buys on each network.",
     terms:
       "<strong>Read the product terms.</strong> These summaries cover rights, dividends and eligibility. Select versions in Token versions for a side-by-side comparison.",
     markets:
@@ -193,9 +201,14 @@ function setView(next, fetch = true) {
   }[view];
   const prior = $("#sort").value;
   document.querySelectorAll("[data-view]").forEach((b) => {
-    b.setAttribute("aria-selected", b.dataset.view === view);
-    b.tabIndex = b.dataset.view === view ? 0 : -1;
+    const primary = b.getAttribute("role") === "tab";
+    const active = primary
+      ? b.dataset.view === (view === "quotes" ? "quotes" : "products")
+      : b.dataset.view === view;
+    b.setAttribute(primary ? "aria-selected" : "aria-pressed", active);
+    b.tabIndex = primary && !active ? -1 : 0;
   });
+  $("#view-footnote").textContent = "";
   $("#view-panel").setAttribute("aria-labelledby", "tab-" + view);
   $("#sort").innerHTML = sortOptions[view]
     .map(([id, name]) => `<option value="${id}">${name}</option>`)
@@ -280,16 +293,18 @@ function sourceDetails(data = {}) {
     ? `${warnings.length} coverage ${warnings.length === 1 ? "note" : "notes"}`
     : "Source timestamps & scope";
   $("#source-details").innerHTML =
-    `<div class="source-list">${catalogSources.map((s) => `<p>${external(s.url, s.name)} <strong>${s.cached ? "Saved catalog · " + stamp(s.retrievedAt) : s.available ? "Catalog loaded" : s.stale ? "Retained observation" : "Unavailable"}</strong></p>`).join("")}${(data.sources || []).map((s) => `<p>${escape(s.name)} <strong>${escape(s.status)}</strong> · ${stamp(s.checkedAt)}</p>`).join("")}</div><p>Catalog retrieved ${stamp(data.catalogAt || selected?.sourceAt)}. CoinGecko prices use source timestamps. GeckoTerminal pool results are a filtered search page, not all venues.</p>${warnings.map((w) => `<p class="coverage-warning">${escape(w)}</p>`).join("")}<p>Issuer legal summaries reviewed Oct 19, 2026 where supplied. Other issuer terms are unreviewed. Wrapped products and ambiguous matches are excluded.</p>`;
+    `<div class="source-list">${catalogSources.map((s) => `<p>${external(s.url, s.name)} <strong>${s.cached ? "Saved catalog · " + stamp(s.retrievedAt) : s.available ? "Catalog loaded" : s.stale ? "Retained observation" : "Unavailable"}</strong></p>`).join("")}${(data.sources || []).map((s) => `<p>${escape(s.name)} <strong>${escape(s.status)}</strong> · ${stamp(s.checkedAt)}</p>`).join("")}</div><p>Catalog retrieved ${stamp(data.catalogAt || selected?.sourceAt)}. CoinGecko prices use source timestamps. GeckoTerminal pool results are a filtered search page, not all venues.</p>${warnings.map((w) => `<p class="coverage-warning">${escape(w)}</p>`).join("")}<p>Term summaries carry their source review dates. Wrapped versions are opt-in; ambiguous identity matches are excluded.</p>`;
 }
 function renderResults() {
   if (!snapshot) return;
   visibleRows = filters(snapshot.rows);
   const sourceWarnings = (snapshot.warnings || []).filter((w) =>
-    /CoinGecko prices unavailable|native RWA grouping unavailable/.test(w),
+    /CoinGecko prices unavailable/.test(w),
   );
   $("#view-source-warning").hidden = !sourceWarnings.length;
-  $("#view-source-warning").textContent = sourceWarnings.join(" ");
+  $("#view-source-warning").textContent = sourceWarnings.length
+    ? "CoinGecko prices could not refresh. Check each observation’s source and time; refresh to retry."
+    : "";
   $("#result-count").textContent = visibleRows.length;
   if (view === "products")
     $("#results").innerHTML = visibleRows.length
@@ -297,7 +312,10 @@ function renderResults() {
       : '<p class="empty-results">No products match these filters.</p>';
   if (view === "quotes")
     $("#results").innerHTML = visibleRows.length
-      ? quoteComparison(visibleRows)
+      ? quoteComparison(visibleRows, {
+          reference:
+            snapshot.reference || sharedDetails(selected.id)?.reference,
+        })
       : '<p class="empty-results">No quoted-chain deployments match these filters. Try All chains or explore Markets.</p>';
   if (view === "markets")
     $("#results").innerHTML = visibleRows.length
@@ -358,9 +376,11 @@ function renderResults() {
 }
 async function loadView(enrich = false) {
   clearTimeout(debounce);
+  if (page !== "home") return;
   controller?.abort();
   const id = ++requestId;
   snapshot = null;
+  $("#results").setAttribute("aria-busy", "false");
   $("#view-source-warning").hidden = true;
   $("#decision-summary").innerHTML = "";
   if (view === "quotes") desk?.ingest("quotes", { rows: [] });
@@ -399,9 +419,9 @@ async function loadView(enrich = false) {
   $("#results").innerHTML =
     '<p class="empty-results loading-message">' +
     {
-      products: "Loading CoinGecko product observations…",
-      quotes: "Checking units and requesting order quotes…",
-      markets: "Finding exact-contract pools on GeckoTerminal…",
+      products: "Loading token versions…",
+      quotes: "Comparing available buy quotes…",
+      markets: "Finding liquidity for verified contracts…",
       venues: "Loading exchange prices and depth observations…",
     }[view] +
     "</p>";
@@ -420,7 +440,12 @@ async function loadView(enrich = false) {
   try {
     const response = await fetch(
       `/api/${view === "quotes" ? "compare" : view}?${query}`,
-      { signal: controller.signal },
+      {
+        signal: AbortSignal.any([
+          controller.signal,
+          AbortSignal.timeout(40000),
+        ]),
+      },
     );
     const data = await response.json();
     if (id !== requestId) return;
@@ -450,22 +475,28 @@ async function loadView(enrich = false) {
 function tick() {
   if (view !== "quotes" || !snapshot) return;
   $("#decision-summary").innerHTML = purchaseSummary(visibleRows);
-  const quotes = snapshot.rows.filter((r) => r.status === "quoted"),
+  const coverage = $(".quote-coverage");
+  if (coverage) coverage.innerHTML = quoteCoverageMarkup(visibleRows);
+  $("#comparison-status").textContent =
+    quoteCoverage(visibleRows).providers.join(" · ") ||
+    "No current quote providers";
+  const quotes = visibleRows.filter((r) => r.status === "quoted"),
     fresh = quotes.filter((r) => r.expiresAt > Date.now());
   $("#freshness").textContent = !quotes.length
     ? "No live quotes"
     : fresh.length
       ? `Updated ${Math.max(0, Math.floor((Date.now() - Math.min(...fresh.map((r) => r.fetchedAt))) / 1000))}s ago`
       : "Quotes stale · refresh";
-  document
-    .querySelectorAll(".quote-row[data-expires]")
-    .forEach((el) =>
-      el.classList.toggle(
-        "stale",
-        Number(el.dataset.expires) > 0 &&
-          Number(el.dataset.expires) <= Date.now(),
-      ),
-    );
+  document.querySelectorAll(".quote-row[data-expires]").forEach((el) => {
+    const expired =
+      Number(el.dataset.expires) > 0 &&
+      Number(el.dataset.expires) <= Date.now();
+    el.classList.toggle("stale", expired);
+    const summary = el.querySelector("summary"),
+      label = summary?.getAttribute("aria-label");
+    if (expired && label && !label.endsWith(" · Expired quote"))
+      summary.setAttribute("aria-label", label + " · Expired quote");
+  });
   document.querySelectorAll(".quote-link").forEach((link) => {
     if (Number(link.dataset.expires) <= Date.now()) {
       link.removeAttribute("href");
@@ -503,6 +534,8 @@ async function initialize() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Catalog unavailable.");
     stocks = data.stocks;
+    assetCompareIds = restoreComparison(params, assetCompareIds, stocks);
+    saveComparison(localStorage, assetCompareIds);
     chains = data.chains;
     catalogSources = data.sources;
     catalogCoverage = data.coverage;
@@ -524,6 +557,7 @@ async function initialize() {
     if (chains.some((c) => c.id === params.get("chain")))
       $("#chain").value = params.get("chain");
     $("#search").disabled = false;
+    $("#include-wrappers").checked = params.get("wrappers") === "1";
     renderHeading();
     if (selected.products.some((p) => p.issuer === params.get("issuer")))
       $("#issuer").value = params.get("issuer");
@@ -583,14 +617,14 @@ for (const [id, value] of [
     limit = 80;
     renderStocks();
   });
-document.querySelector(".view-tabs").addEventListener("click", (e) => {
+document.querySelector("#comparison").addEventListener("click", (e) => {
   const b = e.target.closest("[data-view]");
   if (b) setView(b.dataset.view);
 });
 document.querySelector(".view-tabs").addEventListener("keydown", (e) => {
   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
   e.preventDefault();
-  const tabs = [...document.querySelectorAll("[data-view]")],
+  const tabs = [...document.querySelectorAll(".view-tabs [data-view]")],
     i = tabs.findIndex((t) => t.dataset.view === view);
   const next =
     e.key === "Home"
@@ -615,10 +649,17 @@ $("#sort").addEventListener("change", renderResults);
 $("#budget").addEventListener("input", () => {
   controller?.abort();
   requestId++;
+  document
+    .querySelectorAll("[data-budget]")
+    .forEach((b) =>
+      b.setAttribute("aria-pressed", b.dataset.budget === $("#budget").value),
+    );
   snapshot = null;
   $("#decision-summary").innerHTML = "";
   $("#results").innerHTML = '<p class="empty-results">Updating amount…</p>';
   $("#freshness").textContent = "";
+  $("#comparison-status").textContent = "";
+  $("#result-count").textContent = "—";
   clearTimeout(debounce);
   debounce = setTimeout(loadView, 450);
 });
@@ -713,9 +754,31 @@ desk = createTerminal({
     renderHeading();
   },
 });
+function sharedDetails(id) {
+  return [
+    homeDetails.get(id),
+    marketsPage?.getDetails(id),
+    stockPages?.details(id),
+  ]
+    .filter(Boolean)
+    .sort((a, b) => (b.checkedAt || 0) - (a.checkedAt || 0))[0];
+}
+function retainDetails(id, row) {
+  const previous = homeDetails.get(id) || {};
+  const retained = { ...previous, ...row };
+  // A failed refresh must not erase a dated observation or make it current.
+  for (const key of ["reference", "spot", "spotPremium", "premium"])
+    if (Object.hasOwn(row, key) && !row[key] && previous[key])
+      retained[key] = { ...previous[key], stale: true };
+  homeDetails.set(id, retained);
+  if (homeDetails.size > 25)
+    homeDetails.delete(homeDetails.keys().next().value);
+  marketsPage?.ingestDetails(id, retained);
+  return retained;
+}
 async function loadHomeDetails(id, force = false) {
   if (!id || page !== "home") return;
-  const cached = homeDetails.get(id);
+  const cached = sharedDetails(id);
   if (!force && cached && Date.now() - cached.checkedAt < 60000) {
     desk.ingest("details", cached);
     return;
@@ -738,12 +801,9 @@ async function loadHomeDetails(id, force = false) {
       throw new Error(data.error || "Listed price source unavailable");
     const row = data.rows?.find((r) => r.id === id);
     if (!row || sequence !== detailSequence) return;
-    const result = { ...row, checkedAt: Date.now() };
-    homeDetails.set(id, result);
-    if (homeDetails.size > 25)
-      homeDetails.delete(homeDetails.keys().next().value);
+    const result = retainDetails(id, { ...row, checkedAt: Date.now() });
     if (selected?.id === id && page === "home") desk.ingest("details", result);
-    if (row.reference) marketsPage?.ingestReference(id, row.reference);
+    stockPages?.ingestDetails(id, result);
   } catch (error) {
     if (
       error.name !== "AbortError" &&
@@ -761,6 +821,7 @@ function setPage(next, write = true) {
   $("#stock-page").hidden = page !== "stock";
   $("#asset-comparison-page").hidden = page !== "compare";
   if (page !== "home" && previous === "home") {
+    clearTimeout(debounce);
     controller?.abort();
     ++requestId;
     detailAbort?.abort();
@@ -811,6 +872,7 @@ function openStockPage(id) {
 }
 function openAssetComparison(ids) {
   assetCompareIds = canonicalSelection(ids, stocks);
+  saveComparison(localStorage, assetCompareIds);
   setPage("compare");
   $("#asset-comparison-page").focus({ preventScroll: true });
   scrollTo({ top: 0, behavior: "instant" });
@@ -830,15 +892,14 @@ function openHomeComparison(id, mode = "products") {
 window.addEventListener("popstate", () => {
   const route = new URLSearchParams(location.search);
   selected = assetById(stocks, route.get("stock")) || selected;
-  assetCompareIds = canonicalSelection(
-    (route.get("stocks") || "").split(","),
-    stocks,
-  );
+  assetCompareIds = restoreComparison(route, assetCompareIds, stocks);
+  saveComparison(localStorage, assetCompareIds);
   view = ["products", "quotes", "terms", "markets", "venues"].includes(
     route.get("view"),
   )
     ? route.get("view")
     : "products";
+  $("#include-wrappers").checked = route.get("wrappers") === "1";
   $("#chain").value = chains.some((c) => c.id === route.get("chain"))
     ? route.get("chain")
     : "all";
@@ -888,7 +949,7 @@ function showCoverage() {
       })
       .join(
         "",
-      )}</div><h3>Networks & quote support</h3><div class="coverage-networks">${networks.map((id) => `<span>${chainLogo(id)}${escape(chains.find((c) => c.id === id)?.label || id)}<small>${chains.find((c) => c.id === id)?.quotable ? "Quotes connected" : "Discovery only"}</small></span>`).join("")}</div><h3>Gaps kept visible</h3><p>${stocks.filter((s) => !s.products.length).length} registry assets await a mapped version. ${catalogCoverage?.heldBackIssuerRecords || 0} issuer records were held back pending identity corroboration. ${escape(catalogWarnings.join(" "))}</p><p>Hyperliquid platform identifiers returned by the registry do not match the supported contract format and stay outside contract routing. Quote adapters cover five networks. DEX pool searches and exchange pages are partial. Unconfirmed legal terms and share conversions are never filled with assumptions.</p>`;
+      )}</div><h3>Networks & quote support</h3><div class="coverage-networks">${networks.map((id) => `<span>${chainLogo(id)}${escape(chains.find((c) => c.id === id)?.label || id)}<small>${chains.find((c) => c.id === id)?.quotable ? "Quotes connected" : "Discovery only"}</small></span>`).join("")}</div><h3>Gaps kept visible</h3><p>${stocks.filter((s) => !s.products.length).length} registry assets await a mapped version. ${catalogCoverage?.heldBackIssuerRecords || 0} issuer records were held back pending identity corroboration. ${escape(catalogWarnings.join(" "))}</p><p>Hyperliquid platform identifiers returned by the registry do not match the supported contract format and stay outside contract routing. Buy quotes cover five networks. DEX pool searches and exchange pages are partial. Unconfirmed legal terms and share conversions are never filled with assumptions.</p>`;
   if (pendingProducts.length)
     $("#coverage-content").insertAdjacentHTML(
       "beforeend",
@@ -926,6 +987,7 @@ document.addEventListener("click", (event) => {
     $("#coverage-dialog").close();
 });
 $("#include-wrappers").addEventListener("change", () => {
+  updateUrl();
   if (snapshot) renderResults();
 });
 marketsPage = createMarketsPage({
@@ -933,11 +995,14 @@ marketsPage = createMarketsPage({
   getMarkets: () => desk.getMarkets(),
   getMarketState: () => desk.marketState(),
   getQuotes: (id) => quoteSnapshots.get(id),
+  onDetails: retainDetails,
   onSelect: openStockPage,
   onCompareVersions: (id) => openHomeComparison(id, "products"),
   getComparison: () => assetCompareIds,
   onCompareChange: (ids) => {
     assetCompareIds = canonicalSelection(ids, stocks);
+    saveComparison(localStorage, assetCompareIds);
+    updateUrl();
   },
   onCompareAssets: openAssetComparison,
   onChooseCompare: (ids) => stockPages.chooseComparison(ids),
@@ -951,6 +1016,9 @@ stockPages = createStockPages({
   getMarkets: () => desk.getMarkets(),
   getChains: () => chains,
   getSaved: () => saved,
+  getDetails: sharedDetails,
+  getComparison: () => assetCompareIds,
+  onDetails: retainDetails,
   onToggleSave: toggleSaved,
   onCompareVersions: openHomeComparison,
   onOpenStock: openStockPage,
@@ -958,7 +1026,7 @@ stockPages = createStockPages({
 });
 setPage(page, false);
 setInterval(() => {
-  if (page === "home") loadHomeDetails(selected?.id);
+  if (page === "home" && !document.hidden) loadHomeDetails(selected?.id);
 }, 60000);
 setInterval(tick, 1000);
 setInterval(() => {

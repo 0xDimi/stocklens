@@ -81,6 +81,7 @@ button.stock-primary:hover {
 }
 .stock-price {
   padding: 25px 28px 24px;
+  min-width: 0;
 }
 .stock-price + .stock-price {
   border-left: 1px solid var(--line);
@@ -117,6 +118,26 @@ button.stock-primary:hover {
   display: block;
   color: var(--muted);
   font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.stock-aggregate-reference {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px 14px;
+  padding: 14px 0 0;
+}
+.stock-aggregate-reference > span,
+.stock-aggregate-reference p,
+.stock-aggregate-reference > small {
+  font-size: 11px;
+  margin: 0;
+}
+.stock-aggregate-reference > strong {
+  font-size: 19px;
+  margin: 0;
+  letter-spacing: -0.02em;
 }
 .stock-spot {
   padding: 25px 24px 24px;
@@ -602,6 +623,8 @@ button.stock-primary:hover {
   border: 1px solid var(--line);
   border-radius: 10px;
   margin-bottom: 18px;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .stock-comparison-table {
   border-collapse: separate;
@@ -825,6 +848,8 @@ button.stock-primary:hover {
   min-height: 130px;
   max-height: 390px;
   border-top: 1px solid var(--line);
+  flex: 1 1 auto;
+  -webkit-overflow-scrolling: touch;
 }
 .stock-chooser-option {
   display: flex;
@@ -982,6 +1007,24 @@ button.stock-primary:hover {
   .stock-price > small {
     font-size: 10px;
     line-height: 1.6;
+  }
+  .stock-aggregate-reference {
+    padding: 13px 0 0;
+    gap: 5px 10px;
+  }
+  .stock-aggregate-reference > span {
+    font-size: 11px;
+  }
+  .stock-aggregate-reference > span small {
+    display: inline;
+    margin-left: 4px;
+  }
+  .stock-aggregate-reference > strong {
+    font-size: 18px;
+    margin: 0;
+  }
+  .stock-aggregate-reference > small {
+    flex-basis: 100%;
   }
   .stock-spot {
     grid-column: 1/-1;
@@ -1204,12 +1247,17 @@ button.stock-primary:hover {
   }
   .stock-chooser {
     max-height: calc(100dvh - 24px);
+    overflow: hidden;
   }
   .stock-chooser-heading {
     padding: 21px 18px 17px;
   }
   .stock-chooser-search {
     padding: 0 18px;
+  }
+  .stock-chooser-search > input {
+    font-size: 16px;
+    min-height: 44px;
   }
   .stock-chooser-selected {
     padding-left: 18px;
@@ -1221,10 +1269,13 @@ button.stock-primary:hover {
   }
   .stock-chooser-options {
     max-height: 45dvh;
+    min-height: 90px;
   }
   .stock-chooser-footer {
     padding: 15px 18px;
     gap: 12px;
+    padding-bottom: max(15px, env(safe-area-inset-bottom));
+    flex-shrink: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1254,6 +1305,8 @@ button.stock-primary:hover {
 .stock-venue-scroll {
   overflow-x: auto;
   margin: 12px 0 9px;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .stock-venue-table {
   width: 100%;
@@ -1309,6 +1362,30 @@ button.stock-primary:hover {
   }
   .stock-venue-basis {
     font-size: 10px;
+  }
+}
+
+@media (pointer: coarse) {
+  .stock-header-actions button,
+  .stock-profile-actions button,
+  .stock-tabs button,
+  .stock-section-heading > button,
+  .stock-comparison-actions button,
+  .stock-chooser button,
+  .stock-trading-venues > button {
+    min-height: 44px;
+  }
+  .stock-comparison-remove,
+  .stock-chooser-heading > button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .stock-comparison-company > a {
+    padding-right: 24px;
+  }
+  .stock-issuer-row > summary,
+  .stock-network-row > summary {
+    min-height: 52px;
   }
 }
 

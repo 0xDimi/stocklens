@@ -1,4 +1,117 @@
 import { findStocks } from "./model.mjs";
+
+export const MARKET_COLUMNS = [
+  ["stock", "Stock"],
+  ["listed", "Listed price"],
+  ["token", "Tokenized price"],
+  ["change", "24h change"],
+  ["premium", "Onchain premium"],
+  ["tokenCap", "Tokenized cap"],
+  ["volume", "24h volume"],
+  ["networks", "Networks"],
+  ["versions", "Versions"],
+  ["companyCap", "Company cap"],
+  ["pe", "Fiscal-year P/E"],
+];
+export const DEFAULT_MARKET_COLUMNS = MARKET_COLUMNS.slice(0, 9).map(
+  ([id]) => id,
+);
+export function normalizeMarketColumns(value) {
+  if (!Array.isArray(value) || !value.length)
+    return [...DEFAULT_MARKET_COLUMNS];
+  const chosen = new Set(["stock", ...value]);
+  const columns = MARKET_COLUMNS.map(([id]) => id).filter((id) =>
+    chosen.has(id),
+  );
+  return columns.length > 1 ? columns : [...DEFAULT_MARKET_COLUMNS];
+}
+const sourceURL = (value) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+};
+
+// Network adapter coverage is catalog metadata. Conversion readiness requires an
+// actual sourced observation; neither state asserts an executable trade.
+export function marketReadiness(
+  stock,
+  {
+    chains = [],
+    detail,
+    quotes,
+    chain = "all",
+    issuer = "all",
+    now = Date.now(),
+  } = {},
+) {
+  const products = stock.products.filter(
+      (p) => issuer === "all" || p.issuer === issuer,
+    ),
+    networks = new Set(
+      products
+        .flatMap((p) => p.deployments)
+        .filter((d) => chain === "all" || d.chain === chain)
+        .map((d) => d.chain),
+    ),
+    quoteNetworks = chains
+      .filter((c) => c.quotable && networks.has(c.id))
+      .map((c) => c.id),
+    scoped = (observation) =>
+      observation &&
+      networks.has(observation.chain) &&
+      (issuer === "all" || observation.issuer === issuer),
+    observations = [
+      ...(scoped(detail?.spot) && detail.spot.conversionVerified === true
+        ? [{ ...detail.spot, observedAt: detail.spot.at }]
+        : []),
+      ...[detail?.spotPremium, detail?.premium]
+        .filter(scoped)
+        .map((p) => ({ ...p, observedAt: p.priceAt })),
+      ...(Array.isArray(quotes) ? quotes : quotes?.rows || [])
+        .filter(
+          (q) =>
+            scoped(q) &&
+            q.status === "quoted" &&
+            q.equivalentShares > 0 &&
+            q.conversionVerified !== false &&
+            Number.isFinite(q.expiresAt),
+        )
+        .map((q) => ({ ...q, source: q.quoteSource, observedAt: q.fetchedAt })),
+    ].filter(
+      (o) =>
+        Number.isFinite(o.sharesPerToken) &&
+        o.sharesPerToken > 0 &&
+        sourceURL(o.conversionSource) &&
+        sourceURL(o.source) &&
+        Number.isFinite(o.observedAt) &&
+        o.observedAt <= now,
+    ),
+    fresh = observations.find(
+      (o) =>
+        !o.stale &&
+        now - o.observedAt <= 300000 &&
+        (!Number.isFinite(o.expiresAt) || o.expiresAt > now),
+    );
+  const conversion = fresh
+    ? "verified"
+    : observations.length
+      ? "expired"
+      : detail?.status === "loading"
+        ? "loading"
+        : detail?.status === "error"
+          ? "unavailable"
+          : detail?.status === "ready" || quotes
+            ? "not-verified"
+            : "unchecked";
+  return {
+    quoteNetworks,
+    conversion,
+    observation: fresh || observations[0] || null,
+  };
+}
 export function selectMarketRows(
   rows,
   {
@@ -9,6 +122,9 @@ export function selectMarketRows(
     sort = "volume",
     savedOnly = false,
     saved = new Set(),
+    quoteCoverage = "all",
+    conversion = "all",
+    getReadiness = () => ({ quoteNetworks: [], conversion: "unchecked" }),
   } = {},
 ) {
   return findStocks(rows, query)
@@ -16,11 +132,16 @@ export function selectMarketRows(
       (row) =>
         (type === "all" || row.category === type) &&
         (!savedOnly || saved.has(row.id)) &&
-        (chain === "all" ||
-          row.products.some((p) =>
-            p.deployments.some((d) => d.chain === chain),
+        ((chain === "all" && issuer === "all") ||
+          row.products.some(
+            (p) =>
+              (issuer === "all" || p.issuer === issuer) &&
+              (chain === "all" || p.deployments.some((d) => d.chain === chain)),
           )) &&
-        (issuer === "all" || row.products.some((p) => p.issuer === issuer)),
+        (quoteCoverage === "all" ||
+          getReadiness(row).quoteNetworks.length > 0 ===
+            (quoteCoverage === "supported")) &&
+        (conversion === "all" || getReadiness(row).conversion === conversion),
     )
     .sort((a, b) => {
       if (sort === "name") return a.ticker.localeCompare(b.ticker);
@@ -120,6 +241,7 @@ export function observedPremiumState(observation, now = Date.now()) {
 export function createMarketDetailsLoader({
   fetchDetails,
   onChange = () => {},
+  onDetails = () => {},
   now = Date.now,
 }) {
   const cache = new Map(),
@@ -209,6 +331,7 @@ export function createMarketDetailsLoader({
               checkedAt: now(),
               retrievedAt: data.retrievedAt,
             });
+            onDetails(id, cache.get(id));
           }
         })
         .catch((error) => {
@@ -244,6 +367,43 @@ export function createMarketDetailsLoader({
     get: (id) => cache.get(id),
     ingestReference(id, reference) {
       if (reference) cache.set(id, { ...cache.get(id), reference });
+    },
+    // Shared cache writes are silent. Observation dates belong to the source;
+    // opening another page must never make old data appear freshly observed.
+    ingestDetails(id, row) {
+      if (!row || typeof row !== "object") return;
+      const prior = cache.get(id),
+        next = { ...prior, ...row };
+      const timestamp = (value) => {
+        const raw = value?.at ?? value?.priceAt ?? value?.retrievedAt;
+        return typeof raw === "number" ? raw : Date.parse(raw);
+      };
+      for (const key of ["reference", "spot", "spotPremium", "premium"]) {
+        if (!prior?.[key]) continue;
+        if (!Object.hasOwn(row, key)) {
+          next[key] = prior[key];
+          continue;
+        }
+        const older = row[key] && timestamp(prior[key]) > timestamp(row[key]);
+        if (!row[key] || older)
+          next[key] =
+            !row[key] || row[key].stale === true
+              ? { ...prior[key], stale: true }
+              : prior[key];
+      }
+      const retrieved = Date.parse(row.retrievedAt);
+      next.checkedAt =
+        Math.max(
+          prior?.checkedAt || 0,
+          Number.isFinite(row.checkedAt)
+            ? row.checkedAt
+            : Number.isFinite(retrieved) && retrieved <= now()
+              ? retrieved
+              : 0,
+        ) || undefined;
+      next.status =
+        prior?.status === "loading" ? "loading" : row.status || "ready";
+      cache.set(id, next);
     },
     load(ids, { force = false } = {}) {
       wanted = new Set(ids);

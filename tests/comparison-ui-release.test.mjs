@@ -44,7 +44,7 @@ test("quote coverage counts deployments separately from provider routes and excl
     normalized: 1,
     deployments: 2,
     quotedDeployments: 1,
-    providers: ["Jupiter", "Raydium"],
+    providers: ["Jupiter"],
   });
 });
 test("quotes lead while failed networks stay inspectable with actionable reasons", () => {
@@ -107,6 +107,8 @@ test("closed references preserve date-only precision and both prices remain expl
     reference,
     spotPremium: {
       value: -0.28,
+      price: 216.482148,
+      referencePrice: 217.09,
       referenceBasis: "last-close",
       basis: "Representative pool",
       priceAt: now,

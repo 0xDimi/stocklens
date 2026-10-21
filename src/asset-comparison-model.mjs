@@ -3,6 +3,90 @@ export function canonicalSelection(ids, stocks) {
   const known = new Set(stocks.map((stock) => stock.id));
   return [...new Set(ids)].filter((id) => known.has(id)).slice(0, 5);
 }
+export function profileComparisonSelection(ids, profileId, stocks) {
+  return canonicalSelection(
+    [...ids, ...(profileId ? [profileId] : [])],
+    stocks,
+  );
+}
+
+export function mergeProfileDetails(
+  previous = {},
+  incoming,
+  checkedAt = incoming?.checkedAt,
+) {
+  if (
+    !incoming ||
+    (previous.detailsCheckedAt &&
+      (!Number.isFinite(checkedAt) || checkedAt <= previous.detailsCheckedAt))
+  )
+    return previous;
+  const fields = [
+    "reference",
+    "referenceReason",
+    "spotPremium",
+    "spotPremiumReason",
+    "premium",
+    "premiumReason",
+    "spot",
+    "spotReason",
+  ];
+  const next = { ...previous, detailsCheckedAt: checkedAt || 0 };
+  for (const field of fields)
+    if (Object.hasOwn(incoming, field)) next[field] = incoming[field];
+  return next;
+}
+
+// Age source observations against the feed cadence, never the page retrieval.
+// A source-dated close remains the disclosed close until the source flags it.
+export function observationIsStale(
+  observation,
+  now = Date.now(),
+  { intervalMs = 600000, dateOnly = false } = {},
+) {
+  if (observation?.stale === true || observation?.priceStale === true)
+    return true;
+  if (
+    dateOnly ||
+    (/^\d{4}-\d{2}-\d{2}$/.test(observation?.priceDate || "") &&
+      (observation.priceSession === "Closed" ||
+        observation.timePrecisionMs >= 86400000))
+  )
+    return false;
+  const raw = observation?.updatedAt ?? observation?.at ?? observation;
+  const at = typeof raw === "number" ? raw : Date.parse(raw);
+  return !Number.isFinite(at) || at > now + 60000 || now - at >= intervalMs;
+}
+
+// The page timer owns scheduling; this guard bounds visible refreshes even when
+// visibility changes and timer callbacks arrive together.
+export function createVisiblePageRefresh({
+  refresh,
+  isVisible,
+  isBusy = () => false,
+  now = Date.now,
+  intervalMs = 60000,
+}) {
+  let lastStarted = now(),
+    pending = null;
+  return {
+    reset() {
+      lastStarted = now();
+    },
+    tick() {
+      if (pending) return pending;
+      if (!isVisible() || isBusy() || now() - lastStarted < intervalMs)
+        return Promise.resolve();
+      lastStarted = now();
+      pending = Promise.resolve()
+        .then(refresh)
+        .finally(() => {
+          pending = null;
+        });
+      return pending;
+    },
+  };
+}
 export function productCoverage(products = []) {
   return {
     versions: products.length,

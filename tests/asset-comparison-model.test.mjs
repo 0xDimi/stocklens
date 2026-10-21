@@ -173,3 +173,88 @@ test("a retained pool premium remains stale even before its original expiry", ()
     true,
   );
 });
+
+test("observation aging follows the ten-minute feed cadence and preserves dated closes", async () => {
+  const { observationIsStale } = await import("../src/asset-comparison-model.mjs");
+  const now = Date.parse("2026-10-21T10:00:00Z");
+  assert.equal(typeof observationIsStale, "function");
+  assert.equal(observationIsStale({ updatedAt: "2026-10-21T09:54:00Z" }, now), false);
+  assert.equal(observationIsStale({ updatedAt: "2026-10-21T09:50:00Z" }, now), true);
+  assert.equal(observationIsStale({ at: now - 601000 }, now), true);
+  assert.equal(observationIsStale({ priceDate: "2026-10-20", priceSession: "Closed", at: now - 86400000 }, now), false);
+  assert.equal(observationIsStale({ priceDate: "2026-10-20", priceSession: "Closed", stale: true }, now), true);
+  assert.equal(observationIsStale({ priceDate: "2026-10-20", priceSession: "Closed", priceStale: true }, now), true);
+  assert.equal(observationIsStale({ updatedAt: null }, now), true);
+});
+
+test("profile chooser keeps the saved comparison and includes the current profile when capacity permits", async () => {
+  const { profileComparisonSelection } = await import("../src/asset-comparison-model.mjs");
+  assert.equal(typeof profileComparisonSelection, "function");
+  const stocks = ["a", "b", "c", "d", "e", "f"].map((id) => ({ id }));
+  assert.deepEqual(profileComparisonSelection(["a", "b"], "c", stocks), ["a", "b", "c"]);
+  assert.deepEqual(profileComparisonSelection(["a", "b"], "b", stocks), ["a", "b"]);
+  assert.deepEqual(profileComparisonSelection(["a", "b", "c", "d", "e"], "f", stocks), ["a", "b", "c", "d", "e"]);
+});
+
+test("visible-page refresh performs actual requests after one minute without hidden or overlapping work", async () => {
+  const { createVisiblePageRefresh } = await import("../src/asset-comparison-model.mjs");
+  assert.equal(typeof createVisiblePageRefresh, "function");
+  const { createServer } = await import("node:http");
+  let release, requests = 0, now = 100000, visible = true, busy = false;
+  const server = createServer((request, response) => {
+    requests++;
+    release = () => { response.end('{"reference":{"price":101}}'); };
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  let observed;
+  const refresh = createVisiblePageRefresh({
+    now: () => now,
+    isVisible: () => visible,
+    isBusy: () => busy,
+    refresh: async () => { observed = await (await fetch(`http://127.0.0.1:${server.address().port}`)).json(); },
+  });
+  try {
+    await refresh.tick();
+    assert.equal(requests, 0);
+    now += 60000;
+    visible = false;
+    await refresh.tick();
+    assert.equal(requests, 0);
+    visible = true;
+    busy = true;
+    await refresh.tick();
+    assert.equal(requests, 0);
+    busy = false;
+    const first = refresh.tick();
+    for (let i = 0; i < 100 && !release; i++) await new Promise((resolve) => setTimeout(resolve, 5));
+    assert.equal(requests, 1);
+    now += 60000;
+    const overlapping = refresh.tick();
+    assert.equal(requests, 1);
+    release();
+    await Promise.all([first, overlapping]);
+    assert.deepEqual(observed, { reference: { price: 101 } });
+    refresh.reset();
+    await refresh.tick();
+    assert.equal(requests, 1);
+  } finally {
+    release?.();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("profile detail reuse chooses the newest shared observation without changing source time or filling missing values", async () => {
+  const { mergeProfileDetails } = await import("../src/asset-comparison-model.mjs");
+  assert.equal(typeof mergeProfileDetails, "function");
+  const local = { market: { price: 99 }, reference: { price: 100, at: 900 }, spotPremium: { value: 1, priceAt: 900 }, detailsCheckedAt: 1000, checkedAt: 1500 };
+  const shared = { checkedAt: 2000, reference: { price: 101, at: 1400 }, spotPremium: null, spotPremiumReason: "No verified conversion" };
+  const result = mergeProfileDetails(local, shared);
+  assert.deepEqual(result.reference, { price: 101, at: 1400 });
+  assert.equal(result.spotPremium, null);
+  assert.equal(result.spotPremiumReason, "No verified conversion");
+  assert.deepEqual(result.market, { price: 99 });
+  assert.equal(result.checkedAt, 1500);
+  assert.deepEqual(mergeProfileDetails(result, { checkedAt: 1000, reference: { price: 42 } }), result);
+  const retained = { ...result, reference: { ...result.reference, stale: true } };
+  assert.deepEqual(mergeProfileDetails(retained, shared), retained);
+});

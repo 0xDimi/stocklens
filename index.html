@@ -17,6 +17,8 @@
     <link rel="stylesheet" href="/src/styles.css" />
     <link rel="stylesheet" href="/src/comparison-ui.css" />
     <link rel="stylesheet" href="/src/stock-pages.css" />
+    <link rel="stylesheet" href="/src/home-comparison.css" />
+    <link rel="stylesheet" href="/src/product-terms.css" />
     <script type="module" src="/src/app.mjs"></script>
   </head>
   <body>
@@ -132,7 +134,6 @@
             <p>Loading company…</p>
           </div>
           <div id="asset-metrics" class="asset-metrics"></div>
-          <p id="verification-note" class="verification-note"></p>
           <div class="view-tabs" role="tablist" aria-label="Comparison views">
             <button
               role="tab"
@@ -141,7 +142,7 @@
               aria-selected="true"
               aria-controls="view-panel"
             >
-              Token versions</button
+              Compare versions</button
             ><button
               role="tab"
               id="tab-quotes"
@@ -150,34 +151,7 @@
               aria-controls="view-panel"
               tabindex="-1"
             >
-              Buy quotes</button
-            ><button
-              role="tab"
-              id="tab-terms"
-              data-view="terms"
-              aria-selected="false"
-              aria-controls="view-panel"
-              tabindex="-1"
-            >
-              Product terms</button
-            ><button
-              role="tab"
-              id="tab-markets"
-              data-view="markets"
-              aria-selected="false"
-              aria-controls="view-panel"
-              tabindex="-1"
-            >
-              Liquidity</button
-            ><button
-              role="tab"
-              id="tab-venues"
-              data-view="venues"
-              aria-selected="false"
-              aria-controls="view-panel"
-              tabindex="-1"
-            >
-              Exchanges
+              Compare buy quotes
             </button>
           </div>
           <p id="comparison-intent" class="comparison-intent"></p>
@@ -227,14 +201,6 @@
           <p id="budget-error" class="field-error" hidden>
             Enter 10–1,000,000 USDC, with at most two decimal places.
           </p>
-          <div class="data-notice">
-            <span class="notice-icon" aria-hidden="true">i</span>
-            <p id="basis-note">
-              Prices are in USD per token. Compare buy quotes to see equivalent
-              share exposure.
-            </p>
-            <button id="methodology">Price basis ↗</button>
-          </div>
           <p id="view-source-warning" class="view-source-warning" hidden></p>
           <div id="compare-box" class="compare-box" hidden>
             <div class="compare-label">
@@ -274,8 +240,16 @@
             <div id="results" aria-live="polite" aria-atomic="false">
               <p class="empty-results">Loading the asset catalog…</p>
             </div>
+            <p id="basis-note" class="view-footnote"></p>
             <p id="view-footnote" class="view-footnote"></p>
           </div>
+          <nav class="supporting-views" aria-label="Product research">
+            <span>Explore</span
+            ><button id="tab-terms" data-view="terms">Product terms</button
+            ><button id="tab-markets" data-view="markets">Liquidity</button
+            ><button id="tab-venues" data-view="venues">Trading venues</button
+            ><button id="methodology">Price basis ↗</button>
+          </nav>
           <details id="chart-disclosure" class="chart-disclosure">
             <summary>
               <span>Price history</span
@@ -317,12 +291,13 @@
               Sources, coverage & asset details
               <span id="source-summary"></span>
             </summary>
+            <p id="verification-note" class="verification-note"></p>
             <div id="security-profile"></div>
             <div id="source-details"></div>
             <div id="desk-source-state"></div>
-            <button id="enrich">Refresh CoinGecko asset mapping ↗</button
+            <button id="enrich">Refresh token coverage ↗</button
             ><button class="text-button" data-open-coverage>
-              View full coverage audit ↗
+              View coverage & sources ↗
             </button>
           </details>
         </section>
@@ -591,7 +566,7 @@
       <form method="dialog">
         <button class="close-dialog" aria-label="Close explanation">×</button>
       </form>
-      <h2 id="dialog-title">Know the unit. Compare the output.</h2>
+      <h2 id="dialog-title">How Stocklens compares prices</h2>
       <h3>Market observations</h3>
       <p>
         CoinGecko provides aggregate token prices, tokenized reference markets

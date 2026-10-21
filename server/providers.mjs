@@ -409,15 +409,32 @@ export async function getQuoteOptions(
   const quotes = results.flatMap((result) =>
     result.status === "fulfilled" ? [result.value] : [],
   );
+  const failures = results.flatMap((result, index) =>
+    result.status === "rejected"
+      ? [
+          {
+            provider: adapters[index].name,
+            reason:
+              result.reason?.name === "TimeoutError"
+                ? "The public quote service timed out."
+                : result.reason?.message || "No route returned.",
+          },
+        ]
+      : [],
+  );
   if (quotes.length)
-    return [...new Map(quotes.map((row) => [row.routeIdentity, row])).values()];
-  const failures = results.map((result, index) => ({
-    provider: adapters[index].name,
-    reason:
-      result.reason?.name === "TimeoutError"
-        ? "The public quote service timed out."
-        : result.reason?.message || "No route returned.",
-  }));
+    return [
+      ...new Map(
+        quotes.map((row) => [
+          row.routeIdentity,
+          {
+            ...row,
+            attemptedProviders: adapters.map((adapter) => adapter.name),
+            quoteFailures: failures,
+          },
+        ]),
+      ).values(),
+    ];
   return [
     {
       ...base,

@@ -1,3 +1,4 @@
+import { termComparisonRows } from "./product-terms.mjs";
 import {
   escape,
   usd,
@@ -415,7 +416,16 @@ export function createTerminal({
     const field = (label, read) =>
       `<tr><th scope="row">${label}</th>${rows.map((p) => `<td>${read(p)}</td>`).join("")}</tr>`;
     $("#compare-content").innerHTML =
-      `<h2>${escape(asset.ticker)} · Compare product terms</h2><p>Compare what each token represents: rights, dividends and exit rules. For prices at your order size, use Compare buy quotes.</p><div class="table-scroll"><table class="comparison-matrix"><thead><tr><th>Attribute</th>${rows.map((p) => `<th><span class="token-cell">${issuerLogo(p)}${escape(p.symbol)}</span></th>`).join("")}</tr></thead><tbody>${field("Issuer", (p) => escape(provider(p).name))}${field("USD / token", (p) => usd(p.market?.price))}${field("Price observed", (p) => stamp(p.market?.updatedAt))}${field("Structure", (p) => escape(provider(p).structure))}${field("Holder rights", (p) => escape(provider(p).rights))}${field("Dividends", (p) => escape(provider(p).dividends))}${field("Exit & eligibility", (p) => escape(provider(p).exit))}${field("Networks", (p) => `<div class="matrix-networks">${p.deployments.map((d) => `<span class="named-network">${chainLogo(d.chain)}${escape(d.chain)}</span>`).join("")}</div>`)}${field("Primary terms", (p) => external(provider(p).source, provider(p).sourceLabel))}</tbody></table></div>`;
+      `<h2>${escape(asset.ticker)} · Compare product terms</h2><p>Compare what each token represents: rights, dividends and exit rules. For prices at your order size, use Compare buy quotes.</p><p class="terms-scroll-hint">Swipe sideways to compare selected products. Row labels stay visible.</p><div class="table-scroll" tabindex="0" role="region" aria-label="Product terms comparison"><table class="comparison-matrix"><thead><tr><th>Attribute</th>${rows.map((p) => `<th><span class="token-cell">${issuerLogo(p)}${escape(p.symbol)}</span></th>`).join("")}</tr></thead><tbody>${field("Issuer", (p) => escape(provider(p).name))}${field("USD / token", (p) => usd(p.market?.price))}${field("Price observed", (p) => stamp(p.market?.updatedAt))}${termComparisonRows(
+        rows,
+      )
+        .map(
+          (row) =>
+            `<tr><th scope="row">${escape(row.label)}</th>${row.values.map((term) => `<td><strong>${escape(term.value)}</strong>${term.detail || term.source ? `<details class="matrix-term-notes"><summary>Details &amp; source</summary>${term.detail ? `<small class="matrix-term-detail">${escape(term.detail)}</small>` : ""}${term.source ? external(term.source, "Source") : ""}</details>` : ""}</td>`).join("")}</tr>`,
+        )
+        .join(
+          "",
+        )}${field("Networks", (p) => `<div class="matrix-networks">${p.deployments.map((d) => `<span class="named-network">${chainLogo(d.chain)}${escape(getState().chains.find((c) => c.id === d.chain)?.label || d.chain)}</span>`).join("")}</div>`)}${field("Primary terms", (p) => external(provider(p).source, provider(p).sourceLabel))}</tbody></table></div>`;
     $("#compare-content").insertAdjacentHTML(
       "beforeend",
       `<div class="matrix-action"><button class="primary-button" data-action="quotes">Compare available buy quotes →</button><small>Compare supported routes for ${escape(asset.ticker)}. Filter by issuer or network on the next view.</small></div>`,

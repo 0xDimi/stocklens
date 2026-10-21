@@ -213,3 +213,41 @@ test("indicative getQuote forwards an expired caller deadline without starting s
   assert.equal(row.status, "unavailable");
   assert.match(row.reason, /Quote deadline reached/);
 });
+
+test("Velora handoff carries network and exact pair in the current app route", async () => {
+  const { additionalQuoteProviders } =
+    await import("../server/public-quote-providers.mjs");
+  const { CHAINS } = await import("../server/config.mjs");
+  for (const id of ["Ethereum", "BinanceSmartChain", "Base", "Arbitrum"]) {
+    const chain = CHAINS[id],
+      address = "0xa9ee28c80f960b889dfbd1902055218cba016f75";
+    const [adapter] = additionalQuoteProviders(
+      { chain: id, address },
+      chain,
+      "1000000",
+      { outputDecimals: 18 },
+    );
+    const url = new URL(adapter.buyUrl);
+    assert.equal(url.pathname, `/app/swap/${chain.usdc}-${address}`);
+    assert.equal(url.searchParams.get("network"), chain.kyber);
+    assert.equal(url.hash, "");
+  }
+});
+
+test("Jupiter handoff preserves both mints in the current swap query", async () => {
+  const { additionalQuoteProviders } =
+    await import("../server/public-quote-providers.mjs");
+  const { CHAINS } = await import("../server/config.mjs");
+  const chain = CHAINS.Solana,
+    address = "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh";
+  const [adapter] = additionalQuoteProviders(
+    { chain: "Solana", address },
+    chain,
+    "1000000",
+    { outputDecimals: 8 },
+  );
+  const url = new URL(adapter.buyUrl);
+  assert.equal(url.pathname, "/swap");
+  assert.equal(url.searchParams.get("buy"), address);
+  assert.equal(url.searchParams.get("sell"), chain.usdc);
+});

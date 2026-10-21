@@ -43,14 +43,16 @@ test("Jupiter rejects jobs that cannot fit the remaining deadline without sendin
   const url = `http://127.0.0.1:${server.address().port}`;
   const load = adapters.createJupiterRequester({ intervalMs: 60 });
   try {
-    assert.deepEqual(
-      await load(url + "/first", { deadlineAt: Date.now() + 1000 }),
-      { ok: true },
-    );
-    await assert.rejects(
-      load(url + "/expired", { deadlineAt: Date.now() + 15 }),
+    const started = Date.now();
+    const first = load(url + "/first", { deadlineAt: started + 1000 });
+    // Reserve the second job before awaiting HTTP. Network response latency
+    // must not decide whether the spacing window has already elapsed.
+    const rejected = assert.rejects(
+      load(url + "/expired", { deadlineAt: started + 15 }),
       /deadline|capacity|timed out/i,
     );
+    assert.deepEqual(await first, { ok: true });
+    await rejected;
     assert.deepEqual(received, ["/first"]);
     assert.deepEqual(
       await load(url + "/next", { deadlineAt: Date.now() + 1000 }),

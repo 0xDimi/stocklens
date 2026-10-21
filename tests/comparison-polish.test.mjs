@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { restoreComparison, saveComparison, readComparison, comparisonStorage } from "../src/comparison-state.mjs";
+import {
+  restoreComparison,
+  saveComparison,
+  readComparison,
+  comparisonStorage,
+} from "../src/comparison-state.mjs";
 import {
   quoteCoverage,
   quoteCoverageMarkup,

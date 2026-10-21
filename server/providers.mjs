@@ -230,14 +230,16 @@ export function parseOndoOracle(value) {
 }
 export function purchaseUrl(deployment) {
   const chain = CHAINS[deployment.chain];
-  const buyParams = new URLSearchParams(
-    deployment.chain === "Solana"
-      ? { inputMint: chain.usdc, outputMint: deployment.address }
-      : { inputCurrency: chain.usdc, outputCurrency: deployment.address },
-  );
-  return deployment.chain === "Solana"
-    ? `https://raydium.io/swap/?${buyParams}`
-    : `https://kyberswap.com/swap/${chain.websiteChain}?${buyParams}`;
+  if (deployment.chain === "Solana") {
+    const params = new URLSearchParams({
+      inputMint: chain.usdc,
+      outputMint: deployment.address,
+    });
+    return `https://raydium.io/swap/?${params}`;
+  }
+  // The venue's canonical token path preserves the network on initial load.
+  // Its legacy currency query is rewritten against a visitor's default chain.
+  return `https://kyberswap.com/swap/${chain.websiteChain}/${chain.usdc}-to-${deployment.address}`;
 }
 export async function getQuoteOptions(
   product,

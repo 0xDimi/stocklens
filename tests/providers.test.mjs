@@ -139,11 +139,11 @@ test("Kyber handoff uses website chain slugs, independent of API slugs", async (
   const { purchaseUrl } = await import("../server/providers.mjs");
   assert.match(
     purchaseUrl({ chain: "BinanceSmartChain", address: "0xtoken" }),
-    /swap\/bnb\?/,
+    /swap\/bnb\//,
   );
   assert.match(
     purchaseUrl({ chain: "Ethereum", address: "0xtoken" }),
-    /swap\/ethereum\?/,
+    /swap\/ethereum\//,
   );
   assert.match(
     purchaseUrl({ chain: "Solana", address: "mint" }),
@@ -192,4 +192,18 @@ test("issuer label alone cannot authorize xStocks or Ondo conversion for wrapper
     }),
     "ondo",
   );
+});
+
+test("Kyber handoffs use the chain and token path rather than legacy query redirects", async () => {
+  const { purchaseUrl } = await import("../server/providers.mjs");
+  const { CHAINS } = await import("../server/config.mjs");
+  for (const chain of ["Ethereum", "BinanceSmartChain", "Base", "Arbitrum"]) {
+    const address = "0xc845b2894dbddd03858fd2d643b4ef725fe0849d";
+    const url = new URL(purchaseUrl({ chain, address }));
+    assert.equal(
+      url.pathname,
+      `/swap/${CHAINS[chain].websiteChain}/${CHAINS[chain].usdc}-to-${address}`,
+    );
+    assert.equal(url.search, "");
+  }
 });

@@ -1,5 +1,6 @@
 // Live integration checks: no fixtures, fake responses, or test-only data feeds.
 import assert from "node:assert/strict";
+import { CHAINS } from "../server/config.mjs";
 import { writeFile, mkdir } from "node:fs/promises";
 const base = process.env.STOCKLENS_URL || "http://127.0.0.1:4173";
 const start = Date.now();
@@ -93,18 +94,29 @@ for (const ticker of ["NVDA", "AAPL", "TSLA"]) {
     assert.ok(q.tokenQuantity > 0);
     assert.ok(q.explorerUrl.includes(q.address));
     assert.ok(q.buyUrl.includes(q.address));
-    if (q.chain === "BinanceSmartChain") {
-      const handoff = new URL(q.buyUrl);
-      if (q.providerId === "velora") {
-        assert.equal(handoff.hostname, "app.velora.xyz");
-        const params = new URLSearchParams(handoff.hash.split("?")[1]);
-        assert.equal(params.get("network"), "56");
-        assert.equal(params.get("dest"), q.address);
-      } else {
-        assert.equal(handoff.hostname, "kyberswap.com");
-        assert.ok(handoff.pathname === "/swap/bnb");
-        assert.equal(handoff.searchParams.get("outputCurrency"), q.address);
-      }
+    const handoff = new URL(q.buyUrl),
+      chain = CHAINS[q.chain];
+    if (q.providerId === "velora") {
+      assert.equal(handoff.hostname, "app.velora.xyz");
+      assert.equal(handoff.pathname, `/app/swap/${q.inputAsset}-${q.address}`);
+      assert.equal(handoff.searchParams.get("network"), chain.kyber);
+      assert.equal(handoff.hash, "");
+    } else if (q.providerId === "jupiter") {
+      assert.equal(handoff.hostname, "jup.ag");
+      assert.equal(handoff.pathname, "/swap");
+      assert.equal(handoff.searchParams.get("buy"), q.address);
+      assert.equal(handoff.searchParams.get("sell"), q.inputAsset);
+    } else if (q.chain === "Solana") {
+      assert.equal(handoff.hostname, "raydium.io");
+      assert.equal(handoff.searchParams.get("inputMint"), q.inputAsset);
+      assert.equal(handoff.searchParams.get("outputMint"), q.address);
+    } else {
+      assert.equal(handoff.hostname, "kyberswap.com");
+      assert.equal(
+        handoff.pathname,
+        `/swap/${chain.websiteChain}/${q.inputAsset}-to-${q.address}`,
+      );
+      assert.equal(handoff.search, "");
     }
     assert.ok(q.expiresAt > q.fetchedAt);
     if (q.equivalentShares != null)

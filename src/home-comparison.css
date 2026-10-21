@@ -198,7 +198,7 @@
     display: inline-flex;
     align-items: center;
   }
-  #home-page .company-name h2 {
+  #home-page .company-name :is(h1, h2) {
     font-size: 21px;
   }
   #home-page .company p {
@@ -446,4 +446,16 @@
   #home-page .product-row > summary {
     padding-block: 12px;
   }
+}
+
+#home-page .rail-bottom .coverage-note {
+  align-items: flex-start;
+  text-align: left;
+  gap: 4px;
+}
+#home-page .rail-bottom .coverage-note .coverage-link {
+  font-size: 11px;
+}
+#home-page .rail-bottom .coverage-note small {
+  font-size: 10px;
 }

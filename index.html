@@ -41,22 +41,6 @@
       </nav>
     </header>
     <main class="page" id="home-page">
-      <section class="page-intro">
-        <div>
-          <h1>One stock. Compare its tokens.</h1>
-          <p>
-            Find your stock, compare verified versions, then open the right
-            venue.
-          </p>
-        </div>
-        <div class="coverage-note">
-          <button class="coverage-link" data-open-coverage id="coverage">
-            Loading the asset catalog…</button
-          ><small id="market-status"
-            >CoinGecko · GeckoTerminal · issuer data</small
-          >
-        </div>
-      </section>
       <div class="workspace">
         <aside class="stock-rail" aria-label="Choose a stock">
           <div class="rail-heading">
@@ -104,6 +88,13 @@
               <p class="empty-search">Loading source catalogs…</p>
             </div>
             <div class="rail-bottom">
+              <div class="coverage-note">
+                <button class="coverage-link" data-open-coverage id="coverage">
+                  Loading the asset catalog…</button
+                ><small id="market-status"
+                  >CoinGecko · GeckoTerminal · issuer data</small
+                >
+              </div>
               <span id="list-status"></span
               ><button id="load-markets" hidden>Load more market data</button>
               <details class="watchlist-tools">

@@ -467,7 +467,7 @@ kbd {
   align-items: center;
   gap: 9px;
 }
-.company-name h2 {
+.company-name :is(h1, h2) {
   font-size: 24px;
   font-weight: 650;
   letter-spacing: -0.02em;
@@ -1645,7 +1645,7 @@ dialog p {
   .company-symbol {
     display: none;
   }
-  .company-name h2 {
+  .company-name :is(h1, h2) {
     font-size: 23px;
   }
   .stock-heading > .primary-button {
@@ -1855,7 +1855,7 @@ dialog p {
     flex-wrap: wrap;
     gap: 15px;
   }
-  .company-name h2 {
+  .company-name :is(h1, h2) {
     font-size: 23px;
   }
   .company p {
@@ -3268,7 +3268,7 @@ dialog p {
     font-size: 11px;
     line-height: 1.6;
   }
-  .company-name h2 {
+  .company-name :is(h1, h2) {
     font-size: 22px;
   }
   .asset-metrics {

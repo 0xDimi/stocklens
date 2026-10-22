@@ -24,6 +24,24 @@ const buy = {
   budget: 1000,
   basis: "$1,000 indicative buy before gas.",
 };
+test("a comparable current buy price leads over a raw pool that cannot establish a premium", () => {
+  const html = priceComparison({
+    reference,
+    premium: buy,
+    spot: {
+      price: 101,
+      at: now,
+      conversionVerified: true,
+      expiresAt: now + 300000,
+      symbol: "MSFTon",
+      issuer: "ondo",
+    },
+  });
+  assert.match(html, /\$102\.00/);
+  assert.match(html, /\+2\.00%/);
+  assert.match(html, /\$1,000 buy/);
+  assert.doesNotMatch(html, /Prices not time-aligned/);
+});
 test("Home uses the verified indicative buy price when no normalized pool price exists", () => {
   const html = priceComparison({ reference, premium: buy });
   assert.match(html, /\$102\.00/);

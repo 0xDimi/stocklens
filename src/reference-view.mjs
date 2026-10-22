@@ -34,8 +34,9 @@ const source = (url, label) => {
   } catch {}
   return escape(label);
 };
-// Pool snapshots and order-size prices have different meanings. Prefer a
-// current pool, then a current buy observation, then an explicitly dated one.
+// Prefer a current, comparable observation before a raw price. A pool leads
+// among comparable observations; a valid buy premium must not be hidden by an
+// unaligned raw pool. Keep older observations explicitly dated.
 export function selectOnchainPrice(
   { spotPremium, spot, premium, buyObservation } = {},
   now = Date.now(),
@@ -71,9 +72,9 @@ export function selectOnchainPrice(
     candidates.sort(
       (a, b) =>
         Number(a.older) - Number(b.older) ||
+        Number(b.metric) - Number(a.metric) ||
         Number(a.kind === "buy") - Number(b.kind === "buy") ||
-        b.at - a.at ||
-        Number(b.metric) - Number(a.metric),
+        b.at - a.at,
     )[0] || null
   );
 }

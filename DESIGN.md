@@ -22,4 +22,4 @@ Stock overviews extend the daylight identity with prominent listed and tokenized
 
 Home opens directly on the selected stock and comparison. Catalog coverage lives with the asset finder; no introductory marketing section precedes the workspace.
 
-Home keeps verified onchain share prices independent of listed-feed availability. A current normalized pool leads; a size-specific $1,000 buy observation is a labeled fallback. Older observations retain dates. Markets uses explicit metric widths and includes source-reported 24h turnover beside the premium; table scrolling stays within its labeled region.
+Home keeps verified onchain share prices independent of listed-feed availability. A current comparable normalized pool leads; a size-specific $1,000 buy comparison is a labeled fallback before unaligned raw observations. Older observations retain dates. Markets uses explicit metric widths and includes source-reported 24h turnover beside the premium; table scrolling stays within its labeled region.

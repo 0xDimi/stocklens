@@ -1,6 +1,7 @@
 import { renderProductTerms } from "./product-terms.mjs";
 import { issuerLogo, chainLogo, venueLogo } from "./brands.mjs";
 import { issuers } from "./data.mjs";
+import { premium as comparablePremium } from "./market-model.mjs";
 export const escape = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -116,23 +117,38 @@ export function purchaseSummary(rows) {
   return `<div class="purchase-summary"><div class="purchase-choice"><span>Best quoted share exposure</span><strong>${escape(best.symbol)} <small>by ${escape(provider(best).name)}</small></strong><p>${escape(best.chainLabel)} · ${escape(best.venue || "")}</p></div><div><span>You receive</span><strong>${number(best.equivalentShares, 4)}</strong><small>equivalent shares for ${number(best.inputQuantity)} USDC</small></div><div><span>Cost per equivalent share</span><strong>${number(best.effectivePrice)} <small>USDC</small></strong><small>before network costs</small></div></div>`;
 }
 export function quoteTable(rows, { reference, bestId } = {}) {
-  const best =
-    bestId === undefined
-      ? bestQuote(rows)
-      : rows.find((row) => row.id === bestId);
+  const now = Date.now(),
+    best =
+      bestId === undefined
+        ? bestQuote(rows, now)
+        : rows.find((row) => row.id === bestId);
   return (
     `<div class="table-header" aria-hidden="true"><span>Token / issuer</span><span>Network / quote source</span><span>USDC per equivalent share</span><span>You receive</span><span>Gas estimate</span><span></span></div>` +
     rows
       .map((r) => {
         const quoted = r.status === "quoted",
-          expired = !(r.expiresAt > Date.now()),
+          expired = !(r.expiresAt > now),
           premium =
+            quoted &&
+            !expired &&
             r.rankable &&
-            r.effectivePrice > 0 &&
-            reference?.price > 0 &&
-            !reference.stale &&
-            !reference.priceStale
-              ? (r.effectivePrice / reference.price - 1) * 100
+            !reference?.stale &&
+            !reference?.priceStale
+              ? comparablePremium(
+                  {
+                    price: r.effectivePrice,
+                    // effectivePrice is already per equivalent share.
+                    sharesPerToken: 1,
+                    conversionVerified:
+                      r.conversionVerified !== false &&
+                      Number.isFinite(r.equivalentShares) &&
+                      r.equivalentShares > 0,
+                    currency: "USD",
+                    at: r.fetchedAt,
+                  },
+                  reference,
+                  now,
+                )
               : null,
           adverse = premium > 5 || r.priceImpactPct > 5,
           normalized = Number.isFinite(r.equivalentShares),
@@ -186,7 +202,7 @@ export function csvText(rows, columns) {
     const text = String(value ?? "");
     return (
       '"' +
-      (/^[=+@\-\t\r]/.test(text) ? "'" : "") +
+      (!Number.isFinite(value) && /^[=+@\-\t\r]/.test(text) ? "'" : "") +
       text.replaceAll('"', '""') +
       '"'
     );

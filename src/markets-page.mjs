@@ -67,6 +67,25 @@ export async function refreshMarketPage(refresh, refreshDetails, onError) {
   }
   refreshDetails();
 }
+export function marketExportPrices(detail = {}, now = Date.now()) {
+  const selected = selectOnchainPrice(detail, now),
+    p = selected?.data,
+    comparable =
+      selected?.metric && Number.isFinite(p?.value) && p.referencePrice > 0,
+    reference = comparable
+      ? comparisonReference(detail.reference, p)
+      : detail.reference;
+  return {
+    listedPrice: reference?.price ?? null,
+    listedAt: reference?.priceDate || reference?.at || null,
+    onchainPrice: p?.price ?? null,
+    onchainAt: selected?.at ?? null,
+    premium: comparable ? p.value : null,
+    basis: selected
+      ? `${selected.older ? "Older observation · " : ""}${selected.kind === "buy" ? "$1,000 indicative buy · before gas" : "Pool snapshot"}`
+      : "Not supplied",
+  };
+}
 export function createMarketsPage({
   getState,
   getMarkets,
@@ -645,18 +664,25 @@ export function createMarketsPage({
     scheduleDetails({ immediate: true, force: true }),
   );
   $("#market-export").addEventListener("click", () => {
+    const now = Date.now(),
+      prices = new Map(
+        currentRows.map((s) => [
+          s.id,
+          marketExportPrices(details.get(s.id), now),
+        ]),
+      ),
+      observed = (at) =>
+        typeof at === "number" ? new Date(at).toISOString() : at;
     const text = csvText(currentRows, [
       ["Stock", (s) => s.ticker],
       ["Asset ID", (s) => s.id],
-      ["Listed price USD", (s) => details.get(s.id)?.reference?.price],
-      [
-        "Listed observed",
-        (s) =>
-          details.get(s.id)?.reference?.priceDate ||
-          details.get(s.id)?.reference?.at,
-      ],
+      ["Listed price USD", (s) => prices.get(s.id).listedPrice],
+      ["Listed observed", (s) => observed(prices.get(s.id).listedAt)],
       ["Tokenized price USD", (s) => s.market?.price],
-      ["Pool premium percent", (s) => details.get(s.id)?.spotPremium?.value],
+      ["Onchain per share USD", (s) => prices.get(s.id).onchainPrice],
+      ["Onchain premium percent", (s) => prices.get(s.id).premium],
+      ["Onchain price basis", (s) => prices.get(s.id).basis],
+      ["Onchain observed", (s) => observed(prices.get(s.id).onchainAt)],
       ["24h change percent", (s) => s.market?.change24h],
       ["24h turnover percent", (s) => marketTurnover(s.market)],
       ["Tokenized cap USD", (s) => s.market?.marketCap],

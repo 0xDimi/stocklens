@@ -390,6 +390,14 @@ async function loadView(enrich = false) {
   $("#export").disabled = true;
   if (!selected) return;
   const valid = validBudget($("#budget").value);
+  document
+    .querySelectorAll("[data-budget]")
+    .forEach((button) =>
+      button.setAttribute(
+        "aria-pressed",
+        button.dataset.budget === $("#budget").value,
+      ),
+    );
   $("#budget-error").hidden = view !== "quotes" || valid;
   $("#budget").setAttribute("aria-invalid", !valid);
   if (view === "quotes" && !valid) {
@@ -627,7 +635,7 @@ document.querySelector(".view-tabs").addEventListener("keydown", (e) => {
   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
   e.preventDefault();
   const tabs = [...document.querySelectorAll(".view-tabs [data-view]")],
-    i = tabs.findIndex((t) => t.dataset.view === view);
+    i = tabs.findIndex((t) => t.getAttribute("aria-selected") === "true");
   const next =
     e.key === "Home"
       ? 0
@@ -657,8 +665,15 @@ $("#budget").addEventListener("input", () => {
       b.setAttribute("aria-pressed", b.dataset.budget === $("#budget").value),
     );
   snapshot = null;
+  visibleRows = [];
+  $("#export").disabled = true;
+  const valid = validBudget($("#budget").value);
+  $("#budget-error").hidden = valid;
+  $("#budget").setAttribute("aria-invalid", !valid);
   $("#decision-summary").innerHTML = "";
-  $("#results").innerHTML = '<p class="empty-results">Updating amount…</p>';
+  $("#results").innerHTML = valid
+    ? '<p class="empty-results">Updating amount…</p>'
+    : '<p class="empty-results">Set a valid USDC amount to compare.</p>';
   $("#freshness").textContent = "";
   $("#comparison-status").textContent = "";
   $("#result-count").textContent = "—";

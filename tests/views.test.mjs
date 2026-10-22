@@ -45,6 +45,13 @@ test("CSV escapes spreadsheet formulas, delimiters and quotes", () => {
   );
   assert.equal(text, '"Value"\r\n"\'=SUM(1,2)"\r\n"a,""b"""');
 });
+test("CSV preserves finite negative numbers as numeric data while protecting text formulas", () => {
+  const text = csvText(
+    [{ value: -0.74 }, { value: "-1+2" }, { value: "=1+2" }],
+    [["Value", (r) => r.value]],
+  );
+  assert.equal(text, '"Value"\r\n"-0.74"\r\n"\'-1+2"\r\n"\'=1+2"');
+});
 test("untrusted product labels remain escaped markup", () => {
   const html = productsTable(
     [

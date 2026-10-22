@@ -3080,6 +3080,7 @@ dialog p {
   .market-ranking button {
     font-size: 12px;
     padding: 8px 9px;
+    min-height: 44px;
   }
   .market-search {
     width: 100%;
@@ -3098,6 +3099,13 @@ dialog p {
   .markets-filters select,
   .markets-filters button {
     font-size: 11px;
+    min-height: 44px;
+  }
+  .markets-heading button,
+  .market-feed-line button,
+  .market-pagination button,
+  .market-data-notes button {
+    min-height: 44px;
   }
   .overview-actions {
     margin-left: 0;

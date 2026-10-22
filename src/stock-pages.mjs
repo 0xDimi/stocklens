@@ -1,5 +1,6 @@
 import { renderProductTerms } from "./product-terms.mjs";
 import { escape, usd, compact, number, stamp, provider } from "./views.mjs";
+import { selectOnchainPrice, comparisonReference } from "./reference-view.mjs";
 import {
   stockLogo,
   issuerLogo,
@@ -11,7 +12,6 @@ import {
   productCoverage,
   chartSeries,
   profileMetric,
-  profileSpot,
   createVenueLoader,
   observationIsStale,
   profileComparisonSelection,
@@ -39,6 +39,42 @@ const referenceTime = (r) =>
     ? `${escape(r.priceDate)} · date supplied by source`
     : stamp(r?.at);
 const older = (at) => observationIsStale(at);
+const priceKind = (selected) =>
+  selected?.kind === "buy"
+    ? "$1,000 indicative buy · before gas"
+    : "Pool snapshot";
+function priceContext(data) {
+  const selected = selectOnchainPrice(data),
+    p = selected?.data;
+  const comparable = !!(
+    selected?.metric &&
+    Number.isFinite(p.value) &&
+    p.referencePrice > 0
+  );
+  const reference = comparable
+    ? {
+        ...comparisonReference(data.reference, p),
+        priceSession:
+          p.referenceBasis === "last-close" ? "Closed" : "Listed reference",
+        priceSource:
+          p.referenceSource ||
+          data.reference?.priceSource ||
+          data.reference?.source,
+      }
+    : data.reference;
+  return { selected, p, comparable, reference };
+}
+function premiumReason(data, context) {
+  if (context.p)
+    return context.reference?.price > 0
+      ? "Prices not time-aligned"
+      : "Listed price required";
+  return (
+    data.spotPremiumReason ||
+    data.premiumReason ||
+    "A verified onchain share price is required."
+  );
+}
 
 // The overview extends Stocklens's daylight table language. Two distinct price
 // bases lead; observed history and expandable contracts carry the evidence.
@@ -144,24 +180,20 @@ export function createStockPages({
   }
   const actions = (id) =>
     `<button class="stock-primary" data-stock-versions="${escape(id)}" ${focusKey("versions")}>Compare token versions</button><button data-stock-quotes="${escape(id)}" ${focusKey("quotes")}>Compare buy quotes</button>`;
-  function listedPrice(stock, data) {
-    const r = data.reference;
+  function listedPrice(stock, data, context) {
+    const r = context.reference;
     return `<div class="stock-price"><span>Listed ${stock.category === "ETF" ? "ETF" : "stock"} <small>USD</small></span><strong>${Number.isFinite(r?.price) ? usd(r.price) : data.loading ? "Loading…" : "Unavailable"}</strong><p>${r ? `${escape(r.exchange || "Nasdaq reference")} · ${escape(r.priceSession || "Session not supplied")}${observationIsStale(r) ? " · Older observation" : ""}` : escape(data.referenceReason || "Listed-security source has not returned a price.")}</p><small>${r ? `${referenceTime(r)} · ${link(r.priceSource || r.source, "Source")}` : "No listed price estimated"}</small></div>`;
   }
   function tokenPrice(id) {
     const market = marketFor(id);
     return `<div class="stock-price stock-aggregate-reference"><span>Tokenized aggregate <small>USD market reference</small></span><strong>${Number.isFinite(market?.price) ? usd(market.price) : entry(id).loading ? "Loading…" : "Unavailable"}</strong><p>${Number.isFinite(market?.change24h) ? `<b class="${tone(market.change24h)}">${signed(market.change24h)}</b> past 24h` : "24h change not supplied"}</p><small>${link("https://www.coingecko.com/en/categories/tokenized-stock", "CoinGecko")} · ${market?.updatedAt ? `${older(market) ? "Older observation · " : ""}${stamp(market.updatedAt)}` : "Observation time not supplied"}</small></div>`;
   }
-  function poolPrice(data) {
-    const p = data.spotPremium,
-      observed = profileSpot(data);
-    const available = Number.isFinite(p?.price) && p.price > 0;
-    return `<div class="stock-price stock-pool-price"><span>Representative pool <small>USD per equivalent share</small></span><strong>${available ? usd(p.price) : data.loading ? "Loading…" : "Unavailable"}</strong><p>${available ? `${observed?.stale ? "Older observation · " : ""}${escape(p.symbol || "Representative token")}${p.chain ? " on " + escape(networkName(p.chain)) : ""}` : escape(data.spotPremiumReason || "A pool price with verified share conversion is required.")}</p><small>${available ? `${stamp(p.priceAt)} · ${link(p.source, "Pool source")}` : "No pool price estimated"}</small></div>`;
+  function poolPrice(data, { selected, p }) {
+    return `<div class="stock-price stock-pool-price"><span>Onchain per share <small>USD per equivalent share</small></span><strong>${p ? usd(p.price) : data.loading ? "Loading…" : "Unavailable"}</strong><p>${p ? `${selected.older ? "Older observation · " : ""}${escape(p.symbol || "Representative token")}${p.chain ? " on " + escape(networkName(p.chain)) : ""}` : escape(data.spotReason || data.spotPremiumReason || "A price with verified share conversion is required.")}</p><small>${p ? `${priceKind(selected)} · ${stamp(selected.at)} · ${link(p.source, selected.kind === "buy" ? "Quote source" : "Pool source")}` : "No onchain price estimated"}</small></div>`;
   }
-  function spotPanel(data) {
-    const observed = profileSpot(data),
-      p = data.spotPremium;
-    return `<div class="stock-spot"><span>Share-normalized spot premium</span><strong class="${observed ? tone(observed.value) : ""}">${observed ? signed(observed.value) : data.loading ? "Loading…" : "Unavailable"}</strong><p>${observed ? `${observed.stale ? "Older observation · " : ""}${p.referenceBasis === "last-close" ? "Versus listed last close" : "Versus listed reference"} · ${escape(p.symbol || "Representative token")}${p.chain ? " on " + escape(networkName(p.chain)) : ""}` : escape(data.spotPremiumReason || "A comparable spot price and verified share conversion are required.")}</p>${observed ? `<details data-stock-detail="spot"><summary ${focusKey("spot-source")}>Price basis & sources</summary><p>${escape(p.basis)} Observed spot ${usd(p.price)} per equivalent share versus listed ${usd(p.referencePrice)}. ${Number.isFinite(p.sharesPerToken) ? number(p.sharesPerToken, 8) + " shares per token." : ""} Token observed ${stamp(p.priceAt)}${p.priceTimeBasis ? " (" + escape(p.priceTimeBasis) + ")" : ""}; listed reference ${referenceTime(data.reference)}. ${link(p.source, "Token price")} · ${link(p.referenceSource, "Listed reference")}${p.conversionSource ? " · " + link(p.conversionSource, "Share conversion") : ""}</p></details>` : ""}</div>`;
+  function spotPanel(data, context) {
+    const { selected, p, comparable, reference } = context;
+    return `<div class="stock-spot"><span>Onchain premium</span><strong class="${comparable ? tone(p.value) : ""}">${comparable ? signed(p.value) : data.loading ? "Loading…" : "Unavailable"}</strong><p>${comparable ? `${selected.older ? "Older observation · " : ""}${p.referenceBasis === "last-close" ? "Versus listed last close" : "Versus listed reference"} · ${priceKind(selected)}` : escape(premiumReason(data, context))}</p>${p ? `<details data-stock-detail="spot"><summary ${focusKey("spot-source")}>Price basis & sources</summary><p>${escape(p.basis || (selected.kind === "buy" ? "Size-specific indicative buy price before network costs; not an executable offer." : "One verified pool snapshot normalized to equivalent shares; not an executable buy quote."))} Observed ${selected.kind === "buy" ? "buy price" : "pool price"} ${usd(p.price)} per equivalent share${comparable ? ` versus listed ${usd(p.referencePrice)}` : ""}. ${Number.isFinite(p.sharesPerToken) ? number(p.sharesPerToken, 8) + " shares per token." : ""} Token observed ${stamp(selected.at)}${p.priceTimeBasis ? " (" + escape(p.priceTimeBasis) + ")" : ""}${comparable ? `; listed reference ${referenceTime(reference)}` : ""}. ${link(p.source, selected.kind === "buy" ? "Quote source" : "Pool source")}${comparable ? " · " + link(reference.priceSource, "Listed reference") : ""}${p.conversionSource ? " · " + link(p.conversionSource, "Share conversion") : ""}</p></details>` : ""}</div>`;
   }
   function fundamental(stock, data, field) {
     const metric = profileMetric(stock, data, field),
@@ -249,12 +281,13 @@ export function createStockPages({
       return;
     }
     const data = entry(id),
+      context = priceContext(data),
       coverage = productCoverage(stock.products),
       saved = getSaved().has(id);
     root.setAttribute("aria-busy", String(!!data.loading));
     replace(
       root,
-      `<div class="stock-page-inner"><a class="stock-back" href="/?page=markets" data-stock-markets>← Markets</a><header class="stock-profile-heading"><div class="stock-profile-identity">${stockLogo(stock, marketFor(id)?.image)}<div><div class="stock-title-line"><h1>${escape(stock.name)}</h1><span class="stock-security-type">${escape(stock.ticker)} · ${escape(stock.category || "Security")}</span></div><p>${coverage.issuers} issuers · ${coverage.networks.length} networks · ${coverage.versions} mapped versions</p></div></div><div class="stock-header-actions"><button data-stock-save="${escape(id)}" aria-pressed="${saved}" aria-label="${saved ? "Unsave" : "Save"} ${escape(stock.name)}" ${focusKey("save")}>${saved ? "★ Saved" : "☆ Save"}</button><button data-stock-choose ${focusKey("choose")}>Compare stocks</button><button data-stock-refresh ${focusKey("refresh")} ${data.loading ? "disabled" : ""}>${data.loading ? "Updating…" : "Refresh"}</button></div></header><div class="stock-price-band">${listedPrice(stock, data)}${poolPrice(data)}${spotPanel(data)}</div>${tokenPrice(id)}<p class="stock-price-basis">The representative pool price uses verified share conversion. The aggregate is a separate market reference; CoinGecko does not disclose its share normalization. Neither is an executable buy quote.</p><div class="stock-profile-actions">${actions(id)}</div>${status(data)}<div class="stock-tabs" role="tablist" aria-label="Stock details">${[
+      `<div class="stock-page-inner"><a class="stock-back" href="/?page=markets" data-stock-markets>← Markets</a><header class="stock-profile-heading"><div class="stock-profile-identity">${stockLogo(stock, marketFor(id)?.image)}<div><div class="stock-title-line"><h1>${escape(stock.name)}</h1><span class="stock-security-type">${escape(stock.ticker)} · ${escape(stock.category || "Security")}</span></div><p>${coverage.issuers} issuers · ${coverage.networks.length} networks · ${coverage.versions} mapped versions</p></div></div><div class="stock-header-actions"><button data-stock-save="${escape(id)}" aria-pressed="${saved}" aria-label="${saved ? "Unsave" : "Save"} ${escape(stock.name)}" ${focusKey("save")}>${saved ? "★ Saved" : "☆ Save"}</button><button data-stock-choose ${focusKey("choose")}>Compare stocks</button><button data-stock-refresh ${focusKey("refresh")} ${data.loading ? "disabled" : ""}>${data.loading ? "Updating…" : "Refresh"}</button></div></header><div class="stock-price-band">${listedPrice(stock, data, context)}${poolPrice(data, context)}${spotPanel(data, context)}</div>${tokenPrice(id)}<p class="stock-price-basis">Onchain prices use verified share conversion. A pool snapshot leads when current; a $1,000 indicative buy before gas is the fallback. Older observations retain their dates. The aggregate is a separate market reference; CoinGecko does not disclose its share normalization. These observations are not executable offers.</p><div class="stock-profile-actions">${actions(id)}</div>${status(data)}<div class="stock-tabs" role="tablist" aria-label="Stock details">${[
         ["overview", "Overview"],
         ["issuers", `Issuers (${coverage.issuers})`],
         ["networks", `Networks (${coverage.networks.length})`],
@@ -272,19 +305,19 @@ export function createStockPages({
     const data = entry(stock.id),
       market = marketFor(stock.id),
       coverage = productCoverage(stock.products),
-      spot = profileSpot(data);
+      context = priceContext(data),
+      { selected, p, comparable, reference } = context;
     if (metric === "listed")
-      return `<strong>${Number.isFinite(data.reference?.price) ? usd(data.reference.price) : data.loading ? "Loading…" : "Unavailable"}</strong><small>${data.reference ? `${escape(data.reference.priceSession || "Session not supplied")}${observationIsStale(data.reference) ? " · Older observation" : ""} · ${referenceTime(data.reference)}` : escape(data.referenceReason || "Listed reference not supplied")}</small>${data.reference ? `<small>${link(data.reference.source, "Nasdaq reference")}</small>` : ""}`;
+      return `<strong>${Number.isFinite(reference?.price) ? usd(reference.price) : data.loading ? "Loading…" : "Unavailable"}</strong><small>${reference ? `${escape(reference.priceSession || "Session not supplied")}${observationIsStale(reference) ? " · Older observation" : ""} · ${referenceTime(reference)}` : escape(data.referenceReason || "Listed reference not supplied")}</small>${reference ? `<small>${link(reference.priceSource || reference.source, "Nasdaq reference")}</small>` : ""}`;
     if (metric === "pool") {
-      const p = data.spotPremium;
-      return `<strong>${Number.isFinite(p?.price) && p.price > 0 ? usd(p.price) : data.loading ? "Loading…" : "Unavailable"}</strong><small>USD per equivalent share${spot?.stale ? " · Older observation" : ""}</small><small>${p?.price ? `${escape(p.symbol || "Representative token")}${p.chain ? " · " + escape(networkName(p.chain)) : ""} · ${stamp(p.priceAt)}` : escape(data.spotPremiumReason || "Verified pool conversion not supplied")}</small>${p?.source ? `<small>${link(p.source, "Pool source")}</small>` : ""}`;
+      return `<strong>${p ? usd(p.price) : data.loading ? "Loading…" : "Unavailable"}</strong><small>USD per equivalent share${selected?.older ? " · Older observation" : ""}</small><small>${p ? `${priceKind(selected)} · ${escape(p.symbol || "Representative token")}${p.chain ? " · " + escape(networkName(p.chain)) : ""} · ${stamp(selected.at)}` : escape(data.spotReason || data.spotPremiumReason || "Verified share conversion not supplied")}</small>${p?.source ? `<small>${link(p.source, selected.kind === "buy" ? "Quote source" : "Pool source")}</small>` : ""}`;
     }
     if (metric === "token")
       return `<strong>${Number.isFinite(market?.price) ? usd(market.price) : "Unavailable"}</strong><small>USD aggregate reference · ${market?.updatedAt ? `${older(market) ? "Older observation · " : ""}${stamp(market.updatedAt)}` : "Not observed"}</small>`;
     if (metric === "change")
       return `<strong class="${tone(market?.change24h)}">${signed(market?.change24h)}</strong><small>Tokenized aggregate</small>`;
     if (metric === "premium")
-      return `<strong class="${tone(spot?.value)}">${spot ? signed(spot.value) : data.loading ? "Loading…" : "Unavailable"}</strong><small>${spot ? `${spot.stale ? "Older observation · " : ""}${data.spotPremium.referenceBasis === "last-close" ? "Versus listed last close" : "Verified share conversion"}` : escape(data.spotPremiumReason || "Comparable spot conversion not supplied")}</small>`;
+      return `<strong class="${comparable ? tone(p.value) : ""}">${comparable ? signed(p.value) : data.loading ? "Loading…" : "Unavailable"}</strong><small>${comparable ? `${selected.older ? "Older observation · " : ""}${p.referenceBasis === "last-close" ? "Versus listed last close" : "Versus listed reference"} · ${priceKind(selected)}` : escape(premiumReason(data, context))}</small>`;
     if (metric === "marketCap" || metric === "pe")
       return fundamental(stock, data, metric);
     if (metric === "tokenCap" || metric === "volume")
@@ -303,10 +336,10 @@ export function createStockPages({
     );
     const rows = [
       ["Listed price", "listed"],
-      ["Normalized pool price", "pool"],
+      ["Onchain price", "pool"],
       ["Tokenized aggregate", "token"],
       ["24h change", "change"],
-      ["Spot premium", "premium"],
+      ["Onchain premium", "premium"],
       ["Company market cap", "marketCap"],
       ["Fiscal-year P/E", "pe"],
       ["Tokenized market cap", "tokenCap"],
@@ -317,7 +350,7 @@ export function createStockPages({
     ];
     replace(
       compareRoot,
-      `<div class="stock-comparison-inner"><a class="stock-back" href="/?page=markets" data-stock-markets>← Markets</a><header class="stock-comparison-heading"><div><h1>Compare stocks</h1><p>Different underlying assets. One consistent view.</p></div><div class="stock-header-actions"><button class="stock-primary" data-stock-choose ${focusKey("choose")}>${stocks.length ? "Edit stocks" : "Choose stocks"} <span aria-hidden="true">+</span></button>${stocks.length ? `<button data-stock-refresh ${focusKey("refresh")} ${stocks.some((stock) => entry(stock.id).loading) ? "disabled" : ""}>Refresh</button>` : ""}</div></header>${stocks.length ? `<p class="stock-comparison-note">${stocks.length} of 5 assets selected. Prices are in USD. Aggregate share normalization is not disclosed; spot premiums use a separate representative token and verified share conversion.</p>${stocks.length < 2 ? '<p class="stock-comparison-hint">Add another stock to compare it side by side.</p>' : ""}<p class="stock-scroll-hint">Swipe across to compare all selected stocks →</p><div class="stock-comparison-scroll" data-stock-scroll="comparison" tabindex="0" role="region" aria-label="Stock comparison table, scroll horizontally for all assets"><table class="stock-comparison-table"><caption class="sr-only">Underlying stock and tokenized market comparison</caption><thead><tr><th scope="col">Metric</th>${stocks.map((stock) => `<th scope="col"><div class="stock-comparison-company"><button class="stock-comparison-remove" data-stock-remove="${escape(stock.id)}" aria-label="Remove ${escape(stock.name)} from comparison" ${focusKey("remove:" + stock.id)}>×</button><a href="/?page=stock&stock=${encodeURIComponent(stock.id)}" data-stock-open="${escape(stock.id)}" ${focusKey("open:" + stock.id)}>${stockLogo(stock, marketFor(stock.id)?.image)}<strong>${escape(stock.ticker)}</strong><span>${escape(stock.name)}</span></a><small>${escape(stock.category || "Security")}</small></div></th>`).join("")}</tr></thead><tbody>${rows.map(([label, metric]) => `<tr><th scope="row">${label}</th>${stocks.map((stock) => `<td>${compareCell(stock, metric)}</td>`).join("")}</tr>`).join("")}<tr class="stock-comparison-actions"><th scope="row">Inspect products</th>${stocks.map((stock) => `<td><button data-stock-versions="${escape(stock.id)}">Compare token versions</button><button data-stock-quotes="${escape(stock.id)}">Compare buy quotes</button></td>`).join("")}</tr></tbody></table></div>${stocks.map((stock) => status(entry(stock.id))).join("")}<footer class="stock-page-footer"><p>Fiscal-year P/E is historical, not a current trailing-twelve-month ratio. Tokenized market cap and volume describe the connected provider’s aggregate. Product counts follow connected catalogs and may be incomplete.</p><p>The aggregate token price does not establish equivalent share exposure. Inspect issuer terms and verified conversion before comparing costs.</p></footer>` : '<div class="stock-comparison-empty"><h2>Put your next comparison in view.</h2><p>Choose two to five stocks or ETFs to compare listed prices, tokenized activity, issuers and network coverage.</p><button class="stock-primary" data-stock-choose>Choose stocks</button></div>'}</div>`,
+      `<div class="stock-comparison-inner"><a class="stock-back" href="/?page=markets" data-stock-markets>← Markets</a><header class="stock-comparison-heading"><div><h1>Compare stocks</h1><p>Different underlying assets. One consistent view.</p></div><div class="stock-header-actions"><button class="stock-primary" data-stock-choose ${focusKey("choose")}>${stocks.length ? "Edit stocks" : "Choose stocks"} <span aria-hidden="true">+</span></button>${stocks.length ? `<button data-stock-refresh ${focusKey("refresh")} ${stocks.some((stock) => entry(stock.id).loading) ? "disabled" : ""}>Refresh</button>` : ""}</div></header>${stocks.length ? `<p class="stock-comparison-note">${stocks.length} of 5 assets selected. Prices are in USD. Aggregate share normalization is not disclosed. Onchain prices use verified share conversion; pool snapshots and $1,000 indicative buys before gas are labeled separately. Premiums use the listed observation shown beside them.</p>${stocks.length < 2 ? '<p class="stock-comparison-hint">Add another stock to compare it side by side.</p>' : ""}<p class="stock-scroll-hint">Swipe across to compare all selected stocks →</p><div class="stock-comparison-scroll" data-stock-scroll="comparison" tabindex="0" role="region" aria-label="Stock comparison table, scroll horizontally for all assets"><table class="stock-comparison-table"><caption class="sr-only">Underlying stock and tokenized market comparison</caption><thead><tr><th scope="col">Metric</th>${stocks.map((stock) => `<th scope="col"><div class="stock-comparison-company"><button class="stock-comparison-remove" data-stock-remove="${escape(stock.id)}" aria-label="Remove ${escape(stock.name)} from comparison" ${focusKey("remove:" + stock.id)}>×</button><a href="/?page=stock&stock=${encodeURIComponent(stock.id)}" data-stock-open="${escape(stock.id)}" ${focusKey("open:" + stock.id)}>${stockLogo(stock, marketFor(stock.id)?.image)}<strong>${escape(stock.ticker)}</strong><span>${escape(stock.name)}</span></a><small>${escape(stock.category || "Security")}</small></div></th>`).join("")}</tr></thead><tbody>${rows.map(([label, metric]) => `<tr><th scope="row">${label}</th>${stocks.map((stock) => `<td>${compareCell(stock, metric)}</td>`).join("")}</tr>`).join("")}<tr class="stock-comparison-actions"><th scope="row">Inspect products</th>${stocks.map((stock) => `<td><button data-stock-versions="${escape(stock.id)}">Compare token versions</button><button data-stock-quotes="${escape(stock.id)}">Compare buy quotes</button></td>`).join("")}</tr></tbody></table></div>${stocks.map((stock) => status(entry(stock.id))).join("")}<footer class="stock-page-footer"><p>Fiscal-year P/E is historical, not a current trailing-twelve-month ratio. Tokenized market cap and volume describe the connected provider’s aggregate. Product counts follow connected catalogs and may be incomplete.</p><p>The aggregate token price does not establish equivalent share exposure. Inspect issuer terms and verified conversion before comparing costs.</p></footer>` : '<div class="stock-comparison-empty"><h2>Put your next comparison in view.</h2><p>Choose two to five stocks or ETFs to compare listed prices, tokenized activity, issuers and network coverage.</p><button class="stock-primary" data-stock-choose>Choose stocks</button></div>'}</div>`,
     );
   }
   function render() {
@@ -458,12 +491,21 @@ export function createStockPages({
                       ? {
                           ...entry(id).reference,
                           priceStale: true,
+                          marketCapStale: true,
+                          peStale: true,
                           stale: true,
                         }
                       : null,
-                    spotPremium: entry(id).spotPremium
-                      ? { ...entry(id).spotPremium, stale: true }
-                      : null,
+                    ...Object.fromEntries(
+                      ["spotPremium", "spot", "premium", "buyObservation"].map(
+                        (field) => [
+                          field,
+                          entry(id)[field]
+                            ? { ...entry(id)[field], stale: true }
+                            : null,
+                        ],
+                      ),
+                    ),
                   }
                 : {}),
               errors: {

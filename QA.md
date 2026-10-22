@@ -1,3 +1,15 @@
+## Stability audit — 0.8.4, October 22, 2026
+
+This release repairs existing comparisons and interactions; it adds no feature or page. Stock overviews and stock comparisons now use Home's shared normalized-price selection, including the explicitly labeled $1,000 buy fallback. Displayed premiums use their exact listed reference. Failed refreshes retain all observations with their original clocks and older-observation flags, including company fundamentals.
+
+Buy-quote premiums now use the same USD, freshness, time-alignment and dated-close checks as the other comparisons. An absent or incompatible reference suppresses only the percentage, without changing quote ranking. Price-impact warnings remain independent. Markets CSV exports now include the displayed normalized price/premium, their basis and observation clocks, rather than silently omitting buy-based comparisons. Finite negative numeric values remain spreadsheet numbers; text formula protection remains active.
+
+Changing a buy amount immediately clears exportable results and validates the input. Presets match shared-link and history amounts. Arrow-key navigation uses the selected primary tab after research views. Mobile Markets filters and primary controls have 44px minimum heights. The cold-start seed test now injects its clock; the production 72-hour catalog retention rule is unchanged.
+
+Verification: 326 Node tests pass, with failing regressions reproduced before the financial-display and retention fixes. Strict production smoke passes readiness, static/secret boundaries, headers, rate identity and graceful/deadline shutdown. Actual HTTP integration passes multi-provider NVDA/AAPL/TSLA quotes, normalization, handoffs, exact pools/history, screener observations, venue retrieval and invalid requests. Browser checks exercise search, terms selection and its buy handoff, invalid budget recovery, presets, keyboard navigation, shared watchlists and file round-trip, Markets search/filters/export, overview/stock comparison, reload/Back persistence and mobile containment. The mechanical design scan has no findings. The independent review's refresh-retention issue was reproduced and fixed.
+
+Release evidence, live-source timestamps, deployment checks and screenshots are retained in ignored test-results/stability-* files. Provider outages, unsupported routes and unverified conversions remain explicit; testing cannot guarantee future provider availability or complete market coverage.
+
 ## Home price coverage and Markets spacing — 0.8.3, October 21, 2026
 
 Home now receives the complete market-details observation: a current exact-contract pool price leads, followed by a verified $1,000 indicative buy price when no comparable pool observation is available. The basis is labeled directly beside the price. A share-normalized onchain price remains visible if the listed feed is absent; its premium still requires a comparable listed observation. Retained observations carry their original dates and an Older observation label. Buy premiums include the exact listed price used in their calculation.

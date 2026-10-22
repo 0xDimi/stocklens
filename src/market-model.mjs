@@ -101,9 +101,14 @@ export function marketReadiness(
         ? [{ ...detail.spot, observedAt: detail.spot.at }]
         : []),
       ...(scoped(detail?.buyObservation) &&
-        detail.buyObservation.conversionVerified === true &&
-        Number.isFinite(detail.buyObservation.expiresAt)
-        ? [{ ...detail.buyObservation, observedAt: detail.buyObservation.priceAt }]
+      detail.buyObservation.conversionVerified === true &&
+      Number.isFinite(detail.buyObservation.expiresAt)
+        ? [
+            {
+              ...detail.buyObservation,
+              observedAt: detail.buyObservation.priceAt,
+            },
+          ]
         : []),
       ...[detail?.spotPremium, detail?.premium]
         .filter(scoped)
@@ -343,7 +348,14 @@ export function createMarketDetailsLoader({
                     }
                   : null),
               // Keep the last observation visible if a refresh has no new one.
-              premium: row.premium ?? prior?.premium ?? null,
+              premium:
+                row.premium ??
+                (prior?.premium ? { ...prior.premium, stale: true } : null),
+              buyObservation:
+                row.buyObservation ??
+                (prior?.buyObservation
+                  ? { ...prior.buyObservation, stale: true }
+                  : null),
               spot:
                 row.spot ??
                 (prior?.spot
@@ -380,6 +392,26 @@ export function createMarketDetailsLoader({
             const prior = cache.get(id);
             cache.set(id, {
               ...prior,
+              reference: prior?.reference
+                ? {
+                    ...prior.reference,
+                    stale: true,
+                    priceStale: true,
+                    marketCapStale: true,
+                    peStale: true,
+                    staleReason: error.message,
+                  }
+                : null,
+              premium: prior?.premium
+                ? { ...prior.premium, stale: true, staleReason: error.message }
+                : null,
+              buyObservation: prior?.buyObservation
+                ? {
+                    ...prior.buyObservation,
+                    stale: true,
+                    staleReason: error.message,
+                  }
+                : null,
               spot: prior?.spot
                 ? { ...prior.spot, stale: true, staleReason: error.message }
                 : null,
@@ -418,7 +450,13 @@ export function createMarketDetailsLoader({
         const raw = value?.at ?? value?.priceAt ?? value?.retrievedAt;
         return typeof raw === "number" ? raw : Date.parse(raw);
       };
-      for (const key of ["reference", "spot", "spotPremium", "premium"]) {
+      for (const key of [
+        "reference",
+        "spot",
+        "spotPremium",
+        "premium",
+        "buyObservation",
+      ]) {
         if (!prior?.[key]) continue;
         if (!Object.hasOwn(row, key)) {
           next[key] = prior[key];

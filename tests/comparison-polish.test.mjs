@@ -73,6 +73,7 @@ const row = {
   equivalentShares: 5,
   tokenQuantity: 5,
   inputQuantity: 1000,
+  fetchedAt: now,
   expiresAt: now + 30000,
   quoteProvider: "Jupiter",
   buyUrl: "https://jup.ag",
@@ -137,8 +138,11 @@ test("quote rows expose adverse price deviation and unknown fees explicitly", ()
     {
       reference: {
         price: 220.23,
+        currency: "USD",
+        at: now - 86400000,
+        retrievedAt: new Date(now).toISOString(),
         priceSession: "Closed",
-        priceDate: "2026-10-20",
+        priceDate: new Date(now - 86400000).toISOString().slice(0, 10),
       },
     },
   );

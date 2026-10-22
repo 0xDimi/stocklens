@@ -206,6 +206,7 @@ test("a cold deployment loads its checksummed source seed and discloses each fai
   const result = await catalog.createCatalogLoader({
     cacheDir: join(root, "restart"),
     seedPath,
+    now: () => Date.parse(at) + 3600000,
     getXstocks: offline,
     getOndo: offline,
     getDiscovery: offline,
@@ -229,6 +230,7 @@ test("a cold deployment loads its checksummed source seed and discloses each fai
     catalog.createCatalogLoader({
       cacheDir: join(root, "empty"),
       seedPath,
+      now: () => Date.parse(at) + 3600000,
       getXstocks: offline,
       getOndo: offline,
       getDiscovery: offline,

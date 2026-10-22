@@ -1,5 +1,6 @@
 import { escape, usd, number, stamp, provider } from "./views.mjs";
 import { observationIsStale } from "./asset-comparison-model.mjs";
+import { SOURCE_CLOCK_SKEW_MS } from "./model.mjs";
 
 export function listedDate(reference) {
   if (reference?.priceDate && /^\d{4}-\d{2}-\d{2}$/.test(reference.priceDate))
@@ -56,7 +57,7 @@ export function selectOnchainPrice(
       !(data?.price > 0) ||
       !Number.isFinite(data.price) ||
       !Number.isFinite(at) ||
-      at > now ||
+      at > now + SOURCE_CLOCK_SKEW_MS ||
       now - at > 86400000
     )
       return [];

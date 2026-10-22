@@ -1,4 +1,7 @@
 // Financial units are explicit. Integer amounts remain strings until display math.
+// Public server/client clocks can differ slightly. Preserve source timestamps;
+// tolerate at most one second without treating later future observations as valid.
+export const SOURCE_CLOCK_SKEW_MS = 1000;
 export function toBaseUnits(value, decimals) {
   if (
     !Number.isInteger(decimals) ||

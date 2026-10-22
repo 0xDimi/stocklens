@@ -1,4 +1,4 @@
-import { findStocks } from "./model.mjs";
+import { findStocks, SOURCE_CLOCK_SKEW_MS } from "./model.mjs";
 
 export const MARKET_COLUMNS = [
   ["stock", "Stock"],
@@ -130,7 +130,7 @@ export function marketReadiness(
         sourceURL(o.conversionSource) &&
         sourceURL(o.source) &&
         Number.isFinite(o.observedAt) &&
-        o.observedAt <= now,
+        o.observedAt <= now + SOURCE_CLOCK_SKEW_MS,
     ),
     fresh = observations.find(
       (o) =>
@@ -236,21 +236,25 @@ export function premium(observation, benchmark, now = Date.now()) {
     benchmark.priceSession === "Closed" &&
     !benchmark.priceStale &&
     Number.isFinite(retrieved) &&
-    retrieved <= now &&
+    retrieved <= now + SOURCE_CLOCK_SKEW_MS &&
     now - retrieved <= 300000 &&
     Number.isFinite(benchmark.at) &&
-    benchmark.at <= now &&
+    benchmark.at <= now + SOURCE_CLOCK_SKEW_MS &&
     now - benchmark.at <= 7 * 86400000;
   if (
     !Number.isFinite(observation.at) ||
-    observation.at > now ||
+    observation.at > now + SOURCE_CLOCK_SKEW_MS ||
     now - observation.at > 300000
   )
     return null;
   if (
     !lastClose &&
     (!Number.isFinite(benchmark.at) ||
-      benchmark.at > now + (benchmark.timePrecisionMs === 60000 ? 60000 : 0) ||
+      benchmark.at >
+        now +
+          (benchmark.timePrecisionMs === 60000
+            ? 60000
+            : SOURCE_CLOCK_SKEW_MS) ||
       now - benchmark.at > 300000 ||
       Math.abs(observation.at - benchmark.at) > 120000)
   )
@@ -265,7 +269,7 @@ export function needsReference(reference, now = Date.now()) {
     !reference ||
     reference.stale === true ||
     !Number.isFinite(retrieved) ||
-    retrieved > now ||
+    retrieved > now + SOURCE_CLOCK_SKEW_MS ||
     now - retrieved > 300000
   );
 }
@@ -475,7 +479,8 @@ export function createMarketDetailsLoader({
           prior?.checkedAt || 0,
           Number.isFinite(row.checkedAt)
             ? row.checkedAt
-            : Number.isFinite(retrieved) && retrieved <= now()
+            : Number.isFinite(retrieved) &&
+                retrieved <= now() + SOURCE_CLOCK_SKEW_MS
               ? retrieved
               : 0,
         ) || undefined;

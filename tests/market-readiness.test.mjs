@@ -121,7 +121,7 @@ test("a sourced normalized buy observation verifies conversion without a listed 
   assert.equal(state({ expiresAt: now }), "expired");
   for (const changes of [{ conversionVerified: false }, { conversionVerified: undefined },
     { sharesPerToken: 0 }, { conversionSource: null }, { source: "http://untrusted.test" },
-    { priceAt: null }, { priceAt: now + 1 }, { expiresAt: null }]) assert.equal(state(changes), "not-verified");
+    { priceAt: null }, { priceAt: now + 1001 }, { expiresAt: null }]) assert.equal(state(changes), "not-verified");
 });
 
 test("issuer and network filters refer to the same product deployment", () => {

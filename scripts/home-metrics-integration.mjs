@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { priceComparison } from "../src/reference-view.mjs";
+import { SOURCE_CLOCK_SKEW_MS } from "../src/model.mjs";
 const base = process.env.STOCKLENS_URL || "http://127.0.0.1:4173";
 const json = async (path) => {
   const response = await fetch(base + path, {
@@ -66,7 +67,10 @@ for (const group of [
     );
     if (onchain) {
       const clock = onchain.priceAt ?? onchain.at;
-      assert.ok(clock <= Date.now() && Date.now() - clock < 300000);
+      assert.ok(
+        clock <= Date.now() + SOURCE_CLOCK_SKEW_MS &&
+          Date.now() - clock < 300000,
+      );
       assert.ok(onchain.conversionSource?.startsWith("https://"));
     }
     if (!detail.spotPremium && detail.premium)

@@ -332,6 +332,42 @@ test("a ready chain gets conversion capacity before one large slow chain exhaust
   assert.ok(result.size > 6, "ready-chain conversions must run before more slow-chain jobs");
 });
 
+test("a timed-out batch keeps unsettled conversion requests inside its concurrency bound", async (t) => {
+  const clock = Date.now();
+  t.mock.method(Date, "now", () => clock);
+  const stocks = Array.from({ length: 12 }, (_, i) => ({
+    ...stock,
+    id: `pending-${i}`,
+    products: [{ ...product, deployments: [{
+      chain: "Ethereum", address: "0x" + (i + 1).toString(16).padStart(40, "0"),
+    }] }],
+  }));
+  let release, active = 0, maximum = 0, failing = false;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const getSource = async () => {
+    if (failing) throw new Error("Source unavailable");
+    return {
+      data: stocks.map((s) => ({ ...pair, baseToken: { address: s.products[0].deployments[0].address } })),
+      retrievedAt: new Date(clock).toISOString(),
+    };
+  };
+  const getUnits = async () => {
+    maximum = Math.max(maximum, ++active);
+    try { await gate; return verifiedUnits; } finally { active--; }
+  };
+  try {
+    const result = await getSpotObservations(stocks, { getSource, getUnits, budgetMs: 30 });
+    assert.equal(result.size, 0);
+    assert.ok(maximum <= 6, `unsettled conversions exceeded six: ${maximum}`);
+    release();
+    await new Promise(setImmediate);
+    assert.equal(result.size, 0, "late completion cannot publish observations");
+    failing = true;
+    assert.equal((await getSpotObservations(stocks, { getSource, getUnits, budgetMs: 30 })).size, 0,
+      "late completion cannot seed retained observations");
+  } finally { release(); }
+});
+
 test("a timed-out conversion cannot later populate or renew retained observations", async () => {
   let failing = false;
   const getSource = async () => {

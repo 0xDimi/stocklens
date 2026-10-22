@@ -160,16 +160,21 @@ export async function getSpotObservations(
     const row = saved.get(id);
     if (row) observations.set(id, { ...row, retained: true });
   }
-  const resolvedStocks = new Set([...observations.values()].map((row) => row.id));
+  const resolvedStocks = new Set(
+    [...observations.values()].map((row) => row.id),
+  );
+  let accepting = true;
 
   const normalize = async (row) => {
-    if (Date.now() >= deadline) return;
+    if (!accepting || Date.now() >= deadline) return;
+    const conversionDeadline = Math.min(deadline, Date.now() + 3000);
     try {
-      const units = await observeWithin(
-        () => getUnits(row.product, row.deployment),
-        Math.min(3000, remaining()),
-      );
+      // Keep this worker occupied until its actual request settles. A timeout
+      // stops the batch waiting; it cannot authorize another concurrent request.
+      const units = await getUnits(row.product, row.deployment);
       if (
+        !accepting ||
+        Date.now() >= conversionDeadline ||
         !(units?.sharesPerToken > 0) ||
         !Number.isFinite(units.sharesPerToken) ||
         !units.conversionSource ||
@@ -213,7 +218,7 @@ export async function getSpotObservations(
   let active = 0,
     nextChain = 0;
   const pump = () => {
-    while (active < 6 && queued.length) {
+    while (accepting && Date.now() < deadline && active < 6 && queued.length) {
       // Alternate ready chains when capacity opens instead of letting the first
       // large response monopolize all subsequent conversion slots.
       let index = -1;
@@ -242,43 +247,48 @@ export async function getSpotObservations(
     jobs.push(new Promise((resolve) => queued.push({ row, resolve })));
     pump();
   };
-  await mapLimit(
-    groups,
-    3,
-    async ({ network, selected, addresses }) => {
-      try {
-        if (Date.now() >= deadline) return;
-        const result = await observeWithin(
-          () =>
-            getSource(
-              `/tokens/v1/${network}/${addresses.map(encodeURIComponent).join(",")}`,
-              60000,
-            ),
-          Math.min(6000, remaining()),
-        );
-        const at = Date.parse(result?.retrievedAt);
-        if (result?.stale || !fresh(at)) return;
-        const deployments = new Set();
-        for (const row of parseSpotPairs(
-          result.data,
-          selected,
-          result.retrievedAt,
-        )) {
-          const id = observationKey(row);
-          if (deployments.has(id)) continue;
-          deployments.add(id);
-          enqueue(row);
-        }
-      } catch {
-        /* Independent chain observations can still be usable. */
+  await mapLimit(groups, 3, async ({ network, selected, addresses }) => {
+    try {
+      if (Date.now() >= deadline) return;
+      const result = await observeWithin(
+        () =>
+          getSource(
+            `/tokens/v1/${network}/${addresses.map(encodeURIComponent).join(",")}`,
+            60000,
+          ),
+        Math.min(6000, remaining()),
+      );
+      const at = Date.parse(result?.retrievedAt);
+      if (result?.stale || !fresh(at)) return;
+      const deployments = new Set();
+      for (const row of parseSpotPairs(
+        result.data,
+        selected,
+        result.retrievedAt,
+      )) {
+        const id = observationKey(row);
+        if (deployments.has(id)) continue;
+        deployments.add(id);
+        enqueue(row);
       }
-    },
-  );
-  await Promise.all(jobs);
+    } catch {
+      /* Independent chain observations can still be usable. */
+    }
+  });
+  try {
+    await observeWithin(() => Promise.all(jobs), remaining());
+  } catch {
+    /* Return completed observations within budget; in-flight work stays bounded. */
+  } finally {
+    accepting = false;
+    for (const job of queued.splice(0)) job.resolve();
+  }
   const output = new Map();
   for (const row of [...observations.values()]
     .filter((row) => fresh(row.at))
-    .sort((a, b) => Number(!!a.retained) - Number(!!b.retained) || rank(a, b))) {
+    .sort(
+      (a, b) => Number(!!a.retained) - Number(!!b.retained) || rank(a, b),
+    )) {
     if (!output.has(row.id)) {
       output.set(
         row.id,

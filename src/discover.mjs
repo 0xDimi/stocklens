@@ -36,6 +36,13 @@ export function lensProducts(stock) {
 export const assetLink = (stock) =>
   "/?" + new URLSearchParams({ stock: stock.id, view: "products" });
 
+function versionLabel(stock) {
+  const count = stock.products.filter((p) => !p.wrapped).length;
+  return count
+    ? `${count} version${count === 1 ? "" : "s"}`
+    : "No mapped versions";
+}
+
 export function createDiscover({ root, getStocks, onSelect, onRetry }) {
   const input = root.querySelector("#discover-search");
   const list = root.querySelector("#discover-results");
@@ -68,7 +75,7 @@ export function createDiscover({ root, getStocks, onSelect, onRetry }) {
       ? results
           .map(
             (s, i) =>
-              `<li role="option" aria-selected="false" id="discover-option-${i}" data-discover-stock="${escape(s.id)}">${stockLogo(s)}<span><b>${escape(s.ticker)}</b><small>${escape(s.name)}</small></span><span class="discover-result-count">${s.products.filter((p) => !p.wrapped).length} versions <span aria-hidden="true">↗</span></span></li>`,
+              `<li role="option" aria-selected="false" id="discover-option-${i}" data-discover-stock="${escape(s.id)}">${stockLogo(s)}<span><b>${escape(s.ticker)}</b><small>${escape(s.name)}</small></span><span class="discover-result-count">${versionLabel(s)} <span aria-hidden="true">↗</span></span></li>`,
           )
           .join("")
       : `<li role="presentation" class="discover-empty">${failed ? "Catalog unavailable. Use Retry below." : !ready ? "Loading the asset catalog…" : "No matching stock. Try a company, ticker or token."}</li>`;
@@ -171,7 +178,7 @@ export function createDiscover({ root, getStocks, onSelect, onRetry }) {
       root.querySelector("#discover-assets").innerHTML = featured
         .map(
           (s) =>
-            `<a href="${escape(assetLink(s))}" data-discover-stock="${escape(s.id)}">${stockLogo(s)}<span><b>${escape(s.ticker)}</b><small>${s.products.filter((p) => !p.wrapped).length} versions</small></span><span class="discover-asset-arrow" aria-hidden="true">↗</span></a>`,
+            `<a href="${escape(assetLink(s))}" data-discover-stock="${escape(s.id)}">${stockLogo(s)}<span><b>${escape(s.ticker)}</b><small>${versionLabel(s)}</small></span><span class="discover-asset-arrow" aria-hidden="true">↗</span></a>`,
         )
         .join("");
       const issuers = new Set(

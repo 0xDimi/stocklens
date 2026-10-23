@@ -1,3 +1,11 @@
+## Stocklens entry — 0.10.0, October 23, 2026
+
+Bare Home now opens a forest/mint entry with a real catalog search, a stock-to-issuer lens graphic and familiar-stock shortcuts. Explicit stock, ticker and comparison-view links still bypass the entry. The entry reuses the existing catalog and makes no additional market-data calls. Counts and graph products come from actual catalog records; no illustrative prices are shown. The daylight comparison and Markets views retain their existing layout.
+
+389 Node tests pass, including new entry-route, canonical-link, search-ranking and native-product checks. The real production subprocess smoke passed with catalog readiness. Brave browser checks covered company search, arrow-key selection, empty results, Escape, comparison handoff, browser Back, Home, Markets and direct buy-quote URLs. A native search-field Escape clear event initially reopened suggestions; preventing that default was reproduced and checked in the real browser.
+
+Desktop at 1440×1000 and phones at 390×844 and 320×740 were inspected. The final desktop has a continuous forest background and hides the comparison-sharing action on the entry. Mobile search uses 16px text. Reduced-motion disables the one-time path reveal. The mechanical design detector reported no findings; independent finish review found no blocking issues. Screenshots and logs are in ignored test-results/discover-*.
+
 ## Comparison coverage — 0.9.0, October 23, 2026
 
 The comparison now connects quote adapters on fifteen networks rather than five. Native or bridged funding tokens, decimals and RPC chain IDs were checked against official sources and real responses. Providers have explicit per-network capabilities: KyberSwap and Velora cover their verified networks; paced, quota-bounded LI.FI requests add Ink, Morph, X Layer and Mantle. New real NVIDIA routes were verified on Ink/Morph and the wrapped version on X Layer. A successful adapter check does not imply liquidity exists for every token or budget. No new keys, paid APIs or hosting services were added.

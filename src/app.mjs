@@ -34,6 +34,7 @@ import {
   observeLogoErrors,
 } from "./brands.mjs";
 import { createTerminal } from "./terminal.mjs";
+import { createDiscover, routePage } from "./discover.mjs";
 let desk = null,
   marketsPage = null,
   stockPages = null,
@@ -44,9 +45,7 @@ observeLogoErrors();
 const $ = (selector) => document.querySelector(selector);
 const params = new URLSearchParams(location.search);
 const comparisonStore = comparisonStorage();
-let page = ["markets", "stock", "compare"].includes(params.get("page"))
-  ? params.get("page")
-  : "home";
+let page = routePage(params);
 let assetCompareIds = params.has("stocks")
   ? params.get("stocks").split(",").filter(Boolean)
   : readComparison(comparisonStore);
@@ -85,7 +84,18 @@ try {
 if (validBudget(params.get("amount")))
   $("#budget").value = params.get("amount");
 function updateUrl(mode = "replace") {
-  if (!selected) return;
+  if (page === "discover") {
+    if (location.search)
+      history[mode === "push" ? "pushState" : "replaceState"](null, "", "/");
+    return;
+  }
+  if (!selected) {
+    if (page !== "home") {
+      const url = "/?" + new URLSearchParams({ page });
+      history[mode === "push" ? "pushState" : "replaceState"](null, "", url);
+    }
+    return;
+  }
   const query = new URLSearchParams({
     stock: selected.id,
     amount: validBudget($("#budget").value) ? $("#budget").value : "1000",
@@ -539,6 +549,7 @@ function selectStock(id) {
   loadView();
 }
 async function initialize() {
+  discover.loading();
   try {
     const response = await fetch("/api/catalog");
     const data = await response.json();
@@ -551,6 +562,7 @@ async function initialize() {
     catalogCoverage = data.coverage;
     pendingProducts = data.pendingProducts || [];
     catalogWarnings = data.warnings;
+    discover.render(data);
     selected =
       assetById(stocks, params.get("stock")) ||
       stocks.find((s) => s.ticker === params.get("ticker")) ||
@@ -583,6 +595,7 @@ async function initialize() {
       loadHomeDetails(selected.id);
     }
   } catch (error) {
+    discover.fail();
     $("#coverage").textContent = "Catalog unavailable";
     $("#stock-list").innerHTML =
       '<p class="empty-search">Catalog sources could not be reached.</p><button id="retry-catalog" class="provider-link">Retry catalog</button>';
@@ -838,7 +851,14 @@ async function loadHomeDetails(id, force = false) {
 }
 function setPage(next, write = true) {
   const previous = page;
-  page = ["markets", "stock", "compare"].includes(next) ? next : "home";
+  page = ["discover", "markets", "stock", "compare"].includes(next)
+    ? next
+    : "home";
+  $("#discover-page").hidden = page !== "discover";
+  document.body.classList.toggle("is-discover", page === "discover");
+  $("meta[name=theme-color]").content =
+    page === "discover" ? "#091e1a" : "#f7f8fa";
+  if (page !== "discover") discover.close();
   $("#home-page").hidden = page !== "home";
   $("#markets-page").hidden = page !== "markets";
   $("#stock-page").hidden = page !== "stock";
@@ -851,6 +871,7 @@ function setPage(next, write = true) {
   }
   if (page !== "stock" && page !== "compare") stockPages?.hide();
   const target = {
+    discover: "discover-search",
     home: "comparison",
     markets: "markets-page",
     stock: "stock-page",
@@ -858,13 +879,17 @@ function setPage(next, write = true) {
   }[page];
   $(".skip-link").href = "#" + target;
   $(".skip-link").textContent = {
+    discover: "Skip to stock search",
     home: "Skip to comparison",
     markets: "Skip to markets",
     stock: "Skip to stock overview",
     compare: "Skip to stock comparison",
   }[page];
   document.querySelectorAll("[data-page]").forEach((link) => {
-    if (link.dataset.page === (page === "home" ? "home" : "markets"))
+    if (
+      link.dataset.page ===
+      (["home", "discover"].includes(page) ? "discover" : "markets")
+    )
       link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
@@ -928,7 +953,7 @@ window.addEventListener("popstate", () => {
     : "all";
   if (validBudget(route.get("amount")))
     $("#budget").value = route.get("amount");
-  setPage(route.get("page"), false);
+  setPage(routePage(route), false);
   if (page === "home" && selected) {
     homeAssetId = selected.id;
     renderHeading();
@@ -982,9 +1007,19 @@ function showCoverage() {
 }
 document.addEventListener("click", (event) => {
   const link = event.target.closest("[data-page]");
-  if (link) {
+  if (
+    link &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    event.button === 0
+  ) {
     event.preventDefault();
     setPage(link.dataset.page);
+    if (page === "discover") {
+      scrollTo({ top: 0, behavior: "instant" });
+      $("#discover-page").focus({ preventScroll: true });
+    }
     if (page === "home" && selected) {
       const changed = homeAssetId !== selected.id;
       if (changed) {
@@ -1046,6 +1081,16 @@ stockPages = createStockPages({
   onCompareVersions: openHomeComparison,
   onOpenStock: openStockPage,
   onCompareAssets: openAssetComparison,
+});
+const discover = createDiscover({
+  root: $("#discover-page"),
+  getStocks: () => stocks,
+  onSelect: (id) => {
+    openHomeComparison(id, "products");
+    scrollTo({ top: 0, behavior: "instant" });
+    $("#stock-title")?.focus({ preventScroll: true });
+  },
+  onRetry: initialize,
 });
 setPage(page, false);
 setInterval(() => {

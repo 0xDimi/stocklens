@@ -20,6 +20,8 @@ const files = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ...[
     "app.mjs",
+    "discover.mjs",
+    "discover.css",
     "comparison-ui.mjs",
     "comparison-state.mjs",
     "quote-support.mjs",

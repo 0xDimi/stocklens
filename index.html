@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="/src/stock-pages.css" />
     <link rel="stylesheet" href="/src/home-comparison.css" />
     <link rel="stylesheet" href="/src/product-terms.css" />
+    <link rel="stylesheet" href="/src/discover.css" />
     <script type="module" src="/src/app.mjs"></script>
   </head>
   <body>
@@ -31,7 +32,7 @@
         ></a
       >
       <nav class="page-nav" aria-label="Main navigation">
-        <a href="/" data-page="home" aria-current="page">Home</a
+        <a href="/" data-page="discover" aria-current="page">Home</a
         ><a href="/?page=markets" data-page="markets">Markets</a>
       </nav>
       <nav>
@@ -40,7 +41,126 @@
         ><button id="how-it-works" class="text-button">How it works ↗</button>
       </nav>
     </header>
-    <main class="page" id="home-page">
+    <main id="discover-page" class="discover" tabindex="-1">
+      <!-- THESIS: One stock through a lens reveals its issuer versions.
+           OWN-WORLD: Forest, mint, optical contours and authentic marks.
+           STORY: Search a stock; enter its existing comparison.
+           FIRST VIEWPORT: Oversized type and search left, live catalog graph right.
+           FORM: User-pinned dark hero, tailored split composition. -->
+      <section class="discover-opening" aria-labelledby="discover-title">
+        <div class="discover-copy">
+          <p class="discover-eyebrow">
+            <span aria-hidden="true"></span> A clearer view of tokenized stocks
+          </p>
+          <h1 id="discover-title">One stock.<br /><em>Every angle.</em></h1>
+          <p class="discover-description">
+            Different tokens. Different terms.<br />Find the stock. Compare the
+            versions. See what your money buys.
+          </p>
+          <div class="discover-search-wrap">
+            <form
+              id="discover-form"
+              role="search"
+              aria-label="Find a stock to compare"
+            >
+              <label for="discover-search" class="sr-only"
+                >Search a company, ticker or token</label
+              >
+              <svg
+                class="discover-search-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle cx="10.5" cy="10.5" r="6.5" />
+                <path d="m16 16 5 5" />
+              </svg>
+              <input
+                id="discover-search"
+                type="search"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded="false"
+                aria-controls="discover-results"
+                autocomplete="off"
+                placeholder="Company or ticker"
+              />
+              <button type="submit" aria-label="Find stock to compare">
+                <span>Compare</span> <span aria-hidden="true">→</span>
+              </button>
+            </form>
+            <ul
+              id="discover-results"
+              role="listbox"
+              aria-label="Matching stocks"
+              hidden
+            ></ul>
+          </div>
+          <div class="discover-links">
+            <a href="/?page=markets" data-page="markets"
+              >Explore the markets <span aria-hidden="true">↗</span></a
+            ><span>No account needed</span>
+          </div>
+          <p id="discover-status" class="sr-only" role="status">
+            Loading the asset catalog…
+          </p>
+          <button id="discover-retry" hidden>Retry asset catalog</button>
+        </div>
+        <figure class="discover-lens" aria-labelledby="discover-graph-caption">
+          <div class="lens-stage">
+            <svg
+              class="lens-contours"
+              viewBox="0 0 660 520"
+              fill="none"
+              aria-hidden="true"
+            >
+              <ellipse cx="280" cy="260" rx="239" ry="239" />
+              <ellipse cx="280" cy="260" rx="206" ry="206" />
+              <ellipse cx="280" cy="260" rx="171" ry="171" />
+              <path
+                class="lens-ray"
+                d="M170 260H248C280 260 279 144 323 144H405M248 260H405M248 260C280 260 279 376 323 376H405"
+              />
+              <path
+                class="lens-ticks"
+                d="M280 13v12M280 495v12M33 260h12M515 260h12"
+              />
+            </svg>
+            <span class="lens-label lens-label-input"
+              >The underlying stock</span
+            >
+            <span class="lens-label lens-label-output"
+              >Its tokenized versions</span
+            >
+            <div id="discover-graph-data" class="lens-data">
+              <span class="lens-placeholder"
+                >One stock.<br />A clearer picture.</span
+              >
+            </div>
+          </div>
+          <figcaption id="discover-graph-caption">
+            Stock → issuer → network → comparison
+          </figcaption>
+        </figure>
+      </section>
+      <section class="discover-shelf" aria-labelledby="discover-shelf-title">
+        <div class="discover-shelf-heading">
+          <h2 id="discover-shelf-title">A familiar place to start</h2>
+          <a href="/?page=markets" data-page="markets"
+            >View all assets <span aria-hidden="true">→</span></a
+          >
+        </div>
+        <div id="discover-assets" class="discover-assets">
+          <p>Loading source-mapped stocks…</p>
+        </div>
+      </section>
+      <footer class="discover-footer">
+        <p>One underlying. A world of representations.</p>
+        <div id="discover-coverage" class="discover-coverage"></div>
+        <small id="discover-date">CoinGecko · issuer registries</small>
+      </footer>
+    </main>
+    <main class="page" id="home-page" hidden>
       <div class="workspace">
         <aside class="stock-rail" aria-label="Choose a stock">
           <div class="rail-heading">
@@ -462,9 +582,9 @@
         </p>
         <p>
           24h turnover divides CoinGecko tokenized volume by tokenized
-          capitalization from the same observation. It compares trading
-          activity with tokenized market size; it does not measure executable
-          liquidity. Missing inputs remain unavailable.
+          capitalization from the same observation. It compares trading activity
+          with tokenized market size; it does not measure executable liquidity.
+          Missing inputs remain unavailable.
         </p>
         <p>
           Onchain premium uses one verified, share-normalized pool snapshot. It

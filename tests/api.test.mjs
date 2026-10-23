@@ -1,7 +1,24 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createApp } from "../server.mjs";
 import { validateComparison } from "../server/quotes.mjs";
+
+test("health reports the packaged release version", async (t) => {
+  const app = createApp();
+  await new Promise((resolve) => app.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => app.close(resolve)));
+  const response = await fetch(
+    `http://127.0.0.1:${app.address().port}/api/health`,
+  );
+  const pkg = JSON.parse(
+    readFileSync(new URL("../package.json", import.meta.url)),
+  );
+  assert.deepEqual(await response.json(), {
+    status: "ok",
+    version: pkg.version,
+  });
+});
 
 test("comparison validation rejects ambiguous coercions and unsupported chains", () => {
   assert.deepEqual(

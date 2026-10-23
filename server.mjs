@@ -16,6 +16,9 @@ import { marketDetailsView } from "./server/market-details.mjs";
 import { loadCatalog } from "./server/catalog.mjs";
 import { compareStock, validateComparison } from "./server/quotes.mjs";
 import { readRuntime, clientIdentity } from "./server/runtime.mjs";
+const { version: appVersion } = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+);
 const files = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ...[
@@ -211,7 +214,7 @@ export function createApp({
         }
         const url = new URL(request.url, "http://localhost");
         if (url.pathname === "/api/health") {
-          send(200, { status: "ok", version: "0.9.0" });
+          send(200, { status: "ok", version: appVersion });
           return;
         }
         if (url.pathname === "/api/ready") {

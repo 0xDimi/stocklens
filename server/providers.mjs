@@ -2,6 +2,7 @@ import { request, memo, rpc, observeWithin } from "./http.mjs";
 import { CHAINS, XSTOCKS_API, ONDO_SOURCE } from "./config.mjs";
 import {
   activeMultiplier,
+  multiplierValidUntil,
   toBaseUnits,
   normalizeQuote,
   rankQuotes,
@@ -11,6 +12,15 @@ import {
   additionalQuoteProviders,
   settleQuoteProviders,
 } from "./public-quote-providers.mjs";
+import {
+  quoteFailure,
+  quoteUnavailable,
+  supportsQuotes,
+} from "../src/quote-support.mjs";
+import {
+  getIssuerConversion,
+  supportsIssuerConversion,
+} from "./issuer-conversions.mjs";
 export { parseJupiter, parseVelora } from "./public-quote-providers.mjs";
 
 const positiveInteger = (value) =>
@@ -108,6 +118,9 @@ export function parseSolanaMint(account, now = Date.now()) {
   return {
     outputDecimals: info.info.decimals,
     sharesPerToken: scaled ? activeMultiplier(scaled.state, now) : null,
+    conversionValidUntil: scaled
+      ? multiplierValidUntil(scaled.state, now)
+      : null,
     outputUnit: "raw-token",
   };
 }
@@ -121,6 +134,7 @@ export function evmConversion(issuer) {
     : { sharesPerToken: null, outputUnit: "raw-token", conversionSource: null };
 }
 export function conversionIssuer(product) {
+  if (supportsIssuerConversion(product)) return product.issuer;
   if (
     product.wrapped === true ||
     /^wrapped[ -]/i.test(product.name || product.coinId || "")
@@ -140,7 +154,11 @@ export function conversionIssuer(product) {
     return "ondo";
   return null;
 }
-export async function getTokenUnits(product, deployment) {
+export async function getTokenUnits(
+  product,
+  deployment,
+  { deadlineAt = Infinity } = {},
+) {
   const chain = CHAINS[deployment.chain];
   const unitIssuer = conversionIssuer(product);
   if (deployment.chain === "Solana") {
@@ -151,6 +169,18 @@ export async function getTokenUnits(product, deployment) {
       ]),
     );
     const parsed = parseSolanaMint(account);
+    if (supportsIssuerConversion(product)) {
+      const current = await getIssuerConversion(product, deployment, {
+        chain,
+        mintAccount: account,
+        deadlineAt,
+      });
+      return {
+        ...parsed,
+        sharesPerToken: null,
+        ...current,
+      };
+    }
     if (!["xstocks", "ondo"].includes(unitIssuer)) parsed.sharesPerToken = null;
     if (unitIssuer === "xstocks") {
       try {
@@ -160,6 +190,7 @@ export async function getTokenUnits(product, deployment) {
           ),
         );
         parsed.sharesPerToken = activeMultiplier(multiplier);
+        parsed.conversionValidUntil = multiplierValidUntil(multiplier);
         parsed.conversionSource = `${XSTOCKS_API}/assets/${encodeURIComponent(product.symbol)}/multiplier?network=Solana`;
       } catch {
         parsed.conversionSource = chain.explorer + deployment.address;
@@ -181,6 +212,20 @@ export async function getTokenUnits(product, deployment) {
   const decimals = Number(BigInt(hex));
   if (!Number.isInteger(decimals) || decimals > 30)
     throw new Error("Unsupported token decimals.");
+  if (supportsIssuerConversion(product)) {
+    const current = await getIssuerConversion(product, deployment, {
+      chain,
+      deadlineAt,
+    });
+    return {
+      outputDecimals: decimals,
+      ...(current || {
+        sharesPerToken: null,
+        outputUnit: "raw-token",
+        conversionSource: null,
+      }),
+    };
+  }
   // Only explicitly documented issuer units can authorize normalization.
   const conversion = evmConversion(unitIssuer);
   if (unitIssuer !== "ondo" || !chain.oracle)
@@ -268,15 +313,16 @@ export async function getQuoteOptions(
     poolIds: [],
     buyUrl: null,
     inputAsset: chain?.usdc,
-    inputSymbol:
-      deployment.chain === "BinanceSmartChain" ? "Binance-Peg USDC" : "USDC",
+    inputSymbol: chain?.inputSymbol || "USDC",
   };
-  if (!chain?.usdc)
+  if (!supportsQuotes(chain))
     return [
       {
         ...base,
         status: "unavailable",
+        availability: "unsupported-network",
         reason:
+          chain?.quoteUnavailableReason ||
           "Order quotes are not supported on this chain. Explore its listed markets in the Markets tab.",
       },
     ];
@@ -285,6 +331,7 @@ export async function getQuoteOptions(
       {
         ...base,
         status: "unavailable",
+        availability: "halted",
         reason: "Issuer reports this product is halted.",
       },
     ];
@@ -294,7 +341,7 @@ export async function getQuoteOptions(
     const remaining = deadlineAt - Date.now();
     if (remaining <= 0) throw new Error("Quote deadline reached.");
     units = await observeWithin(
-      () => getTokenUnits(product, deployment),
+      () => getTokenUnits(product, deployment, { deadlineAt }),
       remaining,
     );
   } catch (error) {
@@ -302,6 +349,7 @@ export async function getQuoteOptions(
       {
         ...base,
         status: "unavailable",
+        availability: "metadata-unavailable",
         reason: `Token units could not be verified: ${error.message}`,
         fetchedAt: Date.now(),
         expiresAt: null,
@@ -336,7 +384,9 @@ export async function getQuoteOptions(
     parse: solana ? parseRaydium : parseKyber,
   };
   const adapters = [
-    primary,
+    ...(solana || (chain.kyber && chain.quoteProviders?.kyber !== false)
+      ? [primary]
+      : []),
     ...additionalQuoteProviders(deployment, chain, inputAmount, units),
   ];
   const results = await settleQuoteProviders(
@@ -391,13 +441,18 @@ export async function getQuoteOptions(
               providerRouter: raw.providerRouter || null,
               providerFeeBps: raw.providerFeeBps ?? null,
               buyUrl: adapter.buyUrl,
-              quoteSource: adapter.url,
+              quoteSource: adapter.sourceUrl || adapter.url,
+              quoteSourceLabel: adapter.sourceLabel || "Quote response",
               inputAmount: raw.inputAmount,
               inputDecimals: chain.decimals,
               outputAmount: raw.outputAmount,
               minimumOutputAmount: raw.minimumOutputAmount,
               priceImpactPct: raw.priceImpactPct,
               status: "quoted",
+              availability:
+                result.equivalentShares == null
+                  ? "conversion-unverified"
+                  : "quoted",
               conversionWarning:
                 result.equivalentShares == null
                   ? "Shares-per-token data is unavailable. Token output is shown without cross-product ranking."
@@ -416,10 +471,7 @@ export async function getQuoteOptions(
       ? [
           {
             provider: adapters[index].name,
-            reason:
-              result.reason?.name === "TimeoutError"
-                ? "The public quote service timed out."
-                : result.reason?.message || "No route returned.",
+            ...quoteFailure(result.reason),
           },
         ]
       : [],
@@ -445,7 +497,7 @@ export async function getQuoteOptions(
       expiresAt: null,
       attemptedProviders: adapters.map((adapter) => adapter.name),
       quoteFailures: failures,
-      reason: `No verified quote is available for this amount from ${adapters.map((adapter) => adapter.name).join(" or ")}. Try a different amount or chain, or inspect this product's listed markets.`,
+      ...quoteUnavailable(failures),
     },
   ];
 }

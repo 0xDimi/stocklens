@@ -7,6 +7,8 @@ const NETWORKS = {
   Ethereum: "ethereum",
   BinanceSmartChain: "bsc",
   Solana: "solana",
+  Base: "base",
+  Ink: "ink",
 };
 const API = "https://api.dexscreener.com";
 const read = sourceClient(

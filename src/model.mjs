@@ -60,6 +60,23 @@ export function activeMultiplier(data, now = Date.now()) {
     ? pending
     : current;
 }
+export function multiplierValidUntil(data, now = Date.now()) {
+  const current = Number(data.currentMultiplier ?? data.multiplier);
+  const pending = Number(data.newMultiplier);
+  let activation = Number(
+    data.activationDateTime ?? data.newMultiplierEffectiveTimestamp,
+  );
+  if (activation > 1e12) activation /= 1000;
+  return Number.isFinite(current) &&
+    current > 0 &&
+    Number.isFinite(pending) &&
+    pending > 0 &&
+    pending !== current &&
+    Number.isFinite(activation) &&
+    activation * 1000 > now
+    ? activation * 1000
+    : null;
+}
 export function normalizeQuote(raw) {
   const inputQuantity = fromBaseUnits(raw.inputAmount, raw.inputDecimals);
   const tokenQuantity = fromBaseUnits(raw.outputAmount, raw.outputDecimals);
@@ -81,7 +98,12 @@ export function normalizeQuote(raw) {
     effectivePrice,
     networkFeeUsd: gas != null && Number.isFinite(gas) && gas >= 0 ? gas : null,
     fetchedAt: raw.fetchedAt,
-    expiresAt: raw.fetchedAt + 30_000,
+    expiresAt: Math.min(
+      raw.fetchedAt + 30_000,
+      Number.isFinite(raw.conversionValidUntil)
+        ? raw.conversionValidUntil
+        : Infinity,
+    ),
   };
 }
 export function rankQuotes(rows, now = Date.now()) {

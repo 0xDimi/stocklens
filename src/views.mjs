@@ -1,3 +1,4 @@
+import { quoteFeeView } from "./quote-support.mjs";
 import { renderProductTerms } from "./product-terms.mjs";
 import { issuerLogo, chainLogo, venueLogo } from "./brands.mjs";
 import { issuers } from "./data.mjs";
@@ -153,6 +154,7 @@ export function quoteTable(rows, { reference, bestId } = {}) {
           adverse = premium > 5 || r.priceImpactPct > 5,
           normalized = Number.isFinite(r.equivalentShares),
           quoteProvider = r.quoteProvider || r.venue || "Quote provider",
+          fees = quoteFeeView(r),
           venues = [...new Set(r.liquidityVenues || [])],
           venueLabels = venues.map((name) =>
             name
@@ -175,9 +177,9 @@ export function quoteTable(rows, { reference, bestId } = {}) {
         <span class="chain-cell"><span class="named-network">${chainLogo(r.chain, r.chainLabel)}${escape(r.chainLabel)}</span><small class="named-venue">${venueLogo(quoteProvider)}Quote via ${escape(quoteProvider)}</small>${venues.length ? `<small class="liquidity-venues" title="The exchanges or liquidity sources reported by this quote provider.">Liquidity: ${escape(venueLabels.join(", "))}</small>` : ""}</span>
         <span class="price-cell"><span class="mobile-label">${normalized ? "USDC / equivalent share" : "USDC / token"}</span><strong>${quoted ? number(normalized ? r.effectivePrice : rawPrice) : "Unavailable"}</strong><small>${quoted ? (normalized ? "before network costs" : "Token quote · conversion unverified") : "expand for details"}</small>${Number.isFinite(premium) ? `<small class="quote-premium ${premium < 0 ? "negative" : ""}">${premium > 0 ? "+" : ""}${number(premium)}% vs listed ${reference.priceSession === "Closed" ? "last close" : "reference"}</small>` : ""}</span>
         <span class="exposure-cell"><span class="mobile-label">You receive</span><strong>${quoted ? number(normalized ? r.equivalentShares : r.tokenQuantity, 4) : "—"}</strong><small>${quoted ? (normalized ? "equivalent shares" : "tokens · unranked") : "no quote"}</small></span>
-        <span class="cost-cell"><span class="mobile-label">Swap gas estimate</span><strong>${quoted ? (Number.isFinite(r.networkFeeUsd) ? usd(r.networkFeeUsd) : "Not supplied") : "—"}</strong><small>paid separately</small></span><span class="expand-icon" aria-hidden="true">⌄</span>
+        <span class="cost-cell"><span class="mobile-label">Swap gas estimate</span><strong>${quoted ? escape(fees.label) : "—"}</strong><small>${fees.providerFee ? escape(fees.providerFee) : "review before purchase"}</small></span><span class="expand-icon" aria-hidden="true">⌄</span>
       </summary>
-      <div class="quote-disclosure"><div><h4>Quote details</h4><dl><dt>Input</dt><dd>${number(r.inputQuantity)} ${escape(r.inputSymbol || "USDC")}</dd><dt>Token units</dt><dd>${number(r.tokenQuantity, 6)}</dd><dt>Shares / quoted unit</dt><dd>${number(r.sharesPerToken, 8)}</dd><dt>Swap gas estimate (USD)</dt><dd>${Number.isFinite(r.networkFeeUsd) ? usd(r.networkFeeUsd) : "Not supplied"}</dd><dt>Fetched</dt><dd>${stamp(r.fetchedAt)}</dd><dt>Quote expires</dt><dd>${stamp(r.expiresAt)}</dd>${Number.isFinite(premium) ? `<dt>Listed comparison</dt><dd>${usd(reference.price)} · ${escape(reference.priceDate || stamp(reference.at))}. USDC treated as USD for this comparison; before network costs.</dd>` : ""}<dt>Price impact</dt><dd>${r.priceImpactPct == null ? "Not supplied" : number(r.priceImpactPct) + "%"}</dd></dl></div><div><h4>${quoted ? "Routing & costs" : "Quote unavailable"}</h4><p>${escape(r.reason || r.conversionWarning || "Fees and price impact are reflected in output. Gas, funding, bridging, approvals and future exit costs are separate.")}</p><p>Quote provider: ${escape(quoteProvider)}.${venues.length ? ` Liquidity: ${escape(venues.join(", "))}.` : " Liquidity venues were not supplied."}</p>${r.quoteFailures?.length ? `<p class="quote-provider-coverage">Other checked providers: ${r.quoteFailures.map((f) => `${escape(f.provider)} — ${escape(f.reason)}`).join("; ")}</p>` : ""}${r.conversionSource ? external(r.conversionSource, "Conversion source") : ""}${r.quoteSource ? external(r.quoteSource, "Quote response") : ""}<button class="text-button" data-action="terms">Read product terms →</button></div></div>
+      <div class="quote-disclosure"><div><h4>Quote details</h4><dl><dt>Input</dt><dd>${number(r.inputQuantity)} ${escape(r.inputSymbol || "USDC")}</dd><dt>Token units</dt><dd>${number(r.tokenQuantity, 6)}</dd><dt>Shares / quoted unit</dt><dd>${number(r.sharesPerToken, 8)}</dd><dt>Swap gas estimate (USD)</dt><dd>${escape(fees.label)}<small>${escape(fees.detail)}</small></dd>${fees.providerFee ? `<dt>Provider fee</dt><dd>${escape(fees.providerFee)}</dd>` : ""}<dt>Fetched</dt><dd>${stamp(r.fetchedAt)}</dd><dt>Quote expires</dt><dd>${stamp(r.expiresAt)}</dd>${Number.isFinite(premium) ? `<dt>Listed comparison</dt><dd>${usd(reference.price)} · ${escape(reference.priceDate || stamp(reference.at))}. USDC treated as USD for this comparison; before network costs.</dd>` : ""}<dt>Price impact</dt><dd>${r.priceImpactPct == null ? "Not supplied" : number(r.priceImpactPct) + "%"}</dd></dl></div><div><h4>${quoted ? "Routing & costs" : "Quote unavailable"}</h4><p>${escape(r.reason || r.conversionWarning || "Fees and price impact are reflected in output. Gas, funding, bridging, approvals and future exit costs are separate.")}</p><p>Quote provider: ${escape(quoteProvider)}.${venues.length ? ` Liquidity: ${escape(venues.join(", "))}.` : " Liquidity venues were not supplied."}</p>${r.quoteFailures?.length ? `<p class="quote-provider-coverage">Other checked providers: ${r.quoteFailures.map((f) => `${escape(f.provider)} — ${escape(f.reason)}`).join("; ")}</p>` : ""}${r.conversionSource ? external(r.conversionSource, "Conversion source") : ""}${r.quoteSource ? external(r.quoteSource, r.quoteSourceLabel || "Quote response") : ""}<button class="text-button" data-action="terms">Read product terms →</button></div></div>
       <div class="contract-line"><span>Contract</span>${external(r.explorerUrl, r.address)}</div><div class="provider-handoff"><p>Enter ${number(r.inputQuantity)} ${escape(r.inputSymbol || "USDC")} at the venue and review its refreshed quote, eligibility and final costs.</p>${quoted && !expired ? `<a class="provider-link quote-link" href="${escape(r.buyUrl)}" data-expires="${r.expiresAt}" target="_blank" rel="noopener noreferrer">Open ${escape(quoteProvider)} ↗</a>` : quoted ? `<span class="provider-link quote-link" data-expires="${r.expiresAt}" aria-disabled="true">Refresh quote to continue</span>` : external(r.source, "Product source", "provider-link")}</div></details>`;
       })
       .join("")
@@ -262,6 +264,10 @@ export function exportColumns(view, selected) {
     ],
     ["Equivalent shares", (r) => r.equivalentShares],
     ["USDC per equivalent share", (r) => r.effectivePrice],
+    ["Network fee estimate USD", (r) => r.networkFeeUsd],
+    ["Provider fee bps (included)", (r) => r.providerFeeBps],
+    ["Conversion source", (r) => r.conversionSource],
+    ["Availability", (r) => r.availability],
     [
       "Status",
       (r) =>

@@ -347,7 +347,7 @@ function renderResults() {
     products:
       "Token-unit prices are not directly comparable share prices. Volume and market cap describe the token, not the underlying company. Expand a product for contracts and access terms.",
     quotes:
-      "Ranked by verified equivalent shares before network costs. Jupiter and Raydium quote Solana; KyberSwap and Velora quote supported EVM networks. Liquidity sources are shown separately. A route can be unavailable even when its token is listed.",
+      "Ranked by verified equivalent shares before network costs. Jupiter and Raydium quote Solana; KyberSwap, Velora and LI.FI quote supported EVM networks. Liquidity sources are shown separately. A route can be unavailable even when its token is listed.",
     markets:
       "Pool prices are observations, not size-specific quotes. Search results can omit venues. Check the exact contract, venue access and final trade quote.",
     venues:
@@ -972,7 +972,7 @@ function showCoverage() {
       })
       .join(
         "",
-      )}</div><h3>Networks & quote support</h3><div class="coverage-networks">${networks.map((id) => `<span>${chainLogo(id)}${escape(chains.find((c) => c.id === id)?.label || id)}<small>${chains.find((c) => c.id === id)?.quotable ? "Quotes connected" : "Discovery only"}</small></span>`).join("")}</div><h3>Gaps kept visible</h3><p>${stocks.filter((s) => !s.products.length).length} registry assets await a mapped version. ${catalogCoverage?.heldBackIssuerRecords || 0} issuer records were held back pending identity corroboration. ${escape(catalogWarnings.join(" "))}</p><p>Hyperliquid platform identifiers returned by the registry do not match the supported contract format and stay outside contract routing. Buy quotes cover five networks. DEX pool searches and exchange pages are partial. Unconfirmed legal terms and share conversions are never filled with assumptions.</p>`;
+      )}</div><h3>Networks & quote support</h3><div class="coverage-networks">${networks.map((id) => `<span>${chainLogo(id)}${escape(chains.find((c) => c.id === id)?.label || id)}<small>${chains.find((c) => c.id === id)?.quotable ? "Quotes connected" : "Discovery only"}</small></span>`).join("")}</div><h3>Gaps kept visible</h3><p>${stocks.filter((s) => !s.products.length).length} registry assets await a mapped version. ${catalogCoverage?.heldBackIssuerRecords || 0} issuer records were held back pending identity corroboration. ${escape(catalogWarnings.join(" "))}</p><p>Hyperliquid platform identifiers returned by the registry do not match the supported contract format and stay outside contract routing. Buy quote adapters cover ${chains.filter((c) => c.quotable).length} networks; individual routes depend on available markets. DEX pool searches and exchange pages are partial. Unconfirmed legal terms and share conversions are never filled with assumptions.</p>`;
   if (pendingProducts.length)
     $("#coverage-content").insertAdjacentHTML(
       "beforeend",

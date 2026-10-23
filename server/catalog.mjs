@@ -5,6 +5,7 @@ import {
   attachKnownProducts,
 } from "./coingecko.mjs";
 import { coverageSummary } from "./coverage.mjs";
+import { supportsQuotes } from "../src/quote-support.mjs";
 import { request } from "./http.mjs";
 import { applyCatalogReferences } from "./catalog-identities.mjs";
 import { join } from "node:path";
@@ -595,11 +596,11 @@ export function createCatalogLoader(options = {}) {
       },
       fetchedAt,
       warnings,
-      chains: Object.values(CHAINS).map(({ id, label, explorer, usdc }) => ({
-        id,
-        label,
-        explorer,
-        quotable: !!usdc,
+      chains: Object.values(CHAINS).map((chain) => ({
+        id: chain.id,
+        label: chain.label,
+        explorer: chain.explorer,
+        quotable: supportsQuotes(chain),
       })),
       sources: [
         {

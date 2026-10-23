@@ -117,15 +117,17 @@ export function settleQuoteProviders(jobs, deadlineAt) {
 
 // Jupiter documents 0.5 requests/second for keyless clients. Expired waiting
 // jobs are removed instead of occupying a Promise tail or sending late HTTP.
-export function createJupiterRequester({
-  intervalMs = 2100,
+function createPacedRequester({
+  intervalMs,
   maxQueue = 12,
-} = {}) {
+  name,
+  send = request,
+}) {
   const queue = [];
   let nextAt = 0;
   let rateTimer = null;
   const deadlineError = () =>
-    new Error("Jupiter public quote deadline reached. Refresh shortly.");
+    new Error(`${name} public quote deadline reached. Refresh shortly.`);
   const pump = () => {
     if (rateTimer) {
       clearTimeout(rateTimer);
@@ -146,22 +148,29 @@ export function createJupiterRequester({
       return;
     }
     nextAt = Date.now() + intervalMs;
-    request(job.url, { timeout: Math.min(12_000, remaining) }).then(
-      job.resolve,
-      job.reject,
-    );
+    send(job.url, {
+      ...job.options,
+      timeout: Math.min(12_000, remaining),
+    }).then(job.resolve, job.reject);
     pump();
   };
-  return (url, { deadlineAt = Date.now() + 20_000 } = {}) => {
+  return (url, { deadlineAt = Date.now() + 20_000, ...options } = {}) => {
     const now = Date.now();
     if (deadlineAt <= Math.max(now, nextAt) + queue.length * intervalMs)
       return Promise.reject(deadlineError());
     if (queue.length >= maxQueue)
       return Promise.reject(
-        new Error("Jupiter public quote capacity is busy. Refresh shortly."),
+        new Error(`${name} public quote capacity is busy. Refresh shortly.`),
       );
     return new Promise((resolve, reject) => {
-      const job = { url, deadlineAt, resolve, reject, expiryTimer: null };
+      const job = {
+        url,
+        deadlineAt,
+        options,
+        resolve,
+        reject,
+        expiryTimer: null,
+      };
       job.expiryTimer = setTimeout(() => {
         const index = queue.indexOf(job);
         if (index >= 0) queue.splice(index, 1);
@@ -173,7 +182,124 @@ export function createJupiterRequester({
     });
   };
 }
+export function createJupiterRequester(options = {}) {
+  return createPacedRequester({
+    intervalMs: 2100,
+    ...options,
+    name: "Jupiter",
+  });
+}
 export const requestJupiter = createJupiterRequester();
+
+// https://docs.li.fi/api-reference/rate-limits: keyless advanced/routes has a
+// 75-request rolling two-hour quota. Never retry, rotate IPs or request keys.
+export function createLifiRequester({
+  maxRequests = 75,
+  windowMs = 7_200_000,
+  intervalMs = 1100,
+  maxQueue = 12,
+  send = request,
+  now = Date.now,
+} = {}) {
+  const sentAt = [];
+  let blockedUntil = 0;
+  return createPacedRequester({
+    intervalMs,
+    maxQueue,
+    name: "LI.FI",
+    send: (url, options) => {
+      const time = now();
+      while (sentAt.length && sentAt[0] <= time - windowMs) sentAt.shift();
+      if (time < blockedUntil || sentAt.length >= maxRequests)
+        return Promise.reject(
+          new Error(
+            "LI.FI public quote quota reached. Try again after its two-hour window resets.",
+          ),
+        );
+      sentAt.push(time);
+      return send(url, options).catch((error) => {
+        // Another client on the same public IP may have consumed the quota.
+        // Stop requesting instead of immediately spending another request.
+        if (error.status === 429) blockedUntil = now() + windowMs;
+        throw error;
+      });
+    },
+  });
+}
+export const requestLifi = createLifiRequester();
+
+// Route estimates include fees only when every top-level step explicitly says
+// so. Included substeps repeat those fees and must not be counted twice.
+export function parseLifi(response, deployment, chain, amount, units) {
+  const candidates = [];
+  for (const q of response?.routes || []) {
+    if (
+      q.fromChainId !== chain.evmId ||
+      q.toChainId !== chain.evmId ||
+      q.containsSwitchChain !== false ||
+      q.fromAmount !== amount ||
+      !sameAddress(q.fromToken?.address, chain.usdc) ||
+      !sameAddress(q.toToken?.address, deployment.address) ||
+      q.fromToken.chainId !== chain.evmId ||
+      q.toToken.chainId !== chain.evmId ||
+      q.fromToken.decimals !== chain.decimals ||
+      q.toToken.decimals !== units.outputDecimals ||
+      !positiveInteger(q.toAmount) ||
+      !positiveInteger(q.toAmountMin) ||
+      BigInt(q.toAmountMin) > BigInt(q.toAmount) ||
+      !q.steps?.length
+    )
+      continue;
+    const steps = q.steps;
+    if (
+      steps.some(
+        (s) =>
+          s.action?.fromChainId !== chain.evmId ||
+          s.action?.toChainId !== chain.evmId ||
+          !Array.isArray(s.estimate?.feeCosts) ||
+          s.estimate.feeCosts.some(
+            (f) =>
+              f.included !== true ||
+              typeof f.amount !== "string" ||
+              !/^\d+$/.test(f.amount) ||
+              nonnegative(f.percentage) == null ||
+              Number(f.percentage) > 1,
+          ),
+      )
+    )
+      continue;
+    const fees = steps.flatMap((s) => s.estimate.feeCosts);
+    const venues = unique(
+      steps.flatMap((s) =>
+        (s.includedSteps || [s])
+          .filter((step) => step.type === "swap")
+          .map((step) => step.toolDetails?.name || step.tool),
+      ),
+    );
+    candidates.push({
+      inputAmount: amount,
+      outputAmount: q.toAmount,
+      minimumOutputAmount: q.toAmountMin,
+      networkFeeUsd: nonnegative(q.gasCostUSD),
+      priceImpactPct: null,
+      providerFeeBps: fees.reduce(
+        (sum, f) => sum + Number(f.percentage) * 10_000,
+        0,
+      ),
+      liquidityVenues: venues,
+      markets: venues,
+      poolIds: [],
+    });
+  }
+  candidates.sort((a, b) =>
+    BigInt(a.outputAmount) > BigInt(b.outputAmount) ? -1 : 1,
+  );
+  if (!candidates.length)
+    throw new Error(
+      "No verified LI.FI route with disclosed included fees is available for this amount.",
+    );
+  return candidates[0];
+}
 
 export function additionalQuoteProviders(deployment, chain, amount, units) {
   if (deployment.chain === "Solana") {
@@ -193,7 +319,44 @@ export function additionalQuoteProviders(deployment, chain, amount, units) {
       },
     ];
   }
-  if (!chain.evmId) return [];
+  if (!chain.evmId || !chain.usdc) return [];
+  if (chain.quoteProviders?.lifi) {
+    const body = JSON.stringify({
+      fromChainId: chain.evmId,
+      toChainId: chain.evmId,
+      fromTokenAddress: chain.usdc,
+      toTokenAddress: deployment.address,
+      fromAmount: amount,
+      options: { order: "CHEAPEST", slippage: 0.005, allowSwitchChain: false },
+    });
+    const buyParams = new URLSearchParams({
+      fromChain: String(chain.evmId),
+      toChain: String(chain.evmId),
+      fromToken: chain.usdc,
+      toToken: deployment.address,
+      fromAmount: `${BigInt(amount) / 10n ** BigInt(chain.decimals)}.${(BigInt(amount) % 10n ** BigInt(chain.decimals)).toString().padStart(chain.decimals, "0")}`,
+    });
+    return [
+      {
+        id: "lifi",
+        name: "LI.FI",
+        url: "https://li.quest/v1/advanced/routes",
+        sourceUrl:
+          "https://docs.li.fi/api-reference/advanced/get-a-set-of-routes-for-a-request-that-describes-a-transfer-of-tokens",
+        sourceLabel: "Quote API documentation",
+        buyUrl: `https://jumper.exchange/?${buyParams}`,
+        load: (url, options) =>
+          requestLifi(url, {
+            ...options,
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+          }),
+        parse: parseLifi,
+      },
+    ];
+  }
+  if (!chain.quoteProviders?.velora) return [];
   const params = new URLSearchParams({
     srcToken: chain.usdc,
     destToken: deployment.address,
@@ -209,7 +372,7 @@ export function additionalQuoteProviders(deployment, chain, amount, units) {
       id: "velora",
       name: "Velora",
       url: `https://api.velora.xyz/prices?${params}`,
-      buyUrl: `https://app.velora.xyz/app/swap/${chain.usdc}-${deployment.address}?network=${chain.kyber}`,
+      buyUrl: `https://app.velora.xyz/app/swap/${chain.usdc}-${deployment.address}?network=${chain.veloraChain || chain.kyber}`,
       load: request,
       parse: parseVelora,
     },

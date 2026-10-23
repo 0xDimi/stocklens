@@ -22,6 +22,7 @@ const files = new Map([
     "app.mjs",
     "comparison-ui.mjs",
     "comparison-state.mjs",
+    "quote-support.mjs",
     "product-terms.mjs",
     "product-terms.css",
     "home-comparison.css",
@@ -208,7 +209,7 @@ export function createApp({
         }
         const url = new URL(request.url, "http://localhost");
         if (url.pathname === "/api/health") {
-          send(200, { status: "ok", version: "0.8.5" });
+          send(200, { status: "ok", version: "0.9.0" });
           return;
         }
         if (url.pathname === "/api/ready") {

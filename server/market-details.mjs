@@ -4,11 +4,25 @@ import { getQuote, conversionIssuer } from "./providers.mjs";
 import { memo, mapLimit, observeWithin } from "./http.mjs";
 import { premium } from "../src/market-model.mjs";
 import { getSpotObservations } from "./public-spot.mjs";
+import { CHAINS } from "./config.mjs";
+import { supportsQuotes } from "../src/quote-support.mjs";
 
 const BASIS =
   "$1,000 USDC indicative buy premium before gas; USDC assumed $1. A representative verified version, not the best price across all versions. Observed quote, not a market-wide spot price or executable offer.";
 function candidates(stock) {
-  const order = ["Solana", "BinanceSmartChain", "Ethereum", "Base", "Arbitrum"];
+  const preferred = [
+    "Solana",
+    "BinanceSmartChain",
+    "Ethereum",
+    "Base",
+    "Arbitrum",
+  ];
+  const order = [
+    ...preferred,
+    ...Object.keys(CHAINS).filter(
+      (id) => !preferred.includes(id) && supportsQuotes(CHAINS[id]),
+    ),
+  ];
   return stock.products
     .filter((p) => !p.wrapped && !p.halted && conversionIssuer(p))
     .flatMap((product) =>

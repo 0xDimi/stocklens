@@ -1,0 +1,1220 @@
+{
+  "TMF": {
+    "ticker": "TMF",
+    "url": "https://api.nasdaq.com/api/quote/TMF/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "TMF",
+        "companyName": "Direxion Daily 20-Yr Treasury Bull 3x Shrs",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$29.71",
+          "percentageChange": "-0.24%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:09 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$29.78",
+          "percentageChange": "+5.53%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.307Z"
+  },
+  "SOXS": {
+    "ticker": "SOXS",
+    "url": "https://api.nasdaq.com/api/quote/SOXS/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "SOXS",
+        "companyName": "Direxion Daily Semiconductor Bear 3X ETF",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$51.86",
+          "percentageChange": "-2.97%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:10 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$53.45",
+          "percentageChange": "+20.68%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.323Z"
+  },
+  "GLD": {
+    "ticker": "GLD",
+    "url": "https://api.nasdaq.com/api/quote/GLD/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "GLD",
+        "companyName": "SPDR Gold Shares",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$368.7616",
+          "percentageChange": "-0.06%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:08 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$369.00",
+          "percentageChange": "-2.63%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.409Z"
+  },
+  "SKUU": {
+    "ticker": "SKUU",
+    "url": "https://api.nasdaq.com/api/quote/SKUU/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "SKUU",
+        "companyName": "GraniteShares 2x Long SK Hynix Daily ETF",
+        "stockType": null,
+        "exchange": "NASDAQ-GM",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$15.20",
+          "percentageChange": "+9.59%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:09 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$13.87",
+          "percentageChange": "-15.99%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.413Z"
+  },
+  "EWQ": {
+    "ticker": "EWQ",
+    "url": "https://api.nasdaq.com/api/quote/EWQ/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "EWQ",
+        "companyName": "iShares MSCI France Index Fund",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$41.79",
+          "percentageChange": "",
+          "lastTradeTimestamp": "Oct 23, 2026 4:00 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$41.79",
+          "percentageChange": "-0.76%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.548Z"
+  },
+  "EWJ": {
+    "ticker": "EWJ",
+    "url": "https://api.nasdaq.com/api/quote/EWJ/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "EWJ",
+        "companyName": "iShares MSCI Japan Index Fund",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$93.67",
+          "percentageChange": "-0.98%",
+          "lastTradeTimestamp": "Oct 23, 2026 5:42 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$94.60",
+          "percentageChange": "-1.17%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.551Z"
+  },
+  "EWG": {
+    "ticker": "EWG",
+    "url": "https://api.nasdaq.com/api/quote/EWG/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "EWG",
+        "companyName": "iShares MSCI Germany Index Fund",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$41.35",
+          "percentageChange": "",
+          "lastTradeTimestamp": "Oct 23, 2026 5:37 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$41.35",
+          "percentageChange": "-0.84%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.555Z"
+  },
+  "EWU": {
+    "ticker": "EWU",
+    "url": "https://api.nasdaq.com/api/quote/EWU/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "EWU",
+        "companyName": "iShares MSCI United Kingdom ETF",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$48.109",
+          "percentageChange": "+0.56%",
+          "lastTradeTimestamp": "Oct 23, 2026 4:44 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$47.84",
+          "percentageChange": "+0.31%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.648Z"
+  },
+  "SOXX": {
+    "ticker": "SOXX",
+    "url": "https://api.nasdaq.com/api/quote/SOXX/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "SOXX",
+        "companyName": "iShares PHLX SOX Semiconductor Sector Index Fund",
+        "stockType": null,
+        "exchange": "NASDAQ-GM",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$480.21",
+          "percentageChange": "+0.95%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:10 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$475.69",
+          "percentageChange": "-6.79%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.671Z"
+  },
+  "SPCH": {
+    "ticker": "SPCH",
+    "url": "https://api.nasdaq.com/api/quote/SPCH/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "SPCH",
+        "companyName": "Leverage Shares 2X Long SPCX Daily ETF",
+        "stockType": null,
+        "exchange": "BATS",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$9.2209",
+          "percentageChange": "+4.31%",
+          "lastTradeTimestamp": "Oct 23, 2026 5:55 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$8.84",
+          "percentageChange": "-18.45%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.701Z"
+  },
+  "IWM": {
+    "ticker": "IWM",
+    "url": "https://api.nasdaq.com/api/quote/IWM/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "IWM",
+        "companyName": "iShares Russell 2000 Index Fund",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$275.46",
+          "percentageChange": "-0.44%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:10 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$276.67",
+          "percentageChange": "+0.07%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.765Z"
+  },
+  "VTI": {
+    "ticker": "VTI",
+    "url": "https://api.nasdaq.com/api/quote/VTI/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "VTI",
+        "companyName": "Vanguard Morningstar Total Stock Market ETF",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$374.0945",
+          "percentageChange": "-0.21%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:06 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$374.90",
+          "percentageChange": "-1.12%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.954Z"
+  },
+  "VOO": {
+    "ticker": "VOO",
+    "url": "https://api.nasdaq.com/api/quote/VOO/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "VOO",
+        "companyName": "Vanguard S&P 500 ETF",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$701.0185",
+          "percentageChange": "-0.18%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:09 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$702.30",
+          "percentageChange": "-1.18%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.000Z"
+  },
+  "BTCO": {
+    "ticker": "BTCO",
+    "url": "https://api.nasdaq.com/api/quote/BTCO/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "BTCO",
+        "companyName": "Invesco Galaxy Bitcoin ETF ",
+        "stockType": null,
+        "exchange": "BATS",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$80.89",
+          "percentageChange": "-3.67%",
+          "lastTradeTimestamp": "Oct 23, 2026",
+          "isRealTime": false,
+          "currency": null
+        },
+        "secondaryData": null
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.829Z"
+  },
+  "BRLN": {
+    "ticker": "BRLN",
+    "url": "https://api.nasdaq.com/api/quote/BRLN/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "BRLN",
+        "companyName": "iShares Floating Rate Loan Active ETF",
+        "stockType": null,
+        "exchange": "BATS",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$50.405",
+          "percentageChange": "+0.15%",
+          "lastTradeTimestamp": "Oct 22, 2026",
+          "isRealTime": false,
+          "currency": null
+        },
+        "secondaryData": null
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:52.259Z"
+  },
+  "BRHY": {
+    "ticker": "BRHY",
+    "url": "https://api.nasdaq.com/api/quote/BRHY/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "BRHY",
+        "companyName": "iShares High Yield Active ETF",
+        "stockType": null,
+        "exchange": "NASDAQ-GM",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$49.165",
+          "percentageChange": "+0.02%",
+          "lastTradeTimestamp": "Oct 22, 2026",
+          "isRealTime": false,
+          "currency": null
+        },
+        "secondaryData": null
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:52.346Z"
+  },
+  "TSLL": {
+    "ticker": "TSLL",
+    "url": "https://api.nasdaq.com/api/quote/TSLL/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "TSLL",
+        "companyName": "Direxion Daily TSLA Bull 2X ETF",
+        "stockType": null,
+        "exchange": "NASDAQ-GM",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$10.03",
+          "percentageChange": "+1.52%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:10 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$9.88",
+          "percentageChange": "-6.08%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.326Z"
+  },
+  "AVL": {
+    "ticker": "AVL",
+    "url": "https://api.nasdaq.com/api/quote/AVL/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "AVL",
+        "companyName": "Direxion Daily AVGO Bull 2X ETF",
+        "stockType": null,
+        "exchange": "NASDAQ-GM",
+        "marketStatus": "Open",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$30.03",
+          "percentageChange": "-7.71%",
+          "lastTradeTimestamp": "Oct 22, 2026 12:49 PM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": null
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.305Z"
+  },
+  "MUU": {
+    "ticker": "MUU",
+    "url": "https://api.nasdaq.com/api/quote/MUU/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "MUU",
+        "companyName": "Direxion Daily MU Bull 2X ETF",
+        "stockType": null,
+        "exchange": "NASDAQ-GM",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$23.6807",
+          "percentageChange": "+3.36%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:07 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$22.91",
+          "percentageChange": "-12.66%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.728Z"
+  },
+  "LABD": {
+    "ticker": "LABD",
+    "url": "https://api.nasdaq.com/api/quote/LABD/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "LABD",
+        "companyName": "Direxion Daily S&P Biotech Bear 3X ETF",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$7.61",
+          "percentageChange": "-0.13%",
+          "lastTradeTimestamp": "Oct 23, 2026 5:28 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$7.62",
+          "percentageChange": "+2.14%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.397Z"
+  },
+  "LABU": {
+    "ticker": "LABU",
+    "url": "https://api.nasdaq.com/api/quote/LABU/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "LABU",
+        "companyName": "Direxion Daily S&P Biotech Bull 3X ETF",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$230.25",
+          "percentageChange": "+0.47%",
+          "lastTradeTimestamp": "Oct 23, 2026 5:39 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$229.18",
+          "percentageChange": "-2.14%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.395Z"
+  },
+  "TZA": {
+    "ticker": "TZA",
+    "url": "https://api.nasdaq.com/api/quote/TZA/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "TZA",
+        "companyName": "Direxion Small Cap Bear 3X ETF",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$48.8893",
+          "percentageChange": "+1.58%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:06 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$48.13",
+          "percentageChange": "-0.19%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.296Z"
+  },
+  "TNA": {
+    "ticker": "TNA",
+    "url": "https://api.nasdaq.com/api/quote/TNA/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "TNA",
+        "companyName": "Direxion Small Cap Bull 3X ETF",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$55.46",
+          "percentageChange": "-1.56%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:00 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$56.34",
+          "percentageChange": "+0.21%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.311Z"
+  },
+  "SIVR": {
+    "ticker": "SIVR",
+    "url": "https://api.nasdaq.com/api/quote/SIVR/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "SIVR",
+        "companyName": "abrdn Physical Silver Shares ETF",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$51.08",
+          "percentageChange": "-1.56%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:01 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$51.89",
+          "percentageChange": "-5.59%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.086Z"
+  },
+  "ARKB": {
+    "ticker": "ARKB",
+    "url": "https://api.nasdaq.com/api/quote/ARKB/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "ARKB",
+        "companyName": "ARK 21Shares Bitcoin ETF ",
+        "stockType": null,
+        "exchange": "BATS",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$27.05",
+          "percentageChange": "+0.30%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:05 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$26.97",
+          "percentageChange": "-3.68%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.180Z"
+  },
+  "PAVE": {
+    "ticker": "PAVE",
+    "url": "https://api.nasdaq.com/api/quote/PAVE/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "PAVE",
+        "companyName": "Global X Funds Global X U.S. Infrastructure Development ETF",
+        "stockType": null,
+        "exchange": "BATS",
+        "marketStatus": "Closed",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$52.07",
+          "percentageChange": "-2.01%",
+          "lastTradeTimestamp": "Oct 22, 2026",
+          "isRealTime": false,
+          "currency": null
+        },
+        "secondaryData": null
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.678Z"
+  },
+  "NVD": {
+    "ticker": "NVD",
+    "url": "https://api.nasdaq.com/api/quote/NVD/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "NVD",
+        "companyName": "GraniteShares 2x Short NVDA Daily ETF",
+        "stockType": null,
+        "exchange": "NASDAQ-GM",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$4.10",
+          "percentageChange": "-1.20%",
+          "lastTradeTimestamp": "Oct 23, 2026 5:55 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$4.15",
+          "percentageChange": "+8.64%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.713Z"
+  },
+  "PHO": {
+    "ticker": "PHO",
+    "url": "https://api.nasdaq.com/api/quote/PHO/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "PHO",
+        "companyName": "Invesco Water Resources ETF",
+        "stockType": null,
+        "exchange": "NASDAQ-GM",
+        "marketStatus": "Closed",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$72.26",
+          "percentageChange": "+1.96%",
+          "lastTradeTimestamp": "Oct 22, 2026",
+          "isRealTime": false,
+          "currency": null
+        },
+        "secondaryData": null
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.832Z"
+  },
+  "TSLQ": {
+    "ticker": "TSLQ",
+    "url": "https://api.nasdaq.com/api/quote/TSLQ/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "TSLQ",
+        "companyName": "Tradr 2X Short TSLA Daily ETF",
+        "stockType": null,
+        "exchange": "NASDAQ-GM",
+        "marketStatus": "After-Hours",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$17.17",
+          "percentageChange": "+0.82%",
+          "lastTradeTimestamp": "Oct 22, 2026 6:15 PM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$17.0309",
+          "percentageChange": "+6.05%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.919Z"
+  },
+  "IWF": {
+    "ticker": "IWF",
+    "url": "https://api.nasdaq.com/api/quote/IWF/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "IWF",
+        "companyName": "iShares Russell 1000 Growth Fund",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$120.09",
+          "percentageChange": "",
+          "lastTradeTimestamp": "Oct 23, 2026 4:32 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$120.09",
+          "percentageChange": "-2.79%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:52.582Z"
+  },
+  "ITA": {
+    "ticker": "ITA",
+    "url": "https://api.nasdaq.com/api/quote/ITA/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "ITA",
+        "companyName": "iShares U.S. Aerospace & Defense ETF",
+        "stockType": null,
+        "exchange": "BATS",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$203.83",
+          "percentageChange": "-0.32%",
+          "lastTradeTimestamp": "Oct 23, 2026 4:22 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$204.48",
+          "percentageChange": "-0.64%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.673Z"
+  },
+  "HLAL": {
+    "ticker": "HLAL",
+    "url": "https://api.nasdaq.com/api/quote/HLAL/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "HLAL",
+        "companyName": "Wahed FTSE USA Shariah ETF",
+        "stockType": null,
+        "exchange": "NASDAQ-GM",
+        "marketStatus": "Closed",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$72.71",
+          "percentageChange": "-2.17%",
+          "lastTradeTimestamp": "Oct 22, 2026",
+          "isRealTime": false,
+          "currency": null
+        },
+        "secondaryData": null
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:52.943Z"
+  },
+  "UFO": {
+    "ticker": "UFO",
+    "url": "https://api.nasdaq.com/api/quote/UFO/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "UFO",
+        "companyName": "Procure Space ETF",
+        "stockType": null,
+        "exchange": "NASDAQ-GM",
+        "marketStatus": "After-Hours",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$39.00",
+          "percentageChange": "-1.07%",
+          "lastTradeTimestamp": "Oct 22, 2026 4:42 PM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$39.42",
+          "percentageChange": "-3.00%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:52.960Z"
+  },
+  "VGK": {
+    "ticker": "VGK",
+    "url": "https://api.nasdaq.com/api/quote/VGK/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "VGK",
+        "companyName": "Vanguard FTSEEuropean ETF",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$86.4985",
+          "percentageChange": "-0.35%",
+          "lastTradeTimestamp": "Oct 23, 2026 4:01 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$86.80",
+          "percentageChange": "-0.89%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.003Z"
+  },
+  "VUG": {
+    "ticker": "VUG",
+    "url": "https://api.nasdaq.com/api/quote/VUG/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "VUG",
+        "companyName": "Vanguard Morningstar Growth ETF",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$87.0173",
+          "percentageChange": "-0.18%",
+          "lastTradeTimestamp": "Oct 23, 2026 6:02 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$87.17",
+          "percentageChange": "-2.52%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:51.030Z"
+  },
+  "FEZ": {
+    "ticker": "FEZ",
+    "url": "https://api.nasdaq.com/api/quote/FEZ/info?assetclass=etf",
+    "body": {
+      "data": {
+        "symbol": "FEZ",
+        "companyName": "State Street SPDR EURO STOXX 50 ETF",
+        "stockType": null,
+        "exchange": "PSE",
+        "marketStatus": "Pre-Market",
+        "assetClass": "ETF",
+        "primaryData": {
+          "lastSalePrice": "$65.06",
+          "percentageChange": "",
+          "lastTradeTimestamp": "Oct 23, 2026 4:00 AM ET",
+          "isRealTime": true,
+          "currency": null
+        },
+        "secondaryData": {
+          "lastSalePrice": "$65.06",
+          "percentageChange": "-1.60%",
+          "lastTradeTimestamp": "Closed at Oct 22, 2026 4:00 PM ET",
+          "isRealTime": false,
+          "currency": null
+        }
+      },
+      "message": null,
+      "status": {
+        "rCode": 200,
+        "bCodeMessage": null,
+        "developerMessage": null
+      }
+    },
+    "retrievedAt": "2026-10-23T10:10:50.821Z"
+  }
+}

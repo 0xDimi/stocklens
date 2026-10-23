@@ -88,7 +88,11 @@ test("quote accessibility names expose price, share exposure, units and status; 
     html,
     /aria-label="[^"]*5.0000 equivalent shares[^"]*200.00 USDC per equivalent share/,
   );
-  assert.match(html, /<dt>Swap gas estimate \(USD\)<\/dt><dd>\$1.23<\/dd>/);
+  assert.match(html, /<dt>Swap gas estimate \(USD\)<\/dt><dd>\$1.23<small>Provider estimate;/);
+  const walletless = quoteTable([{ ...r, networkFeeUsd: null, providerFeeBps: 10 }]);
+  assert.match(walletless, /At venue/);
+  assert.match(walletless, /0\.10% provider fee included/);
+  assert.match(walletless, /Gas depends on the transaction and wallet/);
   assert.match(
     quoteTable([{ ...r, status: "unavailable" }]),
     /aria-label="[^"]*quote unavailable/,

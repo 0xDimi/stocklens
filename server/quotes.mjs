@@ -4,6 +4,7 @@ import { getQuoteOptions } from "./providers.mjs";
 import { mapLimit, observeWithin } from "./http.mjs";
 import { rankQuotes, validBudget } from "../src/model.mjs";
 import { CHAINS } from "./config.mjs";
+import { scheduleQuoteJobs } from "../src/quote-support.mjs";
 
 export function validateComparison(params) {
   const id = params.get("stock") || params.get("ticker") || "NVDA";
@@ -58,6 +59,7 @@ export async function collectQuoteOptions(
             source: product.source,
             sourceAt: product.sourceAt,
             status: "unavailable",
+            availability: "timeout",
             quoteProvider: null,
             venue: "—",
             buyUrl: null,
@@ -78,11 +80,7 @@ export async function collectQuoteOptions(
 export async function compareStock({ id, amount, chain }) {
   const { stock, warnings, catalogAt } = await resolveStock(id, true);
   const referenceWork = getFundamentals(stock);
-  const jobs = stock.products.flatMap((product) =>
-    product.deployments
-      .filter((d) => chain === "all" || d.chain === chain)
-      .map((deployment) => ({ product, deployment })),
-  );
+  const jobs = scheduleQuoteJobs(stock.products, CHAINS, chain);
   const rows = await collectQuoteOptions(jobs, amount);
   return {
     stock,

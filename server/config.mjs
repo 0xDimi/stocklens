@@ -123,6 +123,149 @@ Object.assign(CHAINS.Arbitrum, {
   rpc: () =>
     process.env.ARBITRUM_RPC_URL || "https://arbitrum-one-rpc.publicnode.com",
 });
+// As of 2026-10-23: native USDC contracts are from Circle's canonical table:
+// https://developers.circle.com/stablecoins/usdc-contract-addresses
+// Mantle/Gnosis bridged contracts and public RPCs are independently confirmed
+// by LI.FI /v1/token + /v1/chains, then eth_chainId and decimals() on each RPC.
+// Discovery, token units and each quote provider are separate capabilities.
+const executionNetworks = [
+  [
+    "Optimism",
+    10,
+    "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
+    "https://optimism-rpc.publicnode.com",
+    "optimism",
+    true,
+  ],
+  [
+    "Polygon",
+    137,
+    "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359",
+    "https://polygon-bor-rpc.publicnode.com",
+    "polygon",
+    true,
+  ],
+  [
+    "Avalanche",
+    43114,
+    "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+    "https://api.avax.network/ext/bc/C/rpc",
+    "avalanche",
+    true,
+  ],
+  [
+    "HyperEVM",
+    999,
+    "0xb88339cb7199b77e23db6e890353e22632ba630f",
+    "https://rpc.hyperliquid.xyz/evm",
+    "hyperevm",
+    false,
+  ],
+  [
+    "Monad",
+    143,
+    "0x754704bc059f8c67012fed69bc8a327a5aafb603",
+    "https://rpc.monad.xyz",
+    "monad",
+    false,
+  ],
+  [
+    "Mantle",
+    5000,
+    "0x09bc4e0d864854c6afb6eb9a9cdf58ac190d0df9",
+    "https://rpc.mantle.xyz",
+    null,
+    false,
+  ],
+  [
+    "Gnosis",
+    100,
+    "0xddafbb505ad214d7b80b1f830fccc89b60fb7a83",
+    "https://rpc.gnosischain.com",
+    null,
+    true,
+  ],
+  [
+    "Ink",
+    57073,
+    "0x2d270e6886d130d724215a266106e6832161eaed",
+    "https://rpc-gel.inkonchain.com",
+    null,
+    false,
+  ],
+  [
+    "XLayer",
+    196,
+    "0xb6ceceab302e2e4948951ee7843fc24e92933061",
+    "https://rpc.xlayer.tech",
+    null,
+    false,
+  ],
+  [
+    "Morph",
+    2818,
+    "0xcfb1186f4e93d60e60a8bdd997427d1f33bc372b",
+    "https://rpc.morph.network",
+    null,
+    false,
+  ],
+];
+for (const [id, evmId, usdc, publicRpc, kyber, velora] of executionNetworks) {
+  Object.assign(CHAINS[id], {
+    evmId,
+    usdc,
+    decimals: 6,
+    rpc: () => process.env[`${id.toUpperCase()}_RPC_URL`] || publicRpc,
+    quoteProviders: {
+      raydium: false,
+      jupiter: false,
+      kyber: !!kyber,
+      velora,
+      lifi: !kyber && !velora,
+    },
+  });
+  if (kyber) Object.assign(CHAINS[id], { kyber, websiteChain: kyber });
+  if (velora) CHAINS[id].veloraChain = id.toLowerCase();
+}
+for (const id of ["Ethereum", "BinanceSmartChain", "Base", "Arbitrum"]) {
+  CHAINS[id].quoteProviders = {
+    raydium: false,
+    jupiter: false,
+    kyber: true,
+    velora: true,
+    lifi: false,
+  };
+  CHAINS[id].veloraChain = CHAINS[id].kyber;
+}
+CHAINS.Solana.quoteProviders = {
+  raydium: true,
+  jupiter: true,
+  kyber: false,
+  velora: false,
+  lifi: false,
+};
+CHAINS.BinanceSmartChain.inputSymbol = "Binance-Peg USDC";
+CHAINS.Mantle.inputSymbol = "Bridged USDC";
+CHAINS.Gnosis.inputSymbol = "Bridged USDC";
+for (const id of ["TON", "Tron", "Robinhood"]) {
+  CHAINS[id].quoteProviders = {
+    raydium: false,
+    jupiter: false,
+    kyber: false,
+    velora: false,
+    lifi: false,
+  };
+  CHAINS[id].quoteUnavailableReason =
+    "A public USDC-funded order route has not been verified on this network. Explore its listed markets in the Markets tab.";
+}
+// Robinhood is a mainnet, but a supported chain alone does not establish a
+// verified USDC contract or an executable route for a listed stock token.
+Object.assign(CHAINS.Robinhood, {
+  evmId: 4663,
+  explorer: "https://robinhoodchain.blockscout.com/token/",
+  rpc: () =>
+    process.env.ROBINHOOD_RPC_URL || "https://rpc.mainnet.chain.robinhood.com",
+});
 export function validAddress(chain, address) {
   if (typeof address !== "string" || !CHAINS[chain]) return false;
   if (chain === "Solana") return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);

@@ -115,7 +115,8 @@ test("quote option API keeps one actionable unavailable row for unsupported or h
   );
   assert.equal(unsupported.length, 1);
   assert.equal(unsupported[0].status, "unavailable");
-  assert.match(unsupported[0].reason, /not supported/i);
+  assert.equal(unsupported[0].availability, "unsupported-network");
+  assert.match(unsupported[0].reason, /not been verified/i);
   const halted = await providers.getQuoteOptions(
     { ...product, halted: true },
     { chain: "Ethereum", address: "0xout" },

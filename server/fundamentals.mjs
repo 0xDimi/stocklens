@@ -47,10 +47,70 @@ function nameWords(value) {
     .replace(/\s+/g, " ")
     .replace(/\s+co$/, "");
 }
+// Exact catalog / Nasdaq names reviewed against the public endpoints on
+// 2026-10-23. Keep aliases scoped to the same ticker and exact pair: generic
+// stripping of "Daily", "Bear", a sponsor or leverage would merge funds.
+// https://api.nasdaq.com/api/quote/{TICKER}/info?assetclass=etf
+// SOXS underlying identity: https://api.xstocks.fi/api/v2/public/assets/SOXSx
+// https://www.direxion.com/uploads/soxs-soxl.pdf
+// IWM: https://www.ishares.com/us/products/239710/ishares-russell-2000-etf
+// VTI: https://investor.vanguard.com/investment-products/etfs/profile/vti
+const ETF_NAME_PAIRS = {
+  SOXS: [
+    ["3x Short Semiconductor ETF", "Direxion Daily Semiconductor Bear 3X ETF"],
+    ["Direxion Daily Semi Bear 3X ETF", "Direxion Daily Semiconductor Bear 3X ETF"],
+  ],
+  TMF: [["Direxion Daily 20 Year Treasury Bull 3X ETF", "Direxion Daily 20-Yr Treasury Bull 3x Shrs"]],
+  EWJ: [["iShares MSCI Japan ETF", "iShares MSCI Japan Index Fund"]],
+  SOXX: [
+    ["iShares Semiconductor", "iShares PHLX SOX Semiconductor Sector Index Fund"],
+    ["iShares Semiconductor ETF", "iShares PHLX SOX Semiconductor Sector Index Fund"],
+  ],
+  IWM: [
+    ["Russell 2000", "iShares Russell 2000 Index Fund"],
+    ["iShares Russell 2000 ETF", "iShares Russell 2000 Index Fund"],
+  ],
+  VTI: [["Vanguard Total Stock Market ETF", "Vanguard Morningstar Total Stock Market ETF"]],
+  GLD: [["Gold", "SPDR Gold Shares"]],
+  TSLL: [["Direxion Daily TSLA Bull 2X Shares","Direxion Daily TSLA Bull 2X ETF"],["Direxion Shares ETF Trust Direxion Daily TSLA Bull 2X ETF","Direxion Daily TSLA Bull 2X ETF"]],
+  AVL: [["Direxion Daily AVGO Bull 2X Shares","Direxion Daily AVGO Bull 2X ETF"]],
+  MUU: [["Direxion Daily MU Bull 2X Shares","Direxion Daily MU Bull 2X ETF"]],
+  LABD: [["Direxion Daily S&P Biotech Bear 3x Shares ETF","Direxion Daily S&P Biotech Bear 3X ETF"]],
+  LABU: [["Direxion Daily S&P Biotech Bull 3x Shares ETF","Direxion Daily S&P Biotech Bull 3X ETF"]],
+  TZA: [["Direxion Daily Small Cap Bear 3X Shares ETF","Direxion Small Cap Bear 3X ETF"]],
+  TNA: [["Direxion Daily Small Cap Bull 3x ETF","Direxion Small Cap Bull 3X ETF"]],
+  SIVR: [["abrdn Physical Silver ETF","abrdn Physical Silver Shares ETF"]],
+  ARKB: [["ARK 21 Bitcoin ETF","ARK 21Shares Bitcoin ETF "]],
+  PAVE: [["Global X US Infrastructure Development ETF","Global X Funds Global X U.S. Infrastructure Development ETF"]],
+  NVD: [["GraniteShares ETF Trust GraniteShares 2x Short NVDA Daily ETF","GraniteShares 2x Short NVDA Daily ETF"]],
+  PHO: [["Invesco Exchange-Traded Fund Trust Invesco Water Resources ETF","Invesco Water Resources ETF"]],
+  TSLQ: [["Investment Managers Series Trust II Tradr 2X Short TSLA Daily ETF","Tradr 2X Short TSLA Daily ETF"]],
+  IWF: [["iShares Russell 1000 Growth ETF","iShares Russell 1000 Growth Fund"]],
+  ITA: [["iShares US Aerospace and Defense ETF","iShares U.S. Aerospace & Defense ETF"]],
+  HLAL: [["Listed Funds Trust Wahed FTSE USA Shariah ETF","Wahed FTSE USA Shariah ETF"]],
+  UFO: [["Procure ETF Trust II Procure Space ETF","Procure Space ETF"]],
+  VGK: [["Vanguard FTSE Europe ETF","Vanguard FTSEEuropean ETF"]],
+  VUG: [["Vanguard Growth ETF","Vanguard Morningstar Growth ETF"]],
+  FEZ: [["SPDR EURO STOXX 50","State Street SPDR EURO STOXX 50 ETF"]],
+};
+function listedExchange(value) {
+  const exchange = String(value || "").toUpperCase();
+  if (/^NASDAQ(?:-(?:GS|GM|CM))?$/.test(exchange)) return "NASDAQ";
+  if (["ARCA", "NYSE ARCA", "PSE"].includes(exchange)) return "ARCA";
+  if (["AMEX", "NYSE AMERICAN", "NYSE MKT"].includes(exchange)) return "AMEX";
+  return ["NYSE", "BATS"].includes(exchange) ? exchange : null;
+}
 function corroboratesName(stock, companyName) {
   const target = nameWords(stock.name),
     actual = nameWords(companyName);
   if (!target || !actual) return false;
+  if (
+    stock.category === "ETF" &&
+    ETF_NAME_PAIRS[stock.ticker]?.some(
+      ([catalogName, listedName]) =>
+        target === nameWords(catalogName) && actual === nameWords(listedName),
+    )
+  ) return true;
   // Catalog / Nasdaq name pair observed 2026-10-21:
   // https://api.nasdaq.com/api/quote/SOXL/info?assetclass=etf
   // Keep this exact alias scoped to SOXL. Removing Daily or ETF from every fund
@@ -149,13 +209,18 @@ export function easternTime(value) {
           60000
     : null;
 }
-function priceTime(value, marketStatus) {
+function priceTime(value, marketStatus, isRealTime) {
   const at = easternTime(value);
   if (at !== null) return { at, timePrecisionMs: 60000, priceDate: null };
   // Nasdaq's closed-session response sometimes supplies only the session date.
   // Store its date boundary for ordering, with explicit day precision; never
   // invent a 4pm close timestamp (early-close days also exist).
-  if (marketStatus !== "Closed") return null;
+  // A date-only, non-real-time observation is also returned for some ETFs
+  // during premarket. It is a dated price, with no evidence it is a close.
+  if (
+    marketStatus !== "Closed" &&
+    !(isRealTime === false && ["Pre-Market", "After-Hours"].includes(marketStatus))
+  ) return null;
   const match = String(value).match(/^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})$/);
   if (!match) return null;
   const [, month, day, year] = match;
@@ -182,14 +247,18 @@ export function parseFundamentals(
 ) {
   const d = info?.data,
     s = summary?.data;
-  const isEtf = stock.category === "ETF";
+  const isEtf = stock.category === "ETF" ||
+    (stock.category === "Listed security" && d?.assetClass?.toUpperCase() === "ETF");
   if (
     !sameSymbol(d?.symbol, stock.ticker) ||
     !d.companyName ||
-    (d.assetClass && d.assetClass.toUpperCase() !== (isEtf ? "ETF" : "STOCKS"))
+    (d.assetClass && d.assetClass.toUpperCase() !== (isEtf ? "ETF" : "STOCKS")) ||
+    (stock.exchange &&
+      (!listedExchange(stock.exchange) ||
+        listedExchange(stock.exchange) !== listedExchange(d.exchange)))
   )
     throw new Error("Listed-stock identity unavailable.");
-  if (!corroboratesName(stock, d.companyName))
+  if (!corroboratesName(isEtf ? { ...stock, category: "ETF" } : stock, d.companyName))
     throw new Error(
       "Listed-stock name does not corroborate the catalog identity.",
     );
@@ -197,10 +266,10 @@ export function parseFundamentals(
     secondary = d.secondaryData || {};
   const usePrimary =
     positive(primary.lastSalePrice) !== null &&
-    priceTime(primary.lastTradeTimestamp, d.marketStatus) !== null;
+    priceTime(primary.lastTradeTimestamp, d.marketStatus, primary.isRealTime) !== null;
   const quote = usePrimary ? primary : secondary;
   const price = positive(quote.lastSalePrice),
-    time = priceTime(quote.lastTradeTimestamp, d.marketStatus);
+    time = priceTime(quote.lastTradeTimestamp, d.marketStatus, quote.isRealTime);
   const quoteValid = price !== null && time !== null;
   const root = `/quote/${encodeURIComponent(stock.ticker)}`;
   const query = "?assetclass=" + (isEtf ? "etf" : "stocks");
@@ -226,13 +295,17 @@ export function parseFundamentals(
         ? "Source reports the session date only; no trade time is disclosed. The timestamp is the date boundary, not a live trade."
         : "Nasdaq-reported trade time, to minute precision."
       : null,
-    currency: quoteValid && quote.lastSalePrice?.startsWith("$") ? "USD" : null,
+    currency: quoteValid
+      ? typeof quote.currency === "string" && /^[A-Z]{3}$/.test(quote.currency)
+        ? quote.currency
+        : String(quote.lastSalePrice).startsWith("$") ? "USD" : null
+      : null,
     changePct: quoteValid ? amount(quote.percentageChange) : null,
     marketStatus: d.marketStatus || null,
     priceSession: quoteValid
       ? /^Closed at /.test(quote.lastTradeTimestamp)
         ? "Closed"
-        : d.marketStatus || null
+        : time.priceDate && d.marketStatus !== "Closed" ? null : d.marketStatus || null
       : null,
     isRealTime:
       quoteValid && typeof quote.isRealTime === "boolean"
@@ -319,11 +392,32 @@ export async function getFundamentals(
     return retained.price > 0 ? retained : null;
   };
   try {
-    const path = `/quote/${encodeURIComponent(stock.ticker)}`,
-      isEtf = stock.category === "ETF",
+    const path = `/quote/${encodeURIComponent(stock.ticker)}`;
+    const unclassified = stock.category === "Listed security";
+    let isEtf = stock.category === "ETF" ||
+      (unclassified && /ETF|iShares|Vanguard|SPDR|\b[23]x\b/i.test(stock.name));
+    let query = "?assetclass=" + (isEtf ? "etf" : "stocks");
+    let info;
+    try { info = await getSource(path + "/info" + query, 60000); } catch (error) {
+      if (!unclassified) throw error;
+    }
+    // The generic catalog category is not evidence of an equity. Try the
+    // alternate class at the exact same symbol only when no identity was
+    // returned. A conflicting name/symbol must still fail validation below.
+    if (unclassified && !info?.data?.data) {
+      isEtf = !isEtf;
       query = "?assetclass=" + (isEtf ? "etf" : "stocks");
-    const [info, summary, ratios] = await Promise.allSettled([
-      getSource(path + "/info" + query, 60000),
+      info = await getSource(path + "/info" + query, 60000);
+    }
+    const assetClass = info?.data?.data?.assetClass;
+    if (
+      (unclassified && typeof assetClass !== "string") ||
+      (assetClass && assetClass.toUpperCase() !== (isEtf ? "ETF" : "STOCKS"))
+    ) throw new Error("Listed-stock endpoint identity unavailable.");
+    // Validate before requesting optional company metrics. A source-confirmed
+    // ETF has no company capitalization or equity analyst P/E.
+    parseFundamentals(info?.data, null, stock, info?.retrievedAt);
+    const [summary, ratios] = await Promise.allSettled([
       getSource(path + "/summary" + query, 900000),
       isEtf
         ? Promise.resolve(null)
@@ -332,17 +426,16 @@ export async function getFundamentals(
             900000,
           ),
     ]);
-    if (info.status !== "fulfilled") return retainUnavailable();
     const summaryObservation = fulfilledObservation(summary);
     const peObservation = fulfilledObservation(ratios);
     const result = parseFundamentals(
-      info.value.data,
+      info.data,
       summaryObservation?.data,
       stock,
-      info.value.retrievedAt,
+      info.retrievedAt,
       peObservation?.data,
     );
-    const priceStale = info.value.stale === true,
+    const priceStale = info.stale === true,
       marketCapStale =
         result.marketCap !== null && summaryObservation?.stale === true,
       peStale = result.pe !== null && peObservation?.stale === true;

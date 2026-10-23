@@ -43,6 +43,38 @@ function releaseRequest() {
     job.resolve();
   } else activeRequests--;
 }
+async function quoteErrorKind(response) {
+  // Inspect only a bounded public error prefix. Never reflect arbitrary source
+  // text, headers or request URLs into user-visible errors.
+  const reader = response.body?.getReader();
+  if (!reader) return null;
+  let prefix = "";
+  try {
+    while (prefix.length < 4096) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      prefix += Buffer.from(value)
+        .toString("utf8")
+        .slice(0, 4096 - prefix.length);
+    }
+    const code = prefix.match(/"error"\s*:\s*"([A-Z_]{3,80})"/)?.[1];
+    if (code === "ESTIMATED_LOSS_GREATER_THAN_MAX_IMPACT")
+      return "price-impact";
+    if (
+      [
+        "NO_ROUTE",
+        "NO_ROUTE_FOUND",
+        "NO_LIQUIDITY",
+        "INSUFFICIENT_LIQUIDITY",
+      ].includes(code)
+    )
+      return "no-route";
+    return null;
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}
 export async function request(
   url,
   { json = true, timeout = 12_000, headers = {}, method = "GET", body } = {},
@@ -62,13 +94,14 @@ export async function request(
       redirect: "follow",
     });
     if (!response.ok) {
-      await response.body?.cancel().catch(() => {});
+      const kind = await quoteErrorKind(response).catch(() => null);
       const error = new Error(
         response.status === 429
           ? "Data provider rate limit reached. Please refresh shortly."
           : `Data provider returned HTTP ${response.status}.`,
       );
       error.status = response.status;
+      if (kind) error.quoteFailureKind = kind;
       throw error;
     }
     const reader = response.body.getReader();

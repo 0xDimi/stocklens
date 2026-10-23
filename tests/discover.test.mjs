@@ -42,9 +42,10 @@ test("entry route preserves stock, legacy ticker, view and Markets deep links", 
     "view=quotes",
     "page=home&stock=US67066G1040",
   ])
-    assert.equal(routePage(new URLSearchParams(query)), "home");
-  for (const page of ["markets", "stock", "compare"])
+    assert.equal(routePage(new URLSearchParams(query)), "comparison");
+  for (const page of ["comparison", "markets", "stock", "compare"])
     assert.equal(routePage(new URLSearchParams({ page })), page);
+  assert.equal(routePage(new URLSearchParams("page=home")), "discover");
 });
 test("entry search matches company, ticker, ISIN and product symbol; exact ticker leads", () => {
   assert.equal(searchAssets(stocks, "nvda")[0].id, stocks[0].id);
@@ -63,5 +64,6 @@ test("entry links encode the canonical identity and open the existing comparison
   const url = new URL(assetLink(stocks[0]), "https://stocklens.example");
   assert.equal(url.searchParams.get("stock"), stocks[0].id);
   assert.equal(url.searchParams.get("view"), "products");
-  assert.equal(routePage(url.searchParams), "home");
+  assert.equal(url.searchParams.get("page"), "comparison");
+  assert.equal(routePage(url.searchParams), "comparison");
 });

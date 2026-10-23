@@ -1,4 +1,4 @@
-/* Stock pages extend the existing daylight comparison workspace. */
+/* Stock pages extend the shared comparison workspace. */
 .stock-page-inner,
 .stock-comparison-inner {
   max-width: 1360px;
@@ -65,11 +65,11 @@
 button.stock-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
+  color: var(--action-ink);
 }
 button.stock-primary:hover {
-  background: #0e563f;
-  border-color: #0e563f;
+  background: var(--action-hover);
+  border-color: var(--action-hover);
 }
 .stock-price-band {
   display: grid;
@@ -142,7 +142,7 @@ button.stock-primary:hover {
 .stock-spot {
   padding: 25px 24px 24px;
   border-left: 1px solid var(--line);
-  background: #f4f8f5;
+  background: var(--wash);
 }
 .stock-spot > strong {
   display: block;
@@ -270,7 +270,7 @@ button.stock-primary:hover {
   font-size: 12px;
   padding: 5px 9px;
   border: 1px solid var(--line);
-  background: white;
+  background: var(--surface);
   border-radius: 7px;
   white-space: nowrap;
 }
@@ -338,7 +338,7 @@ button.stock-primary:hover {
   justify-content: center;
   gap: 9px;
   padding: 24px;
-  background: #f1f4f2;
+  background: var(--wash);
   text-align: center;
   border-radius: 8px;
 }
@@ -415,7 +415,7 @@ button.stock-primary:hover {
 }
 .stock-issuer-row > summary:hover,
 .stock-network-row > summary:hover {
-  background: #f7faf8;
+  background: var(--surface-subtle);
 }
 .stock-issuer-name {
   display: flex;
@@ -653,7 +653,7 @@ button.stock-primary:hover {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: #f8faf9;
+  background: var(--surface-subtle);
   color: var(--muted);
   font-size: 12px;
   font-weight: 500;
@@ -683,7 +683,7 @@ button.stock-primary:hover {
   margin-top: 5px;
 }
 .stock-comparison-table tbody tr:hover td {
-  background: #fafcfb;
+  background: var(--surface-subtle);
 }
 .stock-comparison-company {
   position: relative;
@@ -768,10 +768,10 @@ button.stock-primary:hover {
   border-radius: 12px;
   color: var(--ink);
   background: var(--surface);
-  box-shadow: 0 22px 70px #172b322b;
+  box-shadow: 0 22px 70px var(--shadow);
 }
 .stock-chooser::backdrop {
-  background: #172b3270;
+  background: var(--backdrop);
 }
 .stock-chooser[open] {
   display: flex;
@@ -830,7 +830,7 @@ button.stock-primary:hover {
   padding: 4px 8px;
   font-size: 11px;
   background: var(--wash);
-  border-color: #cadfd3;
+  border-color: var(--selection-border);
   color: var(--accent);
 }
 .stock-chooser-selected > button > span {
@@ -1325,7 +1325,7 @@ button.stock-primary:hover {
 .stock-venue-table thead th {
   font-size: 11px;
   color: var(--muted);
-  background: #f8faf9;
+  background: var(--surface-subtle);
 }
 .stock-venue-table th:first-child,
 .stock-venue-table td:first-child {

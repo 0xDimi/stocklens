@@ -54,6 +54,8 @@ try {
   for (const path of [
     "/",
     "/src/app.mjs",
+    "/src/theme.mjs",
+    "/src/theme.css",
     "/src/data.mjs",
     "/src/model.mjs",
     "/src/views.mjs",

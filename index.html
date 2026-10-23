@@ -1,10 +1,11 @@
 <!doctype html>
 <!-- Compare the same underlying security across issuer products and execution routes. -->
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f7f8fa" />
+    <meta name="theme-color" content="#091e1a" />
+    <script src="/src/theme.mjs"></script>
     <meta
       name="description"
       content="Compare tokenized stocks by issuer, price, liquidity and structure. Find verified share exposure for your budget."
@@ -20,12 +21,13 @@
     <link rel="stylesheet" href="/src/home-comparison.css" />
     <link rel="stylesheet" href="/src/product-terms.css" />
     <link rel="stylesheet" href="/src/discover.css" />
+    <link rel="stylesheet" href="/src/theme.css" />
     <script type="module" src="/src/app.mjs"></script>
   </head>
   <body>
     <a class="skip-link" href="#comparison">Skip to comparison</a>
     <header class="header">
-      <a class="brand" href="/" aria-label="Stocklens home"
+      <a class="brand" href="/" data-page="discover" aria-label="Stocklens home"
         ><span class="brand-mark" aria-hidden="true">s</span>stocklens<span
           class="brand-dot"
           >.</span
@@ -33,9 +35,36 @@
       >
       <nav class="page-nav" aria-label="Main navigation">
         <a href="/" data-page="discover" aria-current="page">Home</a
+        ><a href="/?page=comparison" data-page="comparison">Compare</a
         ><a href="/?page=markets" data-page="markets">Markets</a>
       </nav>
       <nav>
+        <button
+          id="theme-toggle"
+          class="theme-toggle"
+          aria-label="Switch to light mode"
+          title="Switch to light mode"
+        >
+          <svg
+            class="theme-sun"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"
+            />
+          </svg>
+          <svg
+            class="theme-moon"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path d="M20.5 13.5A9 9 0 0 1 10.5 3a9 9 0 1 0 10 10.5Z" />
+          </svg>
+        </button>
         <button id="command-open" class="text-button">
           Quick search <kbd>⌘ K</kbd></button
         ><button id="how-it-works" class="text-button">How it works ↗</button>
@@ -49,9 +78,6 @@
            FORM: User-pinned dark hero, tailored split composition. -->
       <section class="discover-opening" aria-labelledby="discover-title">
         <div class="discover-copy">
-          <p class="discover-eyebrow">
-            <span aria-hidden="true"></span> A clearer view of tokenized stocks
-          </p>
           <h1 id="discover-title">One stock.<br /><em>Every angle.</em></h1>
           <p class="discover-description">
             Different tokens. Different terms.<br />Find the stock. Compare the
@@ -99,7 +125,7 @@
           <div class="discover-links">
             <a href="/?page=markets" data-page="markets"
               >Explore the markets <span aria-hidden="true">↗</span></a
-            ><span>No account needed</span>
+            >
           </div>
           <p id="discover-status" class="sr-only" role="status">
             Loading the asset catalog…
@@ -155,7 +181,6 @@
         </div>
       </section>
       <footer class="discover-footer">
-        <p>One underlying. A world of representations.</p>
         <div id="discover-coverage" class="discover-coverage"></div>
         <small id="discover-date">CoinGecko · issuer registries</small>
       </footer>

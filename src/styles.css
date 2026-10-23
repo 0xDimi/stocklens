@@ -1,14 +1,4 @@
 :root {
-  color-scheme: light;
-  --page: #f7f8fa;
-  --surface: #fff;
-  --ink: #172b32;
-  --muted: #596970;
-  --line: #e3e9e7;
-  --accent: #126851;
-  --wash: #edf6f1;
-  --green: #16724f;
-  --red: #b84343;
   --mono: SFMono-Regular, Consolas, monospace;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--ink);
@@ -47,8 +37,8 @@ button {
     border-color 0.15s ease;
 }
 button:hover {
-  background: #f1f5f3;
-  border-color: #b5c9c0;
+  background: var(--hover);
+  border-color: var(--control-border);
 }
 button:disabled {
   opacity: 0.5;
@@ -57,7 +47,7 @@ button:disabled {
 button[aria-pressed="true"] {
   color: var(--accent);
   background: var(--wash);
-  border-color: #c9ded1;
+  border-color: var(--selection-border);
 }
 a {
   color: var(--accent);
@@ -68,7 +58,7 @@ a:hover {
 }
 input,
 select {
-  border: 1px solid #cfd9d5;
+  border: 1px solid var(--control-border);
   background: var(--surface);
   border-radius: 7px;
   padding: 8px 10px;
@@ -76,7 +66,7 @@ select {
   max-width: 100%;
 }
 :focus-visible {
-  outline: 3px solid #69a58d;
+  outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
 h1,
@@ -139,14 +129,14 @@ small {
 }
 .primary-button {
   background: var(--accent) !important;
-  color: #fff;
+  color: var(--action-ink);
   border-color: var(--accent);
   font-weight: 600;
   padding: 11px 16px;
   white-space: nowrap;
 }
 .primary-button:hover {
-  background: #0d5340 !important;
+  background: var(--action-hover) !important;
 }
 .primary-button span {
   margin-left: 8px;
@@ -185,7 +175,7 @@ kbd {
   width: 31px;
   height: 31px;
   background: var(--accent);
-  color: white;
+  color: var(--action-ink);
   border-radius: 8px;
   font-size: 25px;
   letter-spacing: 0;
@@ -271,7 +261,7 @@ kbd {
   gap: 8px;
   margin: 0 12px 14px;
   padding: 0 10px;
-  border: 1px solid #cfd9d5;
+  border: 1px solid var(--control-border);
   border-radius: 8px;
   background: var(--surface);
 }
@@ -291,7 +281,7 @@ kbd {
   outline: 0;
 }
 .search-field:focus-within {
-  outline: 2px solid #69a58d;
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 .rail-filters {
@@ -304,7 +294,7 @@ kbd {
   padding: 7px 6px;
   font-size: 12px;
   border: 0;
-  background: #f5f7f6;
+  background: var(--wash);
 }
 .rail-filters span {
   font-size: 11px;
@@ -328,13 +318,13 @@ kbd {
   max-height: 510px;
   overflow: auto;
   scrollbar-width: thin;
-  scrollbar-color: #c7d6cf transparent;
+  scrollbar-color: var(--scrollbar) transparent;
 }
 .stock-option {
   width: 100%;
   min-height: 66px;
   border: 0;
-  border-bottom: 1px solid #f0f3f1;
+  border-bottom: 1px solid var(--line);
   border-radius: 0;
   display: flex;
   align-items: center;
@@ -349,7 +339,7 @@ kbd {
   color: var(--accent);
 }
 .stock-option:hover {
-  background: #f3f8f5;
+  background: var(--hover);
 }
 .asset-symbol {
   min-width: 0;
@@ -457,7 +447,7 @@ kbd {
   place-items: center;
   flex-shrink: 0;
   border-radius: 10px;
-  background: #ecf2ee;
+  background: var(--wash);
   color: var(--accent);
   font-size: 23px;
   font-weight: 600;
@@ -487,7 +477,7 @@ kbd {
   border: 0;
   padding: 0 4px;
   background: none !important;
-  color: #667b71;
+  color: var(--muted);
   font-size: 24px;
   line-height: 1.2;
 }
@@ -582,7 +572,7 @@ kbd {
   display: flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid #bdcfc6;
+  border: 1px solid var(--control-border);
   border-radius: 8px;
   padding-right: 10px;
 }
@@ -621,7 +611,7 @@ kbd {
   align-items: flex-start;
   gap: 9px;
   padding: 12px 16px;
-  background: #f3f7f5;
+  background: var(--wash);
   border-block: 1px solid var(--line);
   margin: 0 25px 7px;
   border-radius: 7px;
@@ -632,7 +622,7 @@ kbd {
 .notice-icon {
   width: 16px;
   height: 16px;
-  border: 1px solid #8ca999;
+  border: 1px solid var(--control-border);
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -670,7 +660,7 @@ kbd {
   margin-left: 5px;
   padding: 1px 6px;
   border-radius: 5px;
-  background: #f0f4f2;
+  background: var(--wash);
   color: var(--muted);
 }
 .comparison-status {
@@ -720,7 +710,7 @@ kbd {
   width: 90px;
   height: 4px;
   border-radius: 5px;
-  background: #cadfd2;
+  background: var(--selection-border);
   animation: loading 1.5s ease-in-out infinite;
 }
 @keyframes loading {
@@ -743,7 +733,7 @@ kbd {
 .table-header,
 .market-head,
 .venue-head {
-  background: #f8faf9;
+  background: var(--surface-subtle);
   border-block: 1px solid var(--line);
   font-size: 12px;
   color: var(--muted);
@@ -766,11 +756,11 @@ kbd {
 }
 .product-row summary:hover,
 .quote-row summary:hover {
-  background: #f7faf8;
+  background: var(--surface-subtle);
 }
 .product-row[open],
 .quote-row[open] {
-  background: #fcfdfc;
+  background: var(--surface);
 }
 .token-cell {
   display: flex;
@@ -797,18 +787,18 @@ kbd {
   width: 31px;
   height: 31px;
   border-radius: 8px;
-  background: #eff3f1;
-  color: #4b6559;
+  background: var(--wash);
+  color: var(--muted);
   font-weight: 650;
   font-size: 16px;
 }
 .issuer-mark.xstocks {
-  background: #e9f3df;
-  color: #426b29;
+  background: var(--success-bg);
+  color: var(--green);
 }
 .issuer-mark.ondo {
-  background: #ebf1fc;
-  color: #315d9d;
+  background: var(--info-bg);
+  color: var(--info);
 }
 .product-row summary > span > small {
   display: block;
@@ -839,7 +829,7 @@ kbd {
   font-size: 11px;
   padding: 7px 8px;
   color: var(--accent);
-  border-color: #d0dfd6;
+  border-color: var(--selection-border);
   background: transparent;
 }
 .deployment-count i {
@@ -926,7 +916,7 @@ kbd {
   font-size: 11px;
 }
 .quote-row.best {
-  background: #f1f8f2;
+  background: var(--success-bg);
 }
 .best-label {
   display: block;
@@ -1011,15 +1001,15 @@ kbd {
   background: var(--accent);
   border: 1px solid var(--accent);
   border-radius: 7px;
-  color: white;
+  color: var(--action-ink);
   text-decoration: none !important;
   font-size: 12px;
   white-space: nowrap;
 }
 .quote-link[aria-disabled="true"] {
   color: var(--muted);
-  background: #edf1ee;
-  border-color: #d8e0da;
+  background: var(--wash);
+  border-color: var(--line);
   cursor: default;
 }
 .market-head,
@@ -1145,7 +1135,7 @@ kbd {
 .purchase-empty {
   margin: 18px 25px 0;
   padding: 16px;
-  background: #f5f7f5;
+  background: var(--wash);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -1207,7 +1197,7 @@ kbd {
 .compare-box > button {
   color: var(--accent);
   font-size: 12px;
-  background: white;
+  background: var(--surface);
   white-space: nowrap;
 }
 .chart-disclosure {
@@ -1297,7 +1287,7 @@ kbd {
   outline-offset: -3px;
 }
 .chart-grid line {
-  stroke: #e1e8e4;
+  stroke: var(--line);
   stroke-width: 0.7;
   stroke-dasharray: 3 4;
 }
@@ -1321,7 +1311,7 @@ kbd {
   opacity: 0.25;
 }
 .crosshair line {
-  stroke: #6a8678;
+  stroke: var(--muted);
   stroke-dasharray: 3 4;
   stroke-width: 0.7;
 }
@@ -1402,7 +1392,7 @@ kbd {
 }
 .coverage-warning {
   font-size: 12px;
-  color: #85601b;
+  color: var(--warning);
   line-height: 1.8;
 }
 .asset-facts {
@@ -1473,10 +1463,10 @@ dialog {
   max-width: min(1050px, calc(100vw - 32px));
   max-height: 85dvh;
   padding: 30px;
-  box-shadow: 0 16px 70px #162b2426;
+  box-shadow: 0 16px 70px var(--shadow);
 }
 dialog::backdrop {
-  background: #14291f66;
+  background: var(--backdrop);
 }
 dialog h2 {
   font-size: 22px;
@@ -2394,7 +2384,7 @@ dialog p {
   display: none;
 }
 .table-options > summary:hover {
-  background: #f1f5f3;
+  background: var(--hover);
 }
 .options-menu {
   position: absolute;
@@ -2406,7 +2396,7 @@ dialog p {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 8px 25px #172b3214;
+  box-shadow: 0 8px 25px var(--shadow-soft);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2470,8 +2460,8 @@ dialog p {
   height: 32px;
   overflow: hidden;
   border-radius: 50%;
-  background: #edf1f0;
-  color: #52656a;
+  background: var(--logo-fallback-bg);
+  color: var(--muted);
   font-size: 11px;
   font-weight: 650;
   vertical-align: middle;
@@ -2487,7 +2477,7 @@ dialog p {
   height: 100%;
   object-fit: contain;
   padding: 2px;
-  background: white;
+  background: var(--surface);
 }
 .company > .entity-logo {
   width: 48px;
@@ -2736,7 +2726,7 @@ dialog p {
   font-weight: 500;
   color: var(--muted);
   white-space: nowrap;
-  background: #f8faf9;
+  background: var(--surface-subtle);
 }
 .overview-table td {
   font-size: 13px;
@@ -2752,7 +2742,7 @@ dialog p {
   z-index: 1;
 }
 .overview-table th:first-child {
-  background: #f8faf9;
+  background: var(--surface-subtle);
   z-index: 2;
 }
 .overview-table td > small {
@@ -2766,7 +2756,7 @@ dialog p {
   border-bottom: 0;
 }
 .overview-table tbody tr:hover td {
-  background: #f4f8f6;
+  background: var(--hover);
 }
 .market-asset {
   display: flex;
@@ -2819,14 +2809,14 @@ dialog p {
   display: inline-block;
   min-width: 70px;
   text-align: center;
-  background: #f0f3f2;
+  background: var(--wash);
   font-size: 12px;
 }
 .market-change.positive {
-  background: #edf6f1;
+  background: var(--wash);
 }
 .market-change.negative {
-  background: #faefed;
+  background: var(--error-bg);
 }
 .logo-stack {
   display: inline-flex;
@@ -2900,7 +2890,7 @@ dialog p {
   background: var(--surface);
 }
 .coverage-dialog::backdrop {
-  background: rgba(23, 43, 50, 0.36);
+  background: var(--backdrop);
 }
 .coverage-dialog .dialog-close {
   float: right;
@@ -3194,8 +3184,8 @@ dialog p {
 }
 .view-source-warning {
   margin: 0 25px 16px;
-  color: #845522;
-  background: #fff8ed;
+  color: var(--warning);
+  background: var(--warning-bg);
   padding: 10px 12px;
   border-radius: 7px;
   font-size: 12px;

@@ -5,9 +5,9 @@ import { stockLogo, issuerLogo, chainLogo } from "./brands.mjs";
 // The entry is deliberately separate from stock links shared by existing users.
 export function routePage(params) {
   const page = params.get("page");
-  if (["markets", "stock", "compare"].includes(page)) return page;
+  if (["comparison", "markets", "stock", "compare"].includes(page)) return page;
   return ["stock", "ticker", "view"].some((key) => params.get(key))
-    ? "home"
+    ? "comparison"
     : "discover";
 }
 export function searchAssets(stocks, query) {
@@ -34,7 +34,12 @@ export function lensProducts(stock) {
     .slice(0, 3);
 }
 export const assetLink = (stock) =>
-  "/?" + new URLSearchParams({ stock: stock.id, view: "products" });
+  "/?" +
+  new URLSearchParams({
+    page: "comparison",
+    stock: stock.id,
+    view: "products",
+  });
 
 function versionLabel(stock) {
   const count = stock.products.filter((p) => !p.wrapped).length;

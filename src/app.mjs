@@ -90,10 +90,8 @@ function updateUrl(mode = "replace") {
     return;
   }
   if (!selected) {
-    if (page !== "home") {
-      const url = "/?" + new URLSearchParams({ page });
-      history[mode === "push" ? "pushState" : "replaceState"](null, "", url);
-    }
+    const url = "/?" + new URLSearchParams({ page });
+    history[mode === "push" ? "pushState" : "replaceState"](null, "", url);
     return;
   }
   const query = new URLSearchParams({
@@ -105,7 +103,7 @@ function updateUrl(mode = "replace") {
   if ($("#issuer").value !== "all") query.set("issuer", $("#issuer").value);
   if ($("#include-wrappers").checked) query.set("wrappers", "1");
   if (token && view === "markets") query.set("token", token);
-  if (page !== "home") query.set("page", page);
+  query.set("page", page);
   query.set("stocks", assetCompareIds.join(","));
   const url = "/?" + query;
   if (mode === "push" && location.search !== "?" + query)
@@ -198,7 +196,7 @@ const sortOptions = {
   terms: [["name", "Issuer name"]],
 };
 function setView(next, fetch = true) {
-  if (fetch && page !== "home") setPage("home");
+  if (fetch && page !== "comparison") setPage("comparison");
   view = next;
   $("#comparison").dataset.mode = view;
   $("#comparison-intent").innerHTML = {
@@ -388,7 +386,7 @@ function renderResults() {
 }
 async function loadView(enrich = false) {
   clearTimeout(debounce);
-  if (page !== "home") return;
+  if (page !== "comparison") return;
   controller?.abort();
   const id = ++requestId;
   snapshot = null;
@@ -533,7 +531,7 @@ function selectStock(id) {
   if (!stock) return;
   selected = stock;
   homeAssetId = stock.id;
-  setPage("home");
+  setPage("comparison");
   token = "";
   $("#include-wrappers").checked = false;
   $("#issuer").value = "all";
@@ -590,7 +588,7 @@ async function initialize() {
     setPage(page, false);
     desk.start();
     desk.select(selected);
-    if (page === "home") {
+    if (page === "comparison") {
       loadView();
       loadHomeDetails(selected.id);
     }
@@ -813,7 +811,7 @@ function retainDetails(id, row) {
   return retained;
 }
 async function loadHomeDetails(id, force = false) {
-  if (!id || page !== "home") return;
+  if (!id || page !== "comparison") return;
   const cached = sharedDetails(id);
   if (!force && cached && Date.now() - cached.checkedAt < 60000) {
     desk.ingest("details", cached);
@@ -838,7 +836,8 @@ async function loadHomeDetails(id, force = false) {
     const row = data.rows?.find((r) => r.id === id);
     if (!row || sequence !== detailSequence) return;
     const result = retainDetails(id, { ...row, checkedAt: Date.now() });
-    if (selected?.id === id && page === "home") desk.ingest("details", result);
+    if (selected?.id === id && page === "comparison")
+      desk.ingest("details", result);
     stockPages?.ingestDetails(id, result);
   } catch (error) {
     if (
@@ -851,19 +850,19 @@ async function loadHomeDetails(id, force = false) {
 }
 function setPage(next, write = true) {
   const previous = page;
-  page = ["discover", "markets", "stock", "compare"].includes(next)
+  page = ["discover", "comparison", "markets", "stock", "compare"].includes(
+    next,
+  )
     ? next
-    : "home";
+    : "comparison";
   $("#discover-page").hidden = page !== "discover";
   document.body.classList.toggle("is-discover", page === "discover");
-  $("meta[name=theme-color]").content =
-    page === "discover" ? "#091e1a" : "#f7f8fa";
   if (page !== "discover") discover.close();
-  $("#home-page").hidden = page !== "home";
+  $("#home-page").hidden = page !== "comparison";
   $("#markets-page").hidden = page !== "markets";
   $("#stock-page").hidden = page !== "stock";
   $("#asset-comparison-page").hidden = page !== "compare";
-  if (page !== "home" && previous === "home") {
+  if (page !== "comparison" && previous === "comparison") {
     clearTimeout(debounce);
     controller?.abort();
     ++requestId;
@@ -872,7 +871,7 @@ function setPage(next, write = true) {
   if (page !== "stock" && page !== "compare") stockPages?.hide();
   const target = {
     discover: "discover-search",
-    home: "comparison",
+    comparison: "comparison",
     markets: "markets-page",
     stock: "stock-page",
     compare: "asset-comparison-page",
@@ -880,7 +879,7 @@ function setPage(next, write = true) {
   $(".skip-link").href = "#" + target;
   $(".skip-link").textContent = {
     discover: "Skip to stock search",
-    home: "Skip to comparison",
+    comparison: "Skip to comparison",
     markets: "Skip to markets",
     stock: "Skip to stock overview",
     compare: "Skip to stock comparison",
@@ -888,7 +887,11 @@ function setPage(next, write = true) {
   document.querySelectorAll("[data-page]").forEach((link) => {
     if (
       link.dataset.page ===
-      (["home", "discover"].includes(page) ? "discover" : "markets")
+      (page === "discover"
+        ? "discover"
+        : page === "comparison"
+          ? "comparison"
+          : "markets")
     )
       link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
@@ -900,7 +903,9 @@ function setPage(next, write = true) {
         ? "Compare stocks — Stocklens"
         : page === "markets"
           ? "Markets — Stocklens"
-          : "Stocklens — Compare tokenized stocks";
+          : page === "comparison"
+            ? "Compare — Stocklens"
+            : "Stocklens — Compare tokenized stocks";
   if (page === "markets") {
     marketsPage?.show();
     if (desk?.marketState().screenNext) desk.refreshMarkets(true);
@@ -932,7 +937,7 @@ function openHomeComparison(id, mode = "products") {
   view = mode;
   $("#chain").value = "all";
   $("#issuer").value = "all";
-  setPage("home");
+  setPage("comparison");
   setView(mode, false);
   selectStock(id);
   $("#comparison").scrollIntoView({ block: "start" });
@@ -954,7 +959,7 @@ window.addEventListener("popstate", () => {
   if (validBudget(route.get("amount")))
     $("#budget").value = route.get("amount");
   setPage(routePage(route), false);
-  if (page === "home" && selected) {
+  if (page === "comparison" && selected) {
     homeAssetId = selected.id;
     renderHeading();
     $("#issuer").value = selected.products.some(
@@ -1020,7 +1025,7 @@ document.addEventListener("click", (event) => {
       scrollTo({ top: 0, behavior: "instant" });
       $("#discover-page").focus({ preventScroll: true });
     }
-    if (page === "home" && selected) {
+    if (page === "comparison" && selected) {
       const changed = homeAssetId !== selected.id;
       if (changed) {
         snapshot = null;
@@ -1094,13 +1099,13 @@ const discover = createDiscover({
 });
 setPage(page, false);
 setInterval(() => {
-  if (page === "home" && !document.hidden) loadHomeDetails(selected?.id);
+  if (page === "comparison" && !document.hidden) loadHomeDetails(selected?.id);
 }, 60000);
 setInterval(tick, 1000);
 setInterval(() => {
   if (
     !document.hidden &&
-    page === "home" &&
+    page === "comparison" &&
     selected &&
     view !== "quotes" &&
     view !== "terms"

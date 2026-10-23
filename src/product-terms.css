@@ -1,6 +1,6 @@
 .product-terms {
   min-width: 0;
-  color: var(--ink, #172b32);
+  color: var(--ink);
 }
 .product-terms-grid {
   display: grid;
@@ -10,7 +10,7 @@
 }
 .product-term dt {
   margin-bottom: 4px;
-  color: var(--muted, #596970);
+  color: var(--muted);
   font-size: 12px;
 }
 .product-term dd {
@@ -22,25 +22,25 @@
 }
 .product-terms-legal {
   margin-top: 20px;
-  border-top: 1px solid var(--line, #e3e9e7);
+  border-top: 1px solid var(--line);
   padding-top: 12px;
 }
 .product-terms-legal > summary {
   width: fit-content;
-  color: var(--accent, #126851);
+  color: var(--accent);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
 }
 .product-terms-legal > summary:focus-visible,
 .product-terms-sources a:focus-visible {
-  outline: 2px solid var(--accent, #126851);
+  outline: 2px solid var(--accent);
   outline-offset: 4px;
 }
 .product-terms-review {
   max-width: 75ch;
   margin: 14px 0 0;
-  color: var(--muted, #596970);
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -65,7 +65,7 @@
   overflow-wrap: anywhere;
 }
 .product-terms-sources a {
-  color: var(--accent, #126851);
+  color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 3px;
 }

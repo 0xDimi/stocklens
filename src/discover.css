@@ -1,27 +1,21 @@
-/* The entry's optical motif extends Stocklens; research views keep their daylight palette. */
+/* The entry's optical motif extends Stocklens; all routes share appearance roles. */
 body.is-discover {
-  --entry-bg: #091e1a;
-  --entry-text: #f5f8f4;
-  --entry-mint: #d4f5df;
-  --entry-muted: #a5bbb0;
-  background: var(--entry-bg);
-  color: var(--entry-text);
   min-height: 100vh;
 }
 .is-discover > .footer {
   max-width: 1440px;
   padding-inline: 48px;
-  color: #a5bbb0;
-  border-color: #355044;
+  color: var(--muted);
+  border-color: var(--line);
 }
 .is-discover > .footer a {
-  color: #c5d9cc;
+  color: var(--muted);
 }
 .is-discover > .footer > div {
   display: none;
 }
 .is-discover .header {
-  border-color: #294239;
+  border-color: var(--line);
   max-width: 1440px;
   height: 88px;
   padding-inline: 48px;
@@ -30,8 +24,8 @@ body.is-discover {
   color: var(--entry-text);
 }
 .is-discover .brand-mark {
-  background: var(--entry-mint);
-  color: var(--entry-bg);
+  background: var(--action-bg);
+  color: var(--action-ink);
   line-height: 1;
 }
 .is-discover .brand-dot {
@@ -48,13 +42,13 @@ body.is-discover {
 }
 .is-discover .header kbd {
   color: var(--entry-muted);
-  border-color: #43574c;
+  border-color: var(--control-border);
 }
 .is-discover :focus-visible {
-  outline-color: #8bddb0;
+  outline-color: var(--focus);
 }
 .is-discover dialog {
-  color: #172b32;
+  color: var(--ink);
 }
 .discover {
   max-width: 1440px;
@@ -67,7 +61,7 @@ body.is-discover {
   color: inherit;
 }
 .discover a:hover {
-  color: #a5eac1;
+  color: var(--accent-hover);
 }
 .discover-opening {
   display: grid;
@@ -80,20 +74,6 @@ body.is-discover {
 .discover-copy {
   position: relative;
   z-index: 2;
-}
-.discover-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--entry-mint);
-  margin-bottom: 28px;
-}
-.discover-eyebrow > span {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #8bddb0;
 }
 .discover h1 {
   font-size: clamp(60px, 6.2vw, 86px);
@@ -122,17 +102,17 @@ body.is-discover {
   align-items: center;
   gap: 12px;
   padding: 7px 7px 7px 18px;
-  border: 1px solid #6a8676;
-  background: #112b22;
+  border: 1px solid var(--control-border);
+  background: var(--surface);
   border-radius: 10px;
 }
 #discover-form:focus-within {
-  border-color: #b7e8cc;
+  border-color: var(--focus);
 }
 .discover-search-icon {
   width: 20px;
   flex-shrink: 0;
-  stroke: #afc5b9;
+  stroke: var(--muted);
   stroke-width: 1.6;
 }
 #discover-search {
@@ -148,19 +128,19 @@ body.is-discover {
   border-radius: 0;
 }
 #discover-search::placeholder {
-  color: #a5bbb0;
+  color: var(--muted);
   opacity: 1;
 }
 #discover-form button {
-  background: var(--entry-mint);
+  background: var(--action-bg);
   border: 0;
-  color: #122b20;
+  color: var(--action-ink);
   padding: 14px 17px;
   font-weight: 650;
   flex-shrink: 0;
 }
 #discover-form button:hover {
-  background: #b0eac8;
+  background: var(--action-hover);
 }
 #discover-form button span + span {
   margin-left: 12px;
@@ -172,12 +152,12 @@ body.is-discover {
   padding: 7px;
   margin: 0;
   list-style: none;
-  background: #153126;
-  color: #f5f8f4;
-  border: 1px solid #577565;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--control-border);
   border-radius: 10px;
   z-index: 5;
-  box-shadow: 0 18px 36px #0004;
+  box-shadow: 0 18px 36px var(--shadow);
   max-height: 420px;
   overflow-y: auto;
 }
@@ -191,11 +171,11 @@ body.is-discover {
 }
 #discover-results li[role="option"]:hover,
 #discover-results li[aria-selected="true"] {
-  background: #2a4a38;
+  background: var(--hover);
 }
 #discover-results small {
   display: block;
-  color: #b3c7bb;
+  color: var(--muted);
   font-size: 12px;
 }
 #discover-results li > span:nth-child(2) {
@@ -208,7 +188,7 @@ body.is-discover {
 }
 .discover-result-count {
   margin-left: auto;
-  color: #bed3c5;
+  color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -217,7 +197,7 @@ body.is-discover {
 }
 .discover-empty {
   padding: 14px;
-  color: #c7dacf;
+  color: var(--muted);
 }
 .discover-links {
   display: flex;
@@ -232,13 +212,10 @@ body.is-discover {
 .discover-links a > span {
   margin-left: 4px;
 }
-.discover-links > span {
-  color: var(--entry-muted);
-}
 #discover-retry {
   margin-top: 15px;
-  background: #d4f5df;
-  color: #122b20;
+  background: var(--action-bg);
+  color: var(--action-ink);
   border: 0;
 }
 .discover-lens {
@@ -257,25 +234,25 @@ body.is-discover {
   overflow: visible;
 }
 .lens-contours ellipse {
-  stroke: #355744;
+  stroke: var(--lens-ring);
   stroke-width: 1;
 }
 .lens-contours ellipse:nth-child(2) {
-  stroke: #41614c;
+  stroke: var(--lens-ring-mid);
 }
 .lens-contours ellipse:nth-child(3) {
-  stroke: #57785a;
+  stroke: var(--lens-ring-inner);
 }
 .lens-ray {
-  stroke: #b7debd;
+  stroke: var(--lens-ray);
   stroke-width: 1.2;
 }
 .lens-ticks {
-  stroke: #89b392;
+  stroke: var(--lens-ray);
 }
 .lens-label {
   position: absolute;
-  color: #a5bbb0;
+  color: var(--muted);
   font-size: 11px;
 }
 .lens-label-input {
@@ -302,7 +279,7 @@ body.is-discover {
   justify-content: center;
   border-radius: 50%;
   background: var(--entry-bg);
-  border: 1px solid #6b8b64;
+  border: 1px solid var(--lens-ring-inner);
   gap: 5px;
 }
 .lens-stock .entity-logo {
@@ -316,7 +293,7 @@ body.is-discover {
   letter-spacing: -0.02em;
 }
 .lens-stock small {
-  color: #b3c7bb;
+  color: var(--muted);
   font-size: 10px;
   max-width: 90%;
   white-space: nowrap;
@@ -337,15 +314,15 @@ body.is-discover {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #173528;
+  background: var(--surface);
   padding: 13px 14px;
-  border: 1px solid #507458;
+  border: 1px solid var(--control-border);
   border-radius: 9px;
   min-height: 72px;
   transition: background 180ms ease;
 }
 .lens-version:hover {
-  background: #234b35;
+  background: var(--hover);
 }
 .lens-version .entity-logo {
   width: 31px;
@@ -358,10 +335,10 @@ body.is-discover {
 .lens-version small {
   display: block;
   font-size: 10px;
-  color: #b3c7bb;
+  color: var(--muted);
 }
 .lens-version > span:last-child {
-  color: #bfe9cb;
+  color: var(--accent);
   margin-left: auto;
 }
 .lens-networks {
@@ -373,22 +350,22 @@ body.is-discover {
   width: 21px;
   height: 21px;
   margin-left: -5px;
-  border: 2px solid #173528;
+  border: 2px solid var(--surface);
 }
 .discover-lens figcaption {
   text-align: center;
   font-size: 11px;
-  color: #a5bbb0;
+  color: var(--muted);
   margin-top: -10px;
 }
 .lens-placeholder {
   position: absolute;
   top: 44%;
   left: 28%;
-  color: #b3c7bb;
+  color: var(--muted);
 }
 .discover-shelf {
-  border-top: 1px solid #355044;
+  border-top: 1px solid var(--line);
   padding-block: 23px 29px;
 }
 .discover-shelf-heading {
@@ -401,7 +378,7 @@ body.is-discover {
 .discover-shelf h2 {
   font-size: 13px;
   font-weight: 500;
-  color: #c5d9cc;
+  color: var(--muted);
 }
 .discover-shelf-heading a {
   font-size: 12px;
@@ -423,7 +400,7 @@ body.is-discover {
   display: flex;
   align-items: center;
   gap: 13px;
-  border-right: 1px solid #355044;
+  border-right: 1px solid var(--line);
   padding-inline: 20px;
   min-width: 0;
 }
@@ -445,22 +422,22 @@ body.is-discover {
 }
 .discover-assets small {
   display: block;
-  color: #a5bbb0;
+  color: var(--muted);
   font-size: 11px;
   margin-top: 1px;
 }
 .discover-asset-arrow {
   margin-left: auto;
-  color: #a5bbb0;
+  color: var(--muted);
   font-size: 15px;
 }
 .discover-footer {
-  border-top: 1px solid #355044;
+  border-top: 1px solid var(--line);
   display: flex;
   align-items: center;
   gap: 30px;
   padding-block: 24px 32px;
-  color: #a5bbb0;
+  color: var(--muted);
   font-size: 11px;
 }
 .discover-coverage {
@@ -469,13 +446,13 @@ body.is-discover {
   margin-left: auto;
 }
 .discover-coverage b {
-  color: #deede1;
+  color: var(--ink);
   font-weight: 500;
   margin-right: 3px;
 }
 .discover-footer small {
   font-size: 10px;
-  color: #a5bbb0;
+  color: var(--muted);
 }
 @media (prefers-reduced-motion: no-preference) {
   .is-discover .lens-ray {
@@ -581,9 +558,6 @@ body.is-discover {
   .discover-coverage {
     margin-left: 0;
   }
-  .discover-footer > p {
-    flex-basis: 100%;
-  }
   .is-discover .header {
     height: 74px;
     gap: 20px;
@@ -618,10 +592,6 @@ body.is-discover {
   }
   .discover-opening {
     padding-top: 34px;
-  }
-  .discover-eyebrow {
-    font-size: 11px;
-    margin-bottom: 23px;
   }
   .discover h1 {
     font-size: clamp(46px, 14.8vw, 58px);

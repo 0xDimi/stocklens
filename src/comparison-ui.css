@@ -1,4 +1,4 @@
-/* Comparison controls use the same daylight surfaces as the stock workspace. */
+/* Comparison controls use the same shared theme as the stock workspace. */
 .stock-heading-actions {
   display: flex;
   align-items: center;
@@ -197,12 +197,12 @@
   outline-offset: 3px;
 }
 .markets-page :is(.market-save, .market-compare-toggle):hover {
-  background: var(--accent-soft, #edf6f1);
+  background: var(--accent-soft, var(--wash));
   color: var(--accent);
 }
 .markets-page .market-compare-toggle[aria-pressed="true"]:hover {
   background: var(--accent);
-  color: white;
+  color: var(--action-ink);
 }
 .market-readiness-controls {
   display: flex;
@@ -270,7 +270,7 @@
   padding: 16px;
   border-radius: 7px;
   background: var(--surface);
-  box-shadow: 0 8px 24px rgba(23, 43, 50, 0.16);
+  box-shadow: 0 8px 24px var(--shadow);
 }
 .market-column-options fieldset {
   border: 0;
@@ -342,7 +342,7 @@
 .market-compare-toggle[aria-pressed="true"] {
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
+  color: var(--action-ink);
 }
 .market-stock-compare {
   position: sticky;
@@ -354,7 +354,7 @@
   flex-wrap: wrap;
   background: var(--surface);
   border: 1px solid var(--line);
-  box-shadow: 0 8px 24px rgba(23, 43, 50, 0.1);
+  box-shadow: 0 8px 24px var(--shadow-soft);
   border-radius: 10px;
   margin: 20px 0;
   padding: 14px 18px;

@@ -31,6 +31,14 @@ assert.ok(
   home.headers.get("content-security-policy")?.includes("script-src 'self'"),
 );
 const html = await home.text();
+for (const path of new Set(
+  [
+    ...html.matchAll(
+      /(?:src|href)="(\/src\/[^"?]+\.(?:mjs|css)\?v=[a-f0-9]+)"/g,
+    ),
+  ].map((match) => match[1]),
+))
+  await check(path);
 const script = html.match(/src="(\/src\/app\.mjs\?v=[a-f0-9]+)"/)[1];
 const loaded = new Set();
 async function moduleGraph(path) {

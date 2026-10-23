@@ -9,6 +9,17 @@ test("every real browser module import is publicly served at the same revision",
   const html = await (await fetch(base + "/")).text();
   const entry = html.match(/src="(\/src\/app\.mjs\?v=[a-f0-9]+)"/)?.[1];
   assert.ok(entry);
+  for (const match of html.matchAll(
+    /(?:src|href)="(\/src\/[^"?]+\.(?:mjs|css)\?v=[a-f0-9]+)"/g,
+  )) {
+    const response = await fetch(base + match[1]);
+    assert.equal(response.status, 200, match[1]);
+    assert.equal(new URL(base + match[1]).search, new URL(base + entry).search);
+    assert.match(
+      response.headers.get("content-type"),
+      match[1].includes(".css?") ? /text\/css/ : /javascript/,
+    );
+  }
   const visited = new Set();
   async function read(path) {
     if (visited.has(path)) return;

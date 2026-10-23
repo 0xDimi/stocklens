@@ -1,3 +1,11 @@
+## Shared appearance and navigation — 0.11.0, October 23, 2026
+
+Home is the entry at /; the logo returns there. Compare owns the token workspace at /?page=comparison. Markets remains the screener, with its existing stock overviews and separate multi-stock comparison route. Legacy stock/ticker/view links resolve to Compare and retain the selected view. The three requested introductory lines were removed.
+
+All views now use shared semantic color roles. Forest dark is the default; a header toggle saves light mode locally, restores it before styles paint and synchronizes changes between same-origin tabs. Unavailable storage safely falls back to dark while allowing the current-page toggle. Status colors, controls, tables, charts and dialogs use the same theme. Real logos retain their white image backing. Phone headers place the three destinations on a separate navigation row.
+
+392 Node tests pass. Coverage includes canonical and legacy routes, all HTML-declared assets served over actual HTTP, and measured text/action/status/control contrast in both palettes. The contrast test reproduced a light input-border failure at 2.68:1; the revised role passes 3:1. Actual Brave checks covered theme persistence after reload and navigation, cross-tab synchronization, Home/logo/Compare/Markets ownership, legacy buy-quote links, invalid-budget validation, multi-stock comparison, stock overviews and the issuer terms dialog in both appearances. Phones at 390×844 and 320×740 had no horizontal document overflow. Production subprocess readiness and static/security checks passed. The design detector returned no findings; independent review found no material issue. Evidence is retained in ignored test-results/appearance-*.
+
 ## Stocklens entry — 0.10.0, October 23, 2026
 
 Bare Home now opens a forest/mint entry with a real catalog search, a stock-to-issuer lens graphic and familiar-stock shortcuts. Explicit stock, ticker and comparison-view links still bypass the entry. The entry reuses the existing catalog and makes no additional market-data calls. Counts and graph products come from actual catalog records; no illustrative prices are shown. The daylight comparison and Markets views retain their existing layout.

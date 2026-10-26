@@ -259,3 +259,31 @@ test("one unavailable issuer endpoint cannot starve other issuers or native mapp
     result.discoveryCoverage.errors.some((e) => e.message.includes("404")),
   );
 });
+
+test("a public-source cooldown in the shipping seed cannot delay an authenticated deployment", async (t) => {
+  const opts = await setup(t);
+  await createRwaDiscovery({
+    ...opts,
+    accessMode: "public",
+    seedPath: null,
+    now: () => Date.parse(at),
+    read: async () => {
+      throw Object.assign(new Error("HTTP 429"), { status: 429 });
+    },
+  }).refresh(base);
+  const scan = createRwaDiscovery({
+    ...opts,
+    accessMode: "demo",
+    seedPath: null,
+    now: () => Date.parse(at),
+  });
+  await scan.refresh(base);
+  const result = await scan.augment(base, { refresh: false });
+  assert.equal(result.universe.issuerCatalogs, 1);
+  assert.equal(result.universe.nativeMappings, 1);
+  assert.equal(
+    result.discoveryCoverage.requestsToday,
+    4,
+    "changing access mode cannot reset the daily allowance",
+  );
+});

@@ -58,9 +58,11 @@ Files: modify `server/gecko.mjs`, existing pool tests; create `scripts/catalog-e
 
 ## Validation ledger
 
-- Baseline:392/392 tests pass.
-- Reality and native/issuer discovery, source retention, pool enrichment:live public source integration returned3553canonical assets,5393products,2936Realityproducts,20NVDApools and3real Coinbase/Basequotes.
-- Independent reviewer found three Important defects; all reproduced RED then fixed:cross-security registry ownership, independent evidence expiry, and stale-while-revalidate scan starvation. Added per-resource404isolation so one missing catalog cannot block the remaining scan.
-- Full regression suite after review fixes:416/416passing. Production subprocess smoke and anonymous local access pass.
+- Baseline: 392/392 tests pass.
+- Reality and native/issuer discovery, source retention, pool enrichment:live public source integration returned 3,553 canonical assets, 5,393 products, 2,936 Reality products, 20 NVIDIA pools and 3 real Coinbase/Base quotes.
+- Independent reviewer found three Important defects; all reproduced RED then fixed: cross-security registry ownership, independent evidence expiry, and stale-while-revalidate scan starvation. Added per-resource 404 isolation so one missing catalog cannot block the remaining scan.
+- Full regression suite after review fixes: 417/417 passing. Production subprocess smoke and anonymous local access pass.
 - Seed tooling rebuilt from real dated public observations; no source times were advanced. Deployment verification remains below.
 
+
+- Authenticated deployments discard only an unauthenticated seed's source cooldown; the daily request allowance survives the access-mode change. Regression test verified RED then GREEN.

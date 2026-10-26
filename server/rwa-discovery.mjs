@@ -26,6 +26,9 @@ export function createRwaDiscovery({
   now = Date.now,
   dailyLimit = 64,
   nativeLimit = 24,
+  accessMode = process.env.COINGECKO_API_KEY
+    ? process.env.COINGECKO_PLAN || "demo"
+    : "public",
 } = {}) {
   const file = join(cacheDir, "rwa-discovery-v1.json");
   let state = {
@@ -62,6 +65,13 @@ export function createRwaDiscovery({
         saved.nativeRequests >= 0
       )
         state = saved;
+      // A captured public outage does not establish the health of an authenticated deployment.
+      // Keep request accounting when access changes; only the provider cooldown is reset.
+      if ((state.accessMode || "public") !== accessMode) {
+        state.retryAt = 0;
+        state.errors = [];
+      }
+      state.accessMode = accessMode;
       const observed = await observationStore(
         join(cacheDir, "coingecko-observations.json"),
         seedPath

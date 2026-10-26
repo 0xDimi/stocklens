@@ -1,62 +1,88 @@
 {
-  "createdAt": "2026-10-19T12:22:21.477Z",
+  "createdAt": "2026-10-26T14:42:30.088Z",
   "rebuild": "Canonical model rebuilt from previously captured public source observations; original source timestamps preserved.",
-  "originalSnapshotAt": "2026-10-19T12:07:11.823Z",
+  "originalSnapshotAt": "2026-10-26T14:29:20.886Z",
   "identityReferences": "server/data/catalog-identity-references.json",
   "purpose": "Last successful identity observations for cold starts; runtime refreshes determine source availability. Identity data is not a live quote or guarantee of complete market coverage.",
   "sources": [
     {
+      "name": "Reality public catalog",
+      "url": "https://api.realityfinance.xyz/api/v1/rwa/assets/tickers",
+      "retrievedAt": "2026-10-26T14:25:52.466Z",
+      "records": 3334
+    },
+    {
       "name": "xStocks public API",
       "url": "https://api.xstocks.fi/api/v2/public/assets",
       "query": "pageSize=100&page=0..terminal",
-      "retrievedAt": "2026-10-19T12:07:11.823Z",
-      "records": 1460
+      "retrievedAt": "2026-10-26T14:25:52.466Z",
+      "records": 1474
     },
     {
       "name": "Ondo official contract list",
       "url": "https://docs.ondo.finance/addresses#ondo-stocks",
       "downloadUrl": "https://www.dropbox.com/scl/fi/qjfxyg748mx0dwi6up86d/EXTERNAL-Ondo-GM-Tokens-Ondo-GM-Tokens.csv?rlkey=n3no1w78wrah3umsl0nr9s77i&dl=1",
-      "retrievedAt": "2026-10-19T12:07:11.823Z",
+      "retrievedAt": "2026-10-26T14:25:52.466Z",
       "records": 458
     },
     {
       "name": "CoinGecko underlying registry",
       "urls": [
         "https://api.coingecko.com/api/v3/rwas/list",
-        "https://api.coingecko.com/api/v3/coins/list?include_platform=true"
+        "https://api.coingecko.com/api/v3/coins/list?include_platform=true",
+        "https://api.coingecko.com/api/v3/rwas/issuers/list",
+        "https://api.coingecko.com/api/v3/rwas/issuers/{id}",
+        "https://api.coingecko.com/api/v3/rwas/{id}?tokens=true&tokenized_market_data=true"
       ],
-      "retrievedAt": "2026-10-19T09:51:33.840Z",
+      "retrievedAt": "2026-10-26T14:25:34.553Z",
       "universe": {
-        "underlyingRecords": 1028,
-        "securities": 1026,
-        "coinRegistryRecords": 22374
+        "underlyingRecords": 1049,
+        "securities": 1047,
+        "coinRegistryRecords": 22507,
+        "issuerCatalogs": 2,
+        "nativeMappings": 1
+      },
+      "discovery": {
+        "issuerCatalogs": 2,
+        "nativeMappings": 1,
+        "requestsToday": 4,
+        "requestLimit": 64,
+        "nativeLimit": 24,
+        "day": "2026-10-26",
+        "refreshing": false,
+        "errors": [
+          {
+            "message": "Data provider rate limit reached. Please refresh shortly.",
+            "checkedAt": "2026-10-26T14:25:46.804Z"
+          }
+        ]
       }
     }
   ],
   "coverage": {
-    "assets": 1961,
-    "versions": 3153,
-    "deployments": 19110,
+    "assets": 3553,
+    "versions": 5393,
+    "deployments": 23624,
     "pendingAssets": 160,
-    "wrappedVersions": 13,
+    "wrappedVersions": 14,
     "networks": 16,
-    "quoteNetworks": 5,
+    "quoteNetworks": 13,
     "issuers": [
-      {
-        "id": "xstocks",
-        "name": "xStocks",
-        "versions": 1461,
-        "networks": 12,
-        "reviewed": true,
-        "source": "https://docs.xstocks.fi/docs/product-legal-overview"
-      },
       {
         "id": "reality",
         "name": "Reality",
-        "versions": 725,
+        "versions": 2936,
         "networks": 2,
         "reviewed": true,
         "source": "https://realityfinance.xyz/"
+      },
+      {
+        "id": "xstocks",
+        "name": "xStocks",
+        "versions": 1476,
+        "networks": 12,
+        "reviewed": true,
+        "source": "https://docs.xstocks.fi/docs/product-legal-overview"
       },
       {
         "id": "ondo",
@@ -69,7 +95,7 @@
       {
         "id": "robinhood",
         "name": "Robinhood",
-        "versions": 173,
+        "versions": 174,
         "networks": 1,
         "reviewed": true,
         "source": "https://robinhood.com/rhj/stocktokens/"
@@ -85,7 +111,7 @@
       {
         "id": "coinbase",
         "name": "Coinbase",
-        "versions": 109,
+        "versions": 119,
         "networks": 1,
         "reviewed": true,
         "source": "https://www.coinbase.com/en-ca/tokenize"
@@ -101,7 +127,7 @@
       {
         "id": "bstocks",
         "name": "bStocks",
-        "versions": 69,
+        "versions": 72,
         "networks": 1,
         "reviewed": true,
         "source": "https://academy.binance.com/en/articles/what-are-bstocks-a-guide-to-tokenized-stocks-on-binance"
@@ -142,18 +168,40 @@
     "unmappedPlatforms": [
       "hyperliquid"
     ],
-    "scope": "Observed coverage from connected sources, not a guarantee of every token or venue. Native grouping is checked when an asset is opened.",
+    "scope": "Observed coverage from connected sources, not a guarantee of every token or venue. Issuer catalogs and native mappings refresh in the background; additional native grouping is checked when an asset is opened.",
     "registry": {
-      "underlyingRecords": 1028,
-      "securities": 1026,
-      "coinRegistryRecords": 22374
+      "underlyingRecords": 1049,
+      "securities": 1047,
+      "coinRegistryRecords": 22507,
+      "issuerCatalogs": 2,
+      "nativeMappings": 1
     },
-    "heldBackIssuerRecords": 200
+    "discovery": {
+      "issuerCatalogs": 2,
+      "nativeMappings": 1,
+      "requestsToday": 4,
+      "requestLimit": 64,
+      "nativeLimit": 24,
+      "day": "2026-10-26",
+      "refreshing": false,
+      "errors": [
+        {
+          "message": "Data provider rate limit reached. Please refresh shortly.",
+          "checkedAt": "2026-10-26T14:25:46.804Z"
+        }
+      ]
+    },
+    "heldBackIssuerRecords": 600,
+    "reality": {
+      "records": 3334,
+      "identified": 2934,
+      "pending": 384
+    }
   },
   "warnings": [
     "200 issuer records held back because identity mappings are unconfirmed or inconsistent."
   ],
-  "snapshotSha256": "15765d76f0e1a3bc93fa268263f287a9e0b9e67ff3eabf0b0fd7a08a04dcfb05",
-  "compressedSha256": "529362cea7758330ecffdd0d70ffa865acbba719a95c943dd58c12cf422caba4",
-  "compressedBytes": 1521268
+  "snapshotSha256": "d048bc2b14a25b73c71a1f571099ea7b7fb235ca4c7695599a01ab2de9628249",
+  "compressedSha256": "f919729d53edc5127ec14d2c3aac43139cdd40a85bfc668f7164447dd8b096b4",
+  "compressedBytes": 3493282
 }

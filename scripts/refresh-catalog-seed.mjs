@@ -13,6 +13,7 @@ import { gzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
 import { createCatalogLoader } from "../server/catalog.mjs";
 import { ONDO_CSV, ONDO_SOURCE, XSTOCKS_API } from "../server/config.mjs";
+import { REALITY_API } from "../server/issuer-catalog.mjs";
 import { readSnapshot } from "../server/catalog-snapshot.mjs";
 
 // Captures real public observations; a failed source must never replace the shipping seed.
@@ -42,10 +43,18 @@ try {
         sourceRetrievedAt: {
           xstocks: prior.sources.xstocks.retrievedAt,
           ondo: prior.sources.ondo.retrievedAt,
+          reality: prior.sources.reality?.retrievedAt,
         },
         getXstocks: async () => prior.sources.xstocks.value,
         getOndo: async () => prior.sources.ondo.value,
         getDiscovery: async () => prior.sources.coingecko.value,
+        getReality: async () => {
+          if (!prior.sources.reality)
+            throw new Error(
+              "Snapshot has no Reality observation; capture all live sources first.",
+            );
+          return prior.sources.reality.value;
+        },
       }
     : {};
   const result = await createCatalogLoader({
@@ -77,6 +86,12 @@ try {
       "Last successful identity observations for cold starts; runtime refreshes determine source availability. Identity data is not a live quote or guarantee of complete market coverage.",
     sources: [
       {
+        name: "Reality public catalog",
+        url: REALITY_API,
+        retrievedAt: snapshot.sources.reality.retrievedAt,
+        records: snapshot.sources.reality.value.data.length,
+      },
+      {
         name: "xStocks public API",
         url: `${XSTOCKS_API}/assets`,
         query: "pageSize=100&page=0..terminal",
@@ -95,9 +110,13 @@ try {
         urls: [
           "https://api.coingecko.com/api/v3/rwas/list",
           "https://api.coingecko.com/api/v3/coins/list?include_platform=true",
+          "https://api.coingecko.com/api/v3/rwas/issuers/list",
+          "https://api.coingecko.com/api/v3/rwas/issuers/{id}",
+          "https://api.coingecko.com/api/v3/rwas/{id}?tokens=true&tokenized_market_data=true",
         ],
         retrievedAt: snapshot.sources.coingecko.retrievedAt,
         universe: snapshot.sources.coingecko.value.universe,
+        discovery: snapshot.sources.coingecko.value.discoveryCoverage || null,
       },
     ],
     coverage: result.coverage,

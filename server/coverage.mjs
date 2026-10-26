@@ -34,6 +34,6 @@ export function coverageSummary(stocks) {
       ...new Set(products.flatMap((p) => p.unmappedPlatforms || [])),
     ],
     scope:
-      "Observed coverage from connected sources, not a guarantee of every token or venue. Native grouping is checked when an asset is opened.",
+      "Observed coverage from connected sources, not a guarantee of every token or venue. Issuer catalogs and native mappings refresh in the background; additional native grouping is checked when an asset is opened.",
   };
 }

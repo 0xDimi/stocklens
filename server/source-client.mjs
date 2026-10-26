@@ -106,7 +106,7 @@ export function sourceClient(
       queue.push(job);
       pump();
     });
-  return async (path, ttl = 60000) => {
+  return async (path, ttl = 60000, { waitForFresh = false } = {}) => {
     await loaded;
     const saved = observations.get(path);
     if (saved && saved.expires > Date.now())
@@ -135,7 +135,8 @@ export function sourceClient(
           }
         : null;
     if (retained && (limited || failed?.until > Date.now())) return retained;
-    if (inflight.has(path)) return retained || inflight.get(path);
+    if (inflight.has(path))
+      return waitForFresh ? inflight.get(path) : retained || inflight.get(path);
     const waitDeadline = Date.now() + queueTimeoutMs;
     const work = schedule(async () => {
       if (cooldownUntil > Date.now())
@@ -187,7 +188,7 @@ export function sourceClient(
       .catch((error) => unavailable(path, error))
       .finally(() => inflight.delete(path));
     inflight.set(path, work);
-    if (retained) {
+    if (retained && !waitForFresh) {
       work.catch(() => {});
       return retained;
     }
@@ -202,9 +203,13 @@ export function persistentCatalog(name, load, options = {}) {
   if (catalogWork.has(key)) return catalogWork.get(key);
   const work = (async () => {
     const sourceTime = (value, fallback) =>
-      value?.retrievedAt === undefined ? fallback : Date.parse(value.retrievedAt);
+      value?.retrievedAt === undefined
+        ? fallback
+        : Date.parse(value.retrievedAt);
     const eligible = (at) =>
-      Number.isFinite(at) && at <= Date.now() && Date.now() - at <= 72 * 3600000;
+      Number.isFinite(at) &&
+      at <= Date.now() &&
+      Date.now() - at <= 72 * 3600000;
     let saved;
     try {
       saved = JSON.parse(await readFile(key, "utf8"));

@@ -59,6 +59,7 @@ test("a failed refresh and process restart retain exact canonical identities and
     now: () => Date.parse(at),
     getXstocks: async () => (fail ? offline() : [apple]),
     getOndo: async () => [],
+    getReality: async () => (fail ? offline() : { code: 200, data: [] }),
     getDiscovery: async () => (fail ? offline() : discovery),
   };
   const load = catalog.createCatalogLoader(options);
@@ -185,6 +186,7 @@ test("a cold deployment loads its checksummed source seed and discloses each fai
     now: () => Date.parse(at),
     getXstocks: async () => [apple],
     getOndo: async () => [],
+    getReality: async () => ({ code: 200, data: [] }),
     getDiscovery: async () => discovery,
   });
   await original();
@@ -209,6 +211,7 @@ test("a cold deployment loads its checksummed source seed and discloses each fai
     now: () => Date.parse(at) + 3600000,
     getXstocks: offline,
     getOndo: offline,
+    getReality: offline,
     getDiscovery: offline,
   })();
   assert.deepEqual(
@@ -233,6 +236,7 @@ test("a cold deployment loads its checksummed source seed and discloses each fai
       now: () => Date.parse(at) + 3600000,
       getXstocks: offline,
       getOndo: offline,
+      getReality: offline,
       getDiscovery: offline,
     })(),
     /unavailable/,
@@ -271,6 +275,7 @@ test("readiness serves a dated catalog immediately while a slow failed refresh r
     now: () => Date.parse(at),
     getXstocks: async () => [apple],
     getOndo: async () => [],
+    getReality: async () => ({ code: 200, data: [] }),
     getDiscovery: async () => discovery,
   })();
   let failSource;
@@ -290,6 +295,7 @@ test("readiness serves a dated catalog immediately while a slow failed refresh r
     now: () => Date.parse(at) + 3600000,
     getXstocks: () => catalog.xStocksCatalog({ base }),
     getOndo: offline,
+    getReality: offline,
     getDiscovery: offline,
   });
   const app = createApp({ getCatalog });

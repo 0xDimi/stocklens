@@ -32,7 +32,12 @@ export async function productsView({ id, chain }, params) {
     )
     .map((p) => ({
       ...p,
-      market: markets.rows.find((m) => m.coinId === p.coinId) || null,
+      market:
+        markets.rows.find(
+          (m) =>
+            (p.coinId && m.coinId === p.coinId) ||
+            m.productKey === p.issuer + ":" + p.symbol,
+        ) || null,
     }));
   return {
     stock,

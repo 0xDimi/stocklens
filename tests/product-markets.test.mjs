@@ -73,3 +73,48 @@ test(
     assert.match(result.warning, /unavailable/i);
   },
 );
+
+test("an issuer-only token gets a dated exact-contract pool observation without an assumed conversion or quote", async () => {
+  const product = {
+    issuer: "reality",
+    symbol: "rNEW",
+    deployments: [
+      {
+        chain: "Arbitrum",
+        address: "0x1111111111111111111111111111111111111111",
+      },
+    ],
+  };
+  const result = await productMarkets(
+    { ticker: "NEW", products: [product] },
+    {
+      primary: async () => ({ rows: [], retrievedAt: null }),
+      pools: async () => ({
+        rows: [
+          {
+            issuer: "reality",
+            symbol: "rNEW",
+            chain: "Arbitrum",
+            address: product.deployments[0].address,
+            price: 123,
+            liquidity: 10000,
+            volume24h: 500,
+            change24h: 2,
+            retrievedAt: "2026-10-26T13:00:00.000Z",
+            source: "https://www.geckoterminal.com/arbitrum/pools/exact",
+          },
+        ],
+        retrievedAt: "2026-10-26T13:00:00.000Z",
+      }),
+      quote: async () => {
+        throw new Error("pool observation must not require a quote");
+      },
+    },
+  );
+  assert.equal(result.rows[0].price, 123);
+  assert.equal(result.rows[0].productKey, "reality:rNEW");
+  assert.equal(result.rows[0].priceType, "pool-snapshot");
+  assert.equal(result.rows[0].marketCap, null);
+  assert.equal(result.rows[0].equivalentShares, undefined);
+  assert.equal(result.rows[0].updatedAt, "2026-10-26T13:00:00.000Z");
+});

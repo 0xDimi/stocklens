@@ -1,4 +1,10 @@
 import {
+  realityCatalog,
+  parseRealityCatalog,
+  mergeIssuerCatalog,
+  REALITY_API,
+} from "./issuer-catalog.mjs";
+import {
   getDiscovery,
   mergeDiscovery,
   getRwa,
@@ -32,9 +38,24 @@ function eligibleSourceTime(value, now) {
 // A recent cache write or outage check must never renew an identity observation.
 function eligibleStocks(stocks, now) {
   return stocks.flatMap((stock) => {
-    const products = stock.products.filter((p) =>
-      eligibleSourceTime(p.sourceAt, now),
-    );
+    const products = stock.products
+      .filter((p) => eligibleSourceTime(p.sourceAt, now))
+      .flatMap((p) => {
+        const deployments = p.deployments.filter((d) =>
+          eligibleSourceTime(d.sourceAt || p.sourceAt, now),
+        );
+        if (!deployments.length) return [];
+        const value = { ...p, deployments };
+        if (
+          p.coinId &&
+          !eligibleSourceTime(p.coinIdSourceAt || p.sourceAt, now)
+        ) {
+          delete value.coinId;
+          delete value.marketSource;
+          delete value.coinIdSourceAt;
+        }
+        return [value];
+      });
     return products.length ||
       (!stock.products.length && eligibleSourceTime(stock.sourceAt, now))
       ? [{ ...stock, products }]
@@ -46,8 +67,8 @@ function eligibleCatalog(catalog, now) {
   if (!stocks.length) return null;
   const changed =
     stocks.length !== catalog.stocks.length ||
-    stocks.some((stock, i) =>
-      stock.products.length !== catalog.stocks[i].products.length,
+    stocks.some(
+      (stock, i) => stock.products.length !== catalog.stocks[i].products.length,
     );
   return changed
     ? {
@@ -466,10 +487,14 @@ export function createCatalogLoader(options = {}) {
         (() => request(ONDO_CSV, { json: false }).then(parseCsv))
       )(),
       (options.getDiscovery ?? getDiscovery)(),
+      (options.getReality ?? realityCatalog)().then((value) => {
+        parseRealityCatalog(value, new Date(now()).toISOString());
+        return value;
+      }),
     ]);
     const fetchedAt = new Date(now()).toISOString();
-    const [x, o, cg] = observations.map((observation, index) => {
-      const key = ["xstocks", "ondo", "coingecko"][index];
+    const [x, o, cg, reality] = observations.map((observation, index) => {
+      const key = ["xstocks", "ondo", "coingecko", "reality"][index];
       let result = observation;
       if (result.status === "fulfilled") {
         const retrievedAt =
@@ -488,7 +513,9 @@ export function createCatalogLoader(options = {}) {
         }
         result = {
           status: "rejected",
-          reason: new Error("Catalog source observation is expired or undated."),
+          reason: new Error(
+            "Catalog source observation is expired or undated.",
+          ),
         };
       }
       const previous = sources[key];
@@ -503,7 +530,11 @@ export function createCatalogLoader(options = {}) {
           }
         : { ...result, available: false, error: result.reason.message };
     });
-    if (x.status === "rejected" && cg.status === "rejected")
+    if (
+      x.status === "rejected" &&
+      cg.status === "rejected" &&
+      reality.status === "rejected"
+    )
       throw new Error(
         "The verified identity catalog is unavailable. Please try again shortly.",
       );
@@ -529,15 +560,30 @@ export function createCatalogLoader(options = {}) {
             cg.value.stocks,
           )
         : issuerStocks;
+    let realityPending = [];
+    if (reality.status === "fulfilled") {
+      const merged = mergeIssuerCatalog(
+        stocks,
+        parseRealityCatalog(reality.value, reality.retrievedAt),
+      );
+      stocks = merged.stocks;
+      realityPending = merged.pendingProducts;
+      if (cg.status === "fulfilled")
+        stocks = attachKnownProducts(
+          stocks,
+          cg.value.registry || [],
+          cg.retrievedAt,
+        );
+    }
     if (o.status === "fulfilled")
       stocks = attachOndoCatalog(stocks, o.value, o.retrievedAt);
     stocks = applyCatalogReferences(stocks);
     stocks = retainCatalogIdentities(
       eligibleStocks(saved?.catalog?.stocks || [], now()),
       stocks,
-      [x, o, cg].some((r) => r.status === "rejected" || r.stale),
+      [x, o, cg, reality].some((r) => r.status === "rejected" || r.stale),
     );
-    stocks = applyCatalogReferences(stocks);
+    stocks = eligibleStocks(applyCatalogReferences(stocks), now());
     if (!stocks.length)
       throw new Error(
         "Issuer catalogs did not contain verified supported securities.",
@@ -547,6 +593,7 @@ export function createCatalogLoader(options = {}) {
       ["xStocks", x],
       ["Ondo", o],
       ["CoinGecko", cg],
+      ["Reality", reality],
     ])
       if (result.stale)
         warnings.push(
@@ -584,15 +631,24 @@ export function createCatalogLoader(options = {}) {
       );
     const result = {
       stocks,
-      pendingProducts: pendingIssuerRecords(
-        o.status === "fulfilled" ? o.value : [],
-        unresolved,
-        o.retrievedAt || fetchedAt,
-      ),
+      pendingProducts: [
+        ...realityPending,
+        ...pendingIssuerRecords(
+          o.status === "fulfilled" ? o.value : [],
+          unresolved,
+          o.retrievedAt || fetchedAt,
+        ),
+      ],
       coverage: {
         ...coverageSummary(stocks),
         registry: cg.status === "fulfilled" ? cg.value.universe : null,
-        heldBackIssuerRecords: unresolved.length,
+        discovery:
+          cg.status === "fulfilled" ? cg.value.discoveryCoverage || null : null,
+        heldBackIssuerRecords: unresolved.length + realityPending.length,
+        reality:
+          reality.status === "fulfilled"
+            ? parseRealityCatalog(reality.value, reality.retrievedAt).counts
+            : null,
       },
       fetchedAt,
       warnings,
@@ -603,6 +659,14 @@ export function createCatalogLoader(options = {}) {
         quotable: supportsQuotes(chain),
       })),
       sources: [
+        {
+          name: "Reality public catalog",
+          url: REALITY_API,
+          available: reality.available,
+          stale: reality.stale || false,
+          retrievedAt: reality.retrievedAt || null,
+          error: reality.error || null,
+        },
         {
           name: "CoinGecko",
           url: "https://www.coingecko.com/en/categories/tokenized-stock",

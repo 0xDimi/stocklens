@@ -1,5 +1,7 @@
 import { CHAINS, validAddress } from "./config.mjs";
 import { sourceClient } from "./source-client.mjs";
+import { observeWithin } from "./http.mjs";
+import { contractKey } from "./issuer-catalog.mjs";
 import { cgRequest } from "./coingecko.mjs";
 export function validOnchainResponse(body, path) {
   if (body?.error || body?.errors || body?.status?.error_code) return false;
@@ -15,7 +17,11 @@ const gt = sourceClient(
   { validate: validOnchainResponse },
 );
 const numeric = (v) =>
-  v != null && v !== "" && typeof v !== "boolean" && Number.isFinite(Number(v)) && Number(v) >= 0
+  v != null &&
+  v !== "" &&
+  typeof v !== "boolean" &&
+  Number.isFinite(Number(v)) &&
+  Number(v) >= 0
     ? Number(v)
     : null;
 const addrKey = (chain, address) =>
@@ -92,7 +98,7 @@ export function parsePools(response, stock, at) {
   }
   return output.sort((a, b) => (b.liquidity ?? -1) - (a.liquidity ?? -1));
 }
-async function readPools(stock, chain, deployment, read) {
+async function readSinglePools(stock, chain, deployment, read) {
   const path = deployment
     ? `/networks/${CHAINS[deployment.chain].gecko}/tokens/${encodeURIComponent(deployment.address)}/pools?include=base_token,quote_token,dex`
     : "/search/pools?" +
@@ -117,6 +123,80 @@ async function readPools(stock, chain, deployment, read) {
       : "First page of search pools, filtered to catalog contracts",
   };
 }
+async function readPools(stock, chain, deployment, read) {
+  if (deployment) return readSinglePools(stock, chain, deployment, read);
+  const deadline = Date.now() + 20000;
+  let first, searchError;
+  try {
+    first = await readSinglePools(stock, chain, null, read);
+  } catch (error) {
+    if (
+      error.status &&
+      error.status < 500 &&
+      ![408, 429].includes(error.status)
+    )
+      throw error;
+    searchError = error;
+  }
+  const rows = [...(first?.rows || [])];
+  const seen = new Set(rows.map((p) => p.issuer + ":" + p.symbol));
+  const candidates = stock.products
+    .filter((p) => !p.halted && !seen.has(p.issuer + ":" + p.symbol))
+    .map((p) =>
+      p.deployments.find(
+        (d) => (chain === "all" || d.chain === chain) && CHAINS[d.chain]?.gecko,
+      ),
+    )
+    .filter(Boolean)
+    .filter(
+      (d, i, a) => a.findIndex((e) => contractKey(d) === contractKey(e)) === i,
+    )
+    .slice(0, 3);
+  const observations = first ? [first] : [];
+  let checked = 0;
+  for (const token of candidates) {
+    const remaining = deadline - Date.now();
+    if (remaining < 100) break;
+    checked++;
+    try {
+      const result = await observeWithin(
+        () => readSinglePools(stock, chain, token, read),
+        remaining,
+      );
+      observations.push(result);
+      for (const row of result.rows)
+        if (!rows.some((p) => p.id === row.id)) rows.push(row);
+    } catch {
+      /* Another exact token may have a healthy independent pool. */
+    }
+  }
+  if (!observations.length)
+    throw (
+      searchError ||
+      new Error("Exact-contract pool observations are unavailable.")
+    );
+  const dates = observations
+    .map((o) => Date.parse(o.retrievedAt))
+    .filter(Number.isFinite);
+  return {
+    ...first,
+    rows: rows.sort((a, b) => (b.liquidity ?? -1) - (a.liquidity ?? -1)),
+    retrievedAt: dates.length
+      ? new Date(Math.min(...dates)).toISOString()
+      : null,
+    stale: observations.some((o) => o.stale),
+    source: [
+      ...new Set(observations.map((o) => o.source).filter(Boolean)),
+    ].join(" + "),
+    warning:
+      observations
+        .map((o) => o.warning)
+        .filter(Boolean)
+        .join(" ") || null,
+    coverage: `Search results plus ${checked} exact-contract lookups; pool observations, not executable quotes.`,
+  };
+}
+
 export function parseHistory(
   response,
   { since = -Infinity, until = Infinity } = {},
@@ -224,12 +304,10 @@ export function createGeckoClient({
     try {
       const result = await authenticatedRequest("/onchain" + path, ttl);
       if (!validOnchainResponse(result.data, path))
-        throw new Error("CoinGecko onchain returned an invalid provider response.");
-      return provenance(
-        result,
-        path,
-        true,
-      );
+        throw new Error(
+          "CoinGecko onchain returned an invalid provider response.",
+        );
+      return provenance(result, path, true);
     } catch (error) {
       if (!retained) throw publicError || error;
       return {
@@ -237,7 +315,9 @@ export function createGeckoClient({
         warning: [
           retained.warning,
           `CoinGecko onchain fallback unavailable: ${error.message}`,
-        ].filter(Boolean).join(" "),
+        ]
+          .filter(Boolean)
+          .join(" "),
       };
     }
   };

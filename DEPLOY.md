@@ -55,3 +55,11 @@ node scripts/production-smoke.mjs --require-ready
 The smoke script starts a real production child process, checks assigned-port binding, all served modules, security headers, private-file exclusion, secret isolation, API throttling, forwarding spoof resistance, liveness, catalog readiness, invalid configuration, graceful shutdown and deadline termination of an incomplete HTTP connection. It contacts the actual catalog sources. Without `--require-ready`, a real 503 is recorded as degraded source availability and still tests the runtime; the stricter command requires a usable live catalog. It never replaces provider responses with fixtures.
 
 CI runs the Node tests and production subprocess smoke on Node 22 and 24. Its container job builds the image and checks the unprivileged user, static boundary, health and clean termination. These jobs only count as validated after they actually run. Local Docker validation requires Docker; no container-build claim follows from the subprocess tests.
+
+## Background catalog discovery
+
+CoinGecko issuer/native enrichment shares the existing server-side API key and paced source client. The worker is nonblocking and coalesces concurrent scans. It records at most 64additional attempted catalog requests per UTC day, of which at most 24 are native asset lookups. This is separate from existing price and quote traffic. The counter is kept in `CACHE_DIR/rwa-discovery-v1.json` and included in the dated catalog seed for cold starts; ephemeral hosting storage can still disappear on redeploy. No new paid service is required.
+
+Issuer and native observations refresh after 24 hours and expire after 72 hours. Worker reads await actual refreshed source observations without delaying visitor requests. An unavailable individual issuer can be skipped; provider-wide failures back off for an hour. Previously successful observations keep their original times. Reality's public stock/ETF catalog refreshes independently, using active records, validated security identifiers and exact supported contracts.
+
+`node scripts/catalog-expansion-integration.mjs` checks the real application API for expanded canonical coverage, new-stock product pages, exact-contract pools and existing executable quotes. Set `STOCKLENS_URL` for the public deployment. Provider outages fail required live checks explicitly.

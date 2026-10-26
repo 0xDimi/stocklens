@@ -132,6 +132,7 @@ for (const seed of [false, true])
       now: () => Date.parse(at),
       getXstocks: offline,
       getOndo: offline,
+      getReality: offline,
       getDiscovery: offline,
     });
     const result = await load();
@@ -168,6 +169,7 @@ test("fresh catalog joins the reviewed native RWA after Ondo official contracts 
         "Ethereum Deployed Address": contract,
       },
     ],
+    getReality: async () => ({ code: 200, data: [] }),
     getDiscovery: async () => ({
       registry: [],
       retrievedAt: at,

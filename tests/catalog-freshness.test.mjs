@@ -38,6 +38,7 @@ async function capture(t) {
     now: () => at,
     getXstocks: async () => [apple],
     getOndo: async () => [],
+    getReality: async () => ({ code: 200, data: [] }),
     getDiscovery: async () => discovery,
   })();
   return cacheDir;
@@ -50,6 +51,7 @@ test("repeated outages cannot renew the 72-hour source retention window", async 
     seedPath: null,
     getXstocks: offline,
     getOndo: offline,
+    getReality: offline,
     getDiscovery: offline,
   };
   const retained = await createCatalogLoader({
@@ -71,20 +73,26 @@ test("an expired source cannot restore old products during a healthy independent
     now: () => at + 4 * day,
     getXstocks: offline,
     getOndo: offline,
+    getReality: async () => ({ code: 200, data: [] }),
     getDiscovery: async () => ({
       retrievedAt: new Date(at + 4 * day).toISOString(),
       registry: [],
-      stocks: [{
-        id: "cg:fresh",
-        rwaId: "fresh",
-        ticker: "FRESH",
-        name: "Fresh company",
-        sourceAt: new Date(at + 4 * day).toISOString(),
-        products: [],
-      }],
+      stocks: [
+        {
+          id: "cg:fresh",
+          rwaId: "fresh",
+          ticker: "FRESH",
+          name: "Fresh company",
+          sourceAt: new Date(at + 4 * day).toISOString(),
+          products: [],
+        },
+      ],
     }),
   })();
-  assert.deepEqual(result.stocks.map((s) => s.id), ["cg:fresh"]);
+  assert.deepEqual(
+    result.stocks.map((s) => s.id),
+    ["cg:fresh"],
+  );
 });
 
 test("a running cached loader also expires retained identities after 72 hours", async (t) => {
@@ -96,6 +104,7 @@ test("a running cached loader also expires retained identities after 72 hours", 
     now: () => now,
     getXstocks: offline,
     getOndo: offline,
+    getReality: offline,
     getDiscovery: offline,
   });
   assert.equal((await load()).stocks[0].id, "US0378331005");
@@ -117,12 +126,15 @@ test("HTTP readiness fails after a repackaged snapshot's source observations exp
       now: () => at + 4 * day,
       getXstocks: offline,
       getOndo: offline,
+      getReality: offline,
       getDiscovery: offline,
     }),
   });
   await new Promise((resolve) => app.listen(0, "127.0.0.1", resolve));
   t.after(() => new Promise((resolve) => app.close(resolve)));
-  const response = await fetch(`http://127.0.0.1:${app.address().port}/api/ready`);
+  const response = await fetch(
+    `http://127.0.0.1:${app.address().port}/api/ready`,
+  );
   assert.equal(response.status, 503);
   const result = await response.json();
   assert.equal(result.catalogReady, false);
@@ -149,10 +161,14 @@ test("partially expired cached catalogs keep eligible assets and accurate covera
     now: () => at + 4 * day,
     getXstocks: offline,
     getOndo: offline,
+    getReality: offline,
     getDiscovery: offline,
   });
   const result = await load();
-  assert.deepEqual(result.stocks.map((s) => s.id), ["cg:fresh"]);
+  assert.deepEqual(
+    result.stocks.map((s) => s.id),
+    ["cg:fresh"],
+  );
   assert.equal(result.coverage.assets, 1);
   assert.equal(result.coverage.versions, 0);
 });
@@ -160,7 +176,12 @@ test("partially expired cached catalogs keep eligible assets and accurate covera
 test("retained discovery inputs preserve stale state and their oldest source time", () => {
   assert.equal(typeof coingecko.discoveryObservation, "function");
   const observation = coingecko.discoveryObservation(
-    { data: [], retrievedAt: original, stale: true, warning: "RWA registry offline" },
+    {
+      data: [],
+      retrievedAt: original,
+      stale: true,
+      warning: "RWA registry offline",
+    },
     { data: [], retrievedAt: new Date(at + 1000).toISOString(), stale: false },
   );
   assert.equal(observation.stale, true);
@@ -177,7 +198,9 @@ test("persistent discovery never promotes a retained observation into a fresh ca
     warning: "offline",
   };
   await persistentCatalog("discovery", async () => value, { cacheDir });
-  await assert.rejects(readFile(join(cacheDir, "discovery.json")), { code: "ENOENT" });
+  await assert.rejects(readFile(join(cacheDir, "discovery.json")), {
+    code: "ENOENT",
+  });
 });
 
 test("a recent cache write cannot make an expired source observation eligible", async (t) => {
@@ -189,24 +212,37 @@ test("a recent cache write cannot make an expired source observation eligible", 
       value: { stocks: [], retrievedAt: new Date(at - 4 * day).toISOString() },
     }),
   );
-  await assert.rejects(persistentCatalog("discovery", offline, { cacheDir }), /offline/);
+  await assert.rejects(
+    persistentCatalog("discovery", offline, { cacheDir }),
+    /offline/,
+  );
 });
 
 test("a source that expires during an attempted refresh cannot become its fallback", async (t) => {
   const cacheDir = await temporary(t);
   let clock = Date.now();
   t.mock.method(Date, "now", () => clock);
-  await writeFile(join(cacheDir, "discovery.json"), JSON.stringify({
-    savedAt: clock,
-    value: {
-      stocks: [],
-      retrievedAt: new Date(clock - 3 * day + 1).toISOString(),
-    },
-  }));
-  await assert.rejects(persistentCatalog("discovery", async () => {
-    clock += 2;
-    throw new Error("source offline");
-  }, { cacheDir }), /offline/);
+  await writeFile(
+    join(cacheDir, "discovery.json"),
+    JSON.stringify({
+      savedAt: clock,
+      value: {
+        stocks: [],
+        retrievedAt: new Date(clock - 3 * day + 1).toISOString(),
+      },
+    }),
+  );
+  await assert.rejects(
+    persistentCatalog(
+      "discovery",
+      async () => {
+        clock += 2;
+        throw new Error("source offline");
+      },
+      { cacheDir },
+    ),
+    /offline/,
+  );
 });
 
 test("native RWA products keep the observation timestamp supplied by their source", () => {
@@ -214,13 +250,15 @@ test("native RWA products keep the observation timestamp supplied by their sourc
     {
       id: "apple",
       symbol: "AAPL",
-      tokens: [{
-        id: "apple-xstock",
-        symbol: "aaplx",
-        name: "Apple xStock",
-        issuer_details: { id: "xstocks-ecosystem" },
-        platforms: { ethereum: "0x" + "1".repeat(40) },
-      }],
+      tokens: [
+        {
+          id: "apple-xstock",
+          symbol: "aaplx",
+          name: "Apple xStock",
+          issuer_details: { id: "xstocks-ecosystem" },
+          platforms: { ethereum: "0x" + "1".repeat(40) },
+        },
+      ],
     },
     { rwaId: "apple", ticker: "AAPL" },
     { retrievedAt: original },

@@ -1,3 +1,9 @@
+## Open Home — 0.12.1, October 28, 2026
+
+Home now uses an open canvas: issuer cards, the outlined stock node, section frames and company-cell dividers are removed. Search uses one underline and a text action. Larger issuer and underlying marks remain sourced from the existing catalog. The company shelf preserves original logo shapes, with explicit contrast treatment for Apple and Amazon. The transient search results retain an opaque reading surface. Compare and Markets layouts and all data adapters are unchanged.
+
+417 Node tests and the real production subprocess smoke pass. Brave checks with the actual catalog cover keyboard Apple selection, mobile NVIDIA submission, empty results and Escape, logo-to-Home, Markets navigation and issuer-graph links. Dark and light appearances were visually checked; responsive checks at 320, 390, 768 and 1440 pixels show no horizontal document overflow. All Home logo images load. Computed issuer/node/shelf styles have transparent backgrounds and zero borders. The design detector returns no findings. Local evidence is retained in ignored test-results/open-home-*.
+
 ## Shared appearance and navigation — 0.11.0, October 23, 2026
 
 Home is the entry at /; the logo returns there. Compare owns the token workspace at /?page=comparison. Markets remains the screener, with its existing stock overviews and separate multi-stock comparison route. Legacy stock/ticker/view links resolve to Compare and retain the selected view. The three requested introductory lines were removed.

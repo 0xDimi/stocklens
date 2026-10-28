@@ -6,7 +6,7 @@ OWN-WORLD: Deep forest #091e1a, pale mint #d4f5df and warm white #f5f8f4. Oversi
 
 STORY: Identify the stock, understand the versions, enter the comparison. Search and recognizable companies are the primary interactions. No invented prices, coverage counts or execution promises.
 
-FIRST VIEWPORT: Left-aligned headline and large search; on the right, a bespoke lens connects NVIDIA to source-catalog issuer products. A horizontal company shelf and dated catalog totals close the opening. On mobile, search precedes a compact lens graphic. The header has a compact utility row and a separate Home / Compare / Markets navigation row.
+FIRST VIEWPORT: Left-aligned headline and large search; on the right, a bespoke lens connects NVIDIA to source-catalog issuer products. A borderless company shelf and dated catalog totals close the opening. Search uses a single underline and a text action. Company and issuer marks sit directly on the canvas; no cards, outlined nodes, section frames or cell dividers. Larger original marks retain their aspect ratio and contrast in both themes. Only the transient search results have an opaque surface for readability. On mobile, search precedes a compact lens graphic. The header has a compact utility row and a separate Home / Compare / Markets navigation row.
 
 FORM: The user-supplied Asortino reference pins a dark hero with large type and green emphasis. Stocklens uses a split composition and a functional representation graphic. No random direction selection is needed for this pinned brief.
 

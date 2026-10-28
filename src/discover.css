@@ -419,8 +419,6 @@ body.is-discover {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-}
-.discover-assets .entity-logo {
   border-radius: 0;
   background: transparent;
 }
@@ -432,6 +430,7 @@ body.is-discover {
   padding: 0;
   border-radius: 50%;
 }
+/* This source mark has a white letter; keep its dark backing in light mode. */
 :root[data-theme="light"] .discover-assets img[src$="stock-AMZN.png"] {
   background: #091e1a;
   border-radius: 50%;
@@ -677,7 +676,8 @@ body.is-discover {
     padding: 0;
     border-radius: 50%;
   }
-  :root[data-theme="light"] .discover-assets img[src$="stock-AMZN.png"] {
+  /* This source mark has a white letter; keep its dark backing in light mode. */
+:root[data-theme="light"] .discover-assets img[src$="stock-AMZN.png"] {
     background: #091e1a;
     border-radius: 50%;
   }

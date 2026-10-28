@@ -35,8 +35,10 @@ import {
 } from "./brands.mjs";
 import { createTerminal } from "./terminal.mjs";
 import { createDiscover, routePage } from "./discover.mjs";
+import { createIssuersPage } from "./issuers-page.mjs";
 let desk = null,
   marketsPage = null,
+  issuersPage = null,
   stockPages = null,
   catalogCoverage = null,
   pendingProducts = [];
@@ -46,6 +48,7 @@ const $ = (selector) => document.querySelector(selector);
 const params = new URLSearchParams(location.search);
 const comparisonStore = comparisonStorage();
 let page = routePage(params);
+let issuerSelection = page === "issuers" ? params.get("issuer") || "" : "";
 let assetCompareIds = params.has("stocks")
   ? params.get("stocks").split(",").filter(Boolean)
   : readComparison(comparisonStore);
@@ -84,6 +87,14 @@ try {
 if (validBudget(params.get("amount")))
   $("#budget").value = params.get("amount");
 function updateUrl(mode = "replace") {
+  if (page === "issuers") {
+    const query = new URLSearchParams({ page: "issuers" });
+    if (issuerSelection) query.set("issuer", issuerSelection);
+    const url = "/?" + query;
+    if (location.search !== "?" + query)
+      history[mode === "push" ? "pushState" : "replaceState"](null, "", url);
+    return;
+  }
   if (page === "discover") {
     if (location.search)
       history[mode === "push" ? "pushState" : "replaceState"](null, "", "/");
@@ -526,16 +537,18 @@ function tick() {
 function loadChart(poolId) {
   desk.loadPool(poolId, snapshot?.rows || []);
 }
-function selectStock(id) {
+function selectStock(id, issuerId = "all", includeWrapped = false) {
   const stock = assetById(stocks, id);
   if (!stock) return;
   selected = stock;
   homeAssetId = stock.id;
   setPage("comparison");
   token = "";
-  $("#include-wrappers").checked = false;
+  $("#include-wrappers").checked = includeWrapped;
   $("#issuer").value = "all";
   renderHeading();
+  if (selected.products.some((p) => p.issuer === issuerId))
+    $("#issuer").value = issuerId;
   renderStocks();
   desk.select(selected);
   loadHomeDetails(selected.id);
@@ -850,9 +863,14 @@ async function loadHomeDetails(id, force = false) {
 }
 function setPage(next, write = true) {
   const previous = page;
-  page = ["discover", "comparison", "markets", "stock", "compare"].includes(
-    next,
-  )
+  page = [
+    "discover",
+    "comparison",
+    "markets",
+    "stock",
+    "compare",
+    "issuers",
+  ].includes(next)
     ? next
     : "comparison";
   $("#discover-page").hidden = page !== "discover";
@@ -862,6 +880,8 @@ function setPage(next, write = true) {
   $("#markets-page").hidden = page !== "markets";
   $("#stock-page").hidden = page !== "stock";
   $("#asset-comparison-page").hidden = page !== "compare";
+  $("#issuers-page").hidden = page !== "issuers";
+  if (page !== "issuers") issuersPage?.hide();
   if (page !== "comparison" && previous === "comparison") {
     clearTimeout(debounce);
     controller?.abort();
@@ -875,6 +895,7 @@ function setPage(next, write = true) {
     markets: "markets-page",
     stock: "stock-page",
     compare: "asset-comparison-page",
+    issuers: "issuers-page",
   }[page];
   $(".skip-link").href = "#" + target;
   $(".skip-link").textContent = {
@@ -883,7 +904,10 @@ function setPage(next, write = true) {
     markets: "Skip to markets",
     stock: "Skip to stock overview",
     compare: "Skip to stock comparison",
+    issuers: "Skip to issuers",
   }[page];
+  $("#share").textContent =
+    page === "issuers" ? "Copy issuer link ↗" : "Copy comparison link ↗";
   document.querySelectorAll("[data-page]").forEach((link) => {
     if (
       link.dataset.page ===
@@ -891,7 +915,9 @@ function setPage(next, write = true) {
         ? "discover"
         : page === "comparison"
           ? "comparison"
-          : "markets")
+          : page === "issuers"
+            ? "issuers"
+            : "markets")
     )
       link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
@@ -901,15 +927,18 @@ function setPage(next, write = true) {
       ? `${selected?.ticker || "Stock"} overview — Stocklens`
       : page === "compare"
         ? "Compare stocks — Stocklens"
-        : page === "markets"
-          ? "Markets — Stocklens"
-          : page === "comparison"
-            ? "Compare — Stocklens"
-            : "Stocklens — Compare tokenized stocks";
+        : page === "issuers"
+          ? "Issuers — Stocklens"
+          : page === "markets"
+            ? "Markets — Stocklens"
+            : page === "comparison"
+              ? "Compare — Stocklens"
+              : "Stocklens — Compare tokenized stocks";
   if (page === "markets") {
     marketsPage?.show();
     if (desk?.marketState().screenNext) desk.refreshMarkets(true);
   }
+  if (page === "issuers") issuersPage?.show(issuerSelection);
   if (selected && page === "stock") stockPages?.openStock(selected.id);
   if (stocks.length && page === "compare")
     stockPages?.openComparison(assetCompareIds);
@@ -930,7 +959,12 @@ function openAssetComparison(ids) {
   $("#asset-comparison-page").focus({ preventScroll: true });
   scrollTo({ top: 0, behavior: "instant" });
 }
-function openHomeComparison(id, mode = "products") {
+function openHomeComparison(
+  id,
+  mode = "products",
+  issuerId = "all",
+  includeWrapped = false,
+) {
   const stock = assetById(stocks, id);
   if (!stock) return;
   selected = stock;
@@ -939,11 +973,13 @@ function openHomeComparison(id, mode = "products") {
   $("#issuer").value = "all";
   setPage("comparison");
   setView(mode, false);
-  selectStock(id);
+  selectStock(id, issuerId, includeWrapped);
   $("#comparison").scrollIntoView({ block: "start" });
 }
 window.addEventListener("popstate", () => {
   const route = new URLSearchParams(location.search);
+  if (routePage(route) === "issuers")
+    issuerSelection = route.get("issuer") || "";
   selected = assetById(stocks, route.get("stock")) || selected;
   assetCompareIds = restoreComparison(route, assetCompareIds, stocks);
   saveComparison(comparisonStore, assetCompareIds);
@@ -1020,10 +1056,13 @@ document.addEventListener("click", (event) => {
     event.button === 0
   ) {
     event.preventDefault();
+    if (link.dataset.page === "issuers") issuerSelection = "";
     setPage(link.dataset.page);
-    if (page === "discover") {
+    if (page === "discover" || page === "issuers") {
       scrollTo({ top: 0, behavior: "instant" });
-      $("#discover-page").focus({ preventScroll: true });
+      $(page === "discover" ? "#discover-page" : "#issuers-page").focus({
+        preventScroll: true,
+      });
     }
     if (page === "comparison" && selected) {
       const changed = homeAssetId !== selected.id;
@@ -1086,6 +1125,23 @@ stockPages = createStockPages({
   onCompareVersions: openHomeComparison,
   onOpenStock: openStockPage,
   onCompareAssets: openAssetComparison,
+});
+issuersPage = createIssuersPage({
+  root: $("#issuers-page"),
+  getChains: () => chains,
+  onNavigate: (id) => {
+    issuerSelection = id;
+    setPage("issuers");
+    scrollTo({ top: 0, behavior: "instant" });
+    $("#issuers-page").focus({ preventScroll: true });
+  },
+  onCompare: (id, issuer, wrapped) => {
+    // A background catalog refresh can discover an asset after this tab loaded.
+    // Its canonical href performs a fresh boot when the client lacks that asset.
+    if (!assetById(stocks, id)) return false;
+    openHomeComparison(id, "products", issuer, wrapped);
+    return true;
+  },
 });
 const discover = createDiscover({
   root: $("#discover-page"),

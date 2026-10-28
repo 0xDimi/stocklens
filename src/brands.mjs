@@ -87,10 +87,25 @@ export function stockLogo(stock, image = null) {
     kind: "stock-logo",
   });
 }
+const issuerMarks = new Set([
+  "xstocks",
+  "ondo",
+  "bstocks",
+  "robinhood",
+  "dinari",
+  "coinbase",
+  "backpack",
+  "anchored",
+  "reality",
+  "st0x",
+  "stove",
+]);
 export const issuerLogo = (product) =>
   logo({
     name: product.issuerName || product.issuer,
-    url: brandPath("issuer", product.issuer),
+    url: issuerMarks.has(product.issuer)
+      ? brandPath("issuer", product.issuer)
+      : null,
     kind: "issuer-logo",
   });
 export const chainLogo = (id, name = id) =>

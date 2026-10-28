@@ -13,6 +13,7 @@ import {
 import { screenerView, venuesView } from "./server/market-desk.mjs";
 import { fundamentalsView } from "./server/fundamentals.mjs";
 import { marketDetailsView } from "./server/market-details.mjs";
+import { issuersView, issuerAssetsView } from "./server/issuers.mjs";
 import { loadCatalog } from "./server/catalog.mjs";
 import { compareStock, validateComparison } from "./server/quotes.mjs";
 import { readRuntime, clientIdentity } from "./server/runtime.mjs";
@@ -49,6 +50,9 @@ const files = new Map([
     "markets-page.mjs",
     "market-feed.mjs",
     "market-observations.mjs",
+    "issuer-model.mjs",
+    "issuers-page.mjs",
+    "issuers-page.css",
   ].map((name) => [
     "/src/" + name,
     [
@@ -119,6 +123,8 @@ export function createApp({
   history = historyView,
   screener = screenerView,
   venues = venuesView,
+  issuers = issuersView,
+  issuerAssets = issuerAssetsView,
   runtime = {},
 } = {}) {
   const config = { ...readRuntime(), ...runtime };
@@ -282,6 +288,18 @@ export function createApp({
               send(
                 200,
                 await deadline(() => screener(url.searchParams), 35000),
+              );
+              return;
+            }
+            if (
+              url.pathname === "/api/issuers" ||
+              url.pathname === "/api/issuer-assets"
+            ) {
+              const issuerView =
+                url.pathname === "/api/issuers" ? issuers : issuerAssets;
+              send(
+                200,
+                await deadline(() => issuerView(url.searchParams), 35000),
               );
               return;
             }

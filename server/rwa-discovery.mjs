@@ -282,5 +282,12 @@ export function createRwaDiscovery({
     if (shouldRefresh) refresh(base).catch(() => {});
     return result;
   };
-  return { augment, refresh };
+  return {
+    augment,
+    refresh,
+    async issuerObservations() {
+      await initialize();
+      return structuredClone(Object.values(state.issuers).filter(eligible));
+    },
+  };
 }

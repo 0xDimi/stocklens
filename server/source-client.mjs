@@ -109,7 +109,10 @@ export function sourceClient(
   return async (path, ttl = 60000, { waitForFresh = false } = {}) => {
     await loaded;
     const saved = observations.get(path);
-    if (saved && saved.expires > Date.now())
+    if (
+      saved &&
+      Math.min(saved.expires, Date.parse(saved.retrievedAt) + ttl) > Date.now()
+    )
       return Promise.resolve({ ...saved, stale: false });
     const failed = failures.get(path);
     const limited = cooldownUntil > Date.now();

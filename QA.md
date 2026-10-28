@@ -1,3 +1,13 @@
+## Issuer landscape and data rooms — 0.13.0, October 28, 2026
+
+Issuers adds a source-dated market-share overview, searchable issuer ranking and individual data rooms. Reported cap, absolute/percentage 24h cap change, trading volume and turnover use CoinGecko issuer observations. Market share is explicitly limited to available reports for tracked issuer families; it is not a global-coverage claim. Catalog counts retain native, wrapped and unclassified scopes. Data rooms provide exact issuer/network asset filtering, 25-row pages, CSV, network presence, sourced terms and issuer-preserving Compare links. Token Terminal and RWA.xyz are external research links; no new paid API or runtime dependency is added.
+
+436 Node tests pass. Regression coverage includes cross-chain/product deduplication, cap-change denominators, unknown/future/expired reports, financial retention after invalid refresh/discovery data, request coalescing/backoff, a real HTTP shared-cache TTL failure, automatic new issuer families, unclassified and wrapper-only scope, HTTP/static boundaries, filters and formula-safe CSV. Real-source local integration validates the issuer union against the canonical catalog, cap/share reconciliation and an actual NVIDIA Ondo price. Production subprocess readiness, static/security boundaries and shutdown pass.
+
+Actual Brave checks cover issuer/network filters with a fixed market-share denominator, issuer selection, direct routes and Back navigation, NVIDIA/Ondo and wrapped CEG/ST0x Compare handoffs, ETF page two with restored keyboard focus, unclassified records, empty results, a filtered CSV saved and parsed from the browser, both themes, and 320/390/1440px layouts. Phone table overflow was reproduced and corrected by containing positioned table labels inside the scroll region. Real logos load in the reviewed populated data room. The one final design-detector pass reports no findings. Independent backend and UI/finish reviews found no remaining important issue after their identified accounting/cache defects were fixed.
+
+Evidence is local in ignored test-results/issuer-* and test-results/issuers-* files. Counts vary with the live catalog; the local integration observed 13 catalog issuer records with current financial reports for 11. Missing issuer reports remain missing; source dates and coverage are visible. Existing hosting configuration is unchanged.
+
 ## Open Home — 0.12.1, October 28, 2026
 
 Home now uses an open canvas: issuer cards, the outlined stock node, section frames and company-cell dividers are removed. Search uses one underline and a text action. Larger issuer and underlying marks remain sourced from the existing catalog. The company shelf preserves original logo shapes, with explicit contrast treatment for Apple and Amazon. The transient search results retain an opaque reading surface. Compare and Markets layouts and all data adapters are unchanged.
@@ -169,10 +179,10 @@ Release: Stocklens Terminal 0.4.0. Local test evidence is saved under ignored `t
 - 206 issuer records were quarantined because identity mappings were inconsistent or unconfirmed.
 
 | Security | Deployments checked | Actual quoted routes | Verified share conversions |
-| --- | ---: | ---: | ---: |
-| NVIDIA | 35 | 12 | 5 |
-| Apple | 33 | 11 | 5 |
-| Tesla | 34 | 7 | 4 |
+| -------- | ------------------: | -------------------: | -------------------------: |
+| NVIDIA   |                  35 |                   12 |                          5 |
+| Apple    |                  33 |                   11 |                          5 |
+| Tesla    |                  34 |                    7 |                          4 |
 
 Assertions check actual output, normalized arithmetic/order, contract identity and orientation, exact venue handoff addresses, source coverage, time bounds and input validation. Raw evidence: `live-integration.json` and `terminal-full-integration.log`.
 

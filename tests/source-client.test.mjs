@@ -2,6 +2,22 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { sourceClient } from "../server/source-client.mjs";
+test("a shorter caller TTL overrides a longer cached expiry on the same source path", async (t) => {
+  let calls = 0;
+  const app = createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ calls: ++calls }));
+  });
+  await new Promise((resolve) => app.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => app.close(resolve)));
+  const api = sourceClient(
+    "shared-ttl",
+    () => `http://127.0.0.1:${app.address().port}`,
+    0,
+  );
+  assert.equal((await api("/issuer", 86400000)).data.calls, 1);
+  assert.equal((await api("/issuer", 0, { waitForFresh: true })).data.calls, 2);
+});
 test("HTTP 429 applies a source-wide cooldown across different endpoints", async (t) => {
   let calls = 0;
   const app = createServer((req, res) => {

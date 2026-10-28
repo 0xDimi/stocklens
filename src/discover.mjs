@@ -5,7 +5,8 @@ import { stockLogo, issuerLogo, chainLogo } from "./brands.mjs";
 // The entry is deliberately separate from stock links shared by existing users.
 export function routePage(params) {
   const page = params.get("page");
-  if (["comparison", "markets", "stock", "compare"].includes(page)) return page;
+  if (["comparison", "markets", "stock", "compare", "issuers"].includes(page))
+    return page;
   return ["stock", "ticker", "view"].some((key) => params.get(key))
     ? "comparison"
     : "discover";

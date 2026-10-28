@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="/src/home-comparison.css" />
     <link rel="stylesheet" href="/src/product-terms.css" />
     <link rel="stylesheet" href="/src/discover.css" />
+    <link rel="stylesheet" href="/src/issuers-page.css" />
     <link rel="stylesheet" href="/src/theme.css" />
     <script type="module" src="/src/app.mjs"></script>
   </head>
@@ -36,7 +37,8 @@
       <nav class="page-nav" aria-label="Main navigation">
         <a href="/" data-page="discover" aria-current="page">Home</a
         ><a href="/?page=comparison" data-page="comparison">Compare</a
-        ><a href="/?page=markets" data-page="markets">Markets</a>
+        ><a href="/?page=markets" data-page="markets">Markets</a
+        ><a href="/?page=issuers" data-page="issuers">Issuers</a>
       </nav>
       <nav>
         <button
@@ -184,6 +186,16 @@
         <div id="discover-coverage" class="discover-coverage"></div>
         <small id="discover-date">CoinGecko · issuer registries</small>
       </footer>
+    </main>
+    <main id="issuers-page" class="issuer-page" tabindex="-1" hidden>
+      <!-- THESIS: An open issuer landscape, with one honest market-share denominator.
+           OWN-WORLD: Forest/mint, real marks, direct data and no framed dashboard cards.
+           STORY: Scan the landscape, open an issuer, inspect its assets and terms.
+           FIRST VIEWPORT: Market-share bars beside reported totals, then a full-width ranking.
+           FORM: Operate; extend the existing Stocklens visual system. -->
+      <div id="issuer-content">
+        <p class="issuer-status" role="status">Loading issuer data…</p>
+      </div>
     </main>
     <main class="page" id="home-page" hidden>
       <div class="workspace">

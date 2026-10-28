@@ -21,6 +21,12 @@ The **Markets** page puts tokenized stocks and ETFs in one searchable view. Brow
 
 Open a stock for its price history, issuers, networks and contracts. Select up to five stocks for a side-by-side market comparison, or compare token versions of the same stock. Save assets to your watchlist and filter by issuer or network.
 
+## Explore issuers
+
+The **[Issuers](https://stocklens-osft.onrender.com/?page=issuers)** page compares reported token market caps, market share, trading volume and asset coverage. Open an issuer for its mapped securities, networks and product terms, then continue straight into Compare.
+
+Source dates and reporting coverage stay visible. Market share uses the reported caps available for the tracked issuers; it is not a claim of complete global coverage.
+
 ## Work in progress
 
 Stocklens is a public portfolio project under active development. Coverage varies by asset and provider. Missing data and older observations are labeled in the app.

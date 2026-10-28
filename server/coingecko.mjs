@@ -104,6 +104,7 @@ export function discoveryObservation(r, c) {
   };
 }
 const discoveryEnricher = createRwaDiscovery({ read: cgRequest });
+export const getIssuerObservations = () => discoveryEnricher.issuerObservations();
 export async function getDiscovery() {
   const data = await memo("cg-discovery", 3600_000, () =>
     persistentCatalog("coingecko-discovery-v3", async () => {

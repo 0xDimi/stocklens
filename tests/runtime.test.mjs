@@ -148,3 +148,29 @@ test("market desk routes enforce stock scope and preserve separate screener para
     400,
   );
 });
+test("issuer routes are public, parameter-separated and served with their client modules", async (t) => {
+  const base = await listening(t, {
+    issuers: async () => ({ issuers: [] }),
+    issuerAssets: async (params) => ({
+      issuer: params.get("issuer"),
+      page: params.get("page"),
+    }),
+  });
+  assert.deepEqual(await (await fetch(base + "/api/issuers")).json(), {
+    issuers: [],
+  });
+  assert.deepEqual(
+    await (await fetch(base + "/api/issuer-assets?issuer=ondo&page=2")).json(),
+    { issuer: "ondo", page: "2" },
+  );
+  for (const path of [
+    "/src/issuers-page.mjs",
+    "/src/issuers-page.css",
+    "/src/issuer-model.mjs",
+  ])
+    assert.equal((await fetch(base + path)).status, 200);
+  assert.equal(
+    (await fetch(base + "/api/issuers", { method: "POST" })).status,
+    405,
+  );
+});

@@ -12,6 +12,8 @@ import {
 } from "./server/workspace.mjs";
 import { screenerView, venuesView } from "./server/market-desk.mjs";
 import { fundamentalsView } from "./server/fundamentals.mjs";
+import { streamMarketDetails } from "./server/market-stream.mjs";
+import { resolveMarketDetailStocks } from "./server/market-details.mjs";
 import { marketDetailsView } from "./server/market-details.mjs";
 import { issuersView, issuerAssetsView } from "./server/issuers.mjs";
 import { loadCatalog } from "./server/catalog.mjs";
@@ -47,6 +49,7 @@ const files = new Map([
     "styles.css",
     "brands.mjs",
     "market-model.mjs",
+    "market-stream.mjs",
     "markets-page.mjs",
     "market-feed.mjs",
     "market-observations.mjs",
@@ -265,6 +268,40 @@ export function createApp({
           try {
             if (url.pathname === "/api/catalog") {
               send(200, await deadline(getCatalog, 35000));
+              return;
+            }
+            if (url.pathname === "/api/market-stream") {
+              await deadline(
+                () => resolveMarketDetailStocks(url.searchParams),
+                35000,
+              );
+              response.writeHead(200, {
+                ...securityHeaders,
+                "Content-Type": "application/x-ndjson; charset=utf-8",
+                "Cache-Control": "no-store",
+                "X-Accel-Buffering": "no",
+              });
+              response.flushHeaders();
+              const write = (event) => {
+                if (!response.destroyed && !response.writableEnded)
+                  response.write(JSON.stringify(event) + "\n");
+              };
+              try {
+                await deadline(
+                  () =>
+                    streamMarketDetails(url.searchParams, (row) =>
+                      write({ type: "row", row }),
+                    ),
+                  35000,
+                );
+                write({ type: "done" });
+              } catch (error) {
+                write({
+                  type: "error",
+                  error: error.message || "Market data refresh failed",
+                });
+              }
+              response.end();
               return;
             }
             if (url.pathname === "/api/market-details") {

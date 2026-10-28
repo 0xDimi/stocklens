@@ -170,7 +170,11 @@ test("SOXL's observed Nasdaq ETF name corroborates its catalog short name withou
   };
   // Name pair observed from the catalog and Nasdaq /quote/SOXL/info?assetclass=etf
   // on 2026-10-21. Reuse the dated quote fixture to isolate name validation.
-  const listed = listedInfo("SOXL", "Direxion Daily Semiconductor Bull 3X ETF", "ETF");
+  const listed = listedInfo(
+    "SOXL",
+    "Direxion Daily Semiconductor Bull 3X ETF",
+    "ETF",
+  );
   const result = parseFundamentals(listed, null, soxl, retrievedAt);
   assert.equal(result.price, 341.876);
   assert.equal(result.companyName, "Direxion Daily Semiconductor Bull 3X ETF");
@@ -184,16 +188,38 @@ test("SOXL's observed Nasdaq ETF name corroborates its catalog short name withou
     "Other Sponsor Daily Semiconductor Bull 3X ETF",
     "Direxion Semiconductor Bull 3X Bear ETF",
   ]) {
-    assert.throws(() => parseFundamentals(
-      listedInfo("SOXL", companyName, "ETF"), null, soxl, retrievedAt,
-    ), /name does not corroborate/, companyName);
+    assert.throws(
+      () =>
+        parseFundamentals(
+          listedInfo("SOXL", companyName, "ETF"),
+          null,
+          soxl,
+          retrievedAt,
+        ),
+      /name does not corroborate/,
+      companyName,
+    );
   }
-  assert.throws(() => parseFundamentals(
-    { ...listed, data: { ...listed.data, symbol: "SOXS" } }, null, soxl, retrievedAt,
-  ), /identity unavailable/);
-  assert.throws(() => parseFundamentals(
-    { ...listed, data: { ...listed.data, assetClass: "STOCKS" } }, null, soxl, retrievedAt,
-  ), /identity unavailable/);
+  assert.throws(
+    () =>
+      parseFundamentals(
+        { ...listed, data: { ...listed.data, symbol: "SOXS" } },
+        null,
+        soxl,
+        retrievedAt,
+      ),
+    /identity unavailable/,
+  );
+  assert.throws(
+    () =>
+      parseFundamentals(
+        { ...listed, data: { ...listed.data, assetClass: "STOCKS" } },
+        null,
+        soxl,
+        retrievedAt,
+      ),
+    /identity unavailable/,
+  );
 });
 
 test("does not substitute forecast P/E, missing values, or another symbol's market cap", () => {
@@ -521,9 +547,8 @@ test("default Nasdaq observations survive a process restart with original times 
 });
 
 test("manual seed packaging retains source observations as expired cache and rejects unrelated endpoints", async () => {
-  const { buildFundamentalsSeed } = await import(
-    "../scripts/refresh-fundamentals-seed.mjs"
-  );
+  const { buildFundamentalsSeed } =
+    await import("../scripts/refresh-fundamentals-seed.mjs");
   const { gunzipSync } = await import("node:zlib");
   const entries = [
     [
@@ -645,4 +670,79 @@ test("SPCX's SEC-disclosed SpaceX brand corroborates its exact listed corporate 
       retrievedAt,
     ),
   );
+});
+
+test("price-only reads never wait for optional company and P/E sources", async () => {
+  const paths = [];
+  const result = await getFundamentals(stock, {
+    priceOnly: true,
+    getSource: async (path) => {
+      paths.push(path);
+      if (!path.includes("/info"))
+        throw new Error("Optional endpoint must not be called");
+      return { data: info, retrievedAt };
+    },
+  });
+  assert.ok(result?.price > 0);
+  assert.equal(paths.length, 1);
+});
+
+test("KORU issuer short name matches its exact Nasdaq fund identity, without allowing a different leverage or ticker", () => {
+  const koru = {
+    id: "US25461A3876",
+    ticker: "KORU",
+    name: "Korea 3x Long ETF",
+    category: "ETF",
+    exchange: "ARCA",
+    currency: "USD",
+  };
+  const body = structuredClone(info);
+  Object.assign(body.data, {
+    symbol: "KORU",
+    companyName: "Direxion Daily South Korea Bull 3X ETF",
+    assetClass: "ETF",
+    exchange: "PSE",
+  });
+  assert.ok(parseFundamentals(body, null, koru, retrievedAt).price > 0);
+  assert.throws(() =>
+    parseFundamentals(
+      body,
+      null,
+      { ...koru, name: "Korea 2x Long ETF" },
+      retrievedAt,
+    ),
+  );
+  assert.throws(() =>
+    parseFundamentals(body, null, { ...koru, ticker: "KOR" }, retrievedAt),
+  );
+});
+
+test("SNXX short issuer name maps to the same fund, and BNC keeps its verified corporate rename", () => {
+  for (const [ticker, name, companyName, category] of [
+    ["SNXX", "SNDK 2x Long ETF", "Tradr 2X Long SNDK Daily ETF", "ETF"],
+    ["BNC", "CEA Industries", "BNB Standard Corporation Common Stock", "Stock"],
+  ]) {
+    const body = structuredClone(info);
+    Object.assign(body.data, {
+      symbol: ticker,
+      companyName,
+      assetClass: category === "ETF" ? "ETF" : "STOCKS",
+    });
+    assert.ok(
+      parseFundamentals(
+        body,
+        null,
+        { ...stock, ticker, name, category },
+        retrievedAt,
+      ).price > 0,
+    );
+    assert.throws(() =>
+      parseFundamentals(
+        body,
+        null,
+        { ...stock, ticker: ticker + "X", name, category },
+        retrievedAt,
+      ),
+    );
+  }
 });

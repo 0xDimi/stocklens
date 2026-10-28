@@ -1,3 +1,4 @@
+import { readMarketDetails } from "./market-stream.mjs";
 import { renderProductTerms } from "./product-terms.mjs";
 import { escape, usd, compact, number, stamp, provider } from "./views.mjs";
 import { selectOnchainPrice, comparisonReference } from "./reference-view.mjs";
@@ -16,6 +17,7 @@ import {
   observationIsStale,
   profileComparisonSelection,
   mergeProfileDetails,
+  needsCompanyDetails,
   createVisiblePageRefresh,
 } from "./asset-comparison-model.mjs";
 
@@ -123,7 +125,12 @@ export function createStockPages({
   const networkName = (id) => chain(id).label;
   const request =
     api ||
-    (async (path, { signal }) => {
+    (async (path, { signal, onRows }) => {
+      if (path.startsWith("/api/market-details?"))
+        return readMarketDetails(
+          new URLSearchParams(path.split("?")[1]).get("ids").split(","),
+          { signal, onRows, company: true, buy: true },
+        );
       const response = await fetch(path, {
         signal: AbortSignal.any([signal, AbortSignal.timeout(40000)]),
       });
@@ -189,11 +196,20 @@ export function createStockPages({
     return `<div class="stock-price stock-aggregate-reference"><span>Tokenized aggregate <small>USD market reference</small></span><strong>${Number.isFinite(market?.price) ? usd(market.price) : entry(id).loading ? "Loading…" : "Unavailable"}</strong><p>${Number.isFinite(market?.change24h) ? `<b class="${tone(market.change24h)}">${signed(market.change24h)}</b> past 24h` : "24h change not supplied"}</p><small>${link("https://www.coingecko.com/en/categories/tokenized-stock", "CoinGecko")} · ${market?.updatedAt ? `${older(market) ? "Older observation · " : ""}${stamp(market.updatedAt)}` : "Observation time not supplied"}</small></div>`;
   }
   function poolPrice(data, { selected, p }) {
-    return `<div class="stock-price stock-pool-price"><span>Onchain per share <small>USD per equivalent share</small></span><strong>${p ? usd(p.price) : data.loading ? "Loading…" : "Unavailable"}</strong><p>${p ? `${selected.older ? "Older observation · " : ""}${escape(p.symbol || "Representative token")}${p.chain ? " on " + escape(networkName(p.chain)) : ""}` : escape(data.spotReason || data.spotPremiumReason || "A price with verified share conversion is required.")}</p><small>${p ? `${priceKind(selected)} · ${stamp(selected.at)} · ${link(p.source, selected.kind === "buy" ? "Quote source" : "Pool source")}` : "No onchain price estimated"}</small></div>`;
+    const loading = data.components
+      ? data.components.spot === "loading" ||
+        data.components.quote === "loading"
+      : data.loading;
+    return `<div class="stock-price stock-pool-price"><span>Onchain per share <small>USD per equivalent share</small></span><strong>${p ? usd(p.price) : loading ? "Loading…" : "Unavailable"}</strong><p>${p ? `${selected.older ? "Older observation · " : ""}${escape(p.symbol || "Representative token")}${p.chain ? " on " + escape(networkName(p.chain)) : ""}` : loading ? "Checking pools and supported quotes…" : escape(data.spotReason || data.spotPremiumReason || "A price with verified share conversion is required.")}</p><small>${p ? `${priceKind(selected)} · ${stamp(selected.at)} · ${link(p.source, selected.kind === "buy" ? "Quote source" : "Pool source")}` : loading ? "" : "No onchain price estimated"}</small></div>`;
   }
   function spotPanel(data, context) {
     const { selected, p, comparable, reference } = context;
-    return `<div class="stock-spot"><span>Onchain premium</span><strong class="${comparable ? tone(p.value) : ""}">${comparable ? signed(p.value) : data.loading ? "Loading…" : "Unavailable"}</strong><p>${comparable ? `${selected.older ? "Older observation · " : ""}${p.referenceBasis === "last-close" ? "Versus listed last close" : "Versus listed reference"} · ${priceKind(selected)}` : escape(premiumReason(data, context))}</p>${p ? `<details data-stock-detail="spot"><summary ${focusKey("spot-source")}>Price basis & sources</summary><p>${escape(p.basis || (selected.kind === "buy" ? "Size-specific indicative buy price before network costs; not an executable offer." : "One verified pool snapshot normalized to equivalent shares; not an executable buy quote."))} Observed ${selected.kind === "buy" ? "buy price" : "pool price"} ${usd(p.price)} per equivalent share${comparable ? ` versus listed ${usd(p.referencePrice)}` : ""}. ${Number.isFinite(p.sharesPerToken) ? number(p.sharesPerToken, 8) + " shares per token." : ""} Token observed ${stamp(selected.at)}${p.priceTimeBasis ? " (" + escape(p.priceTimeBasis) + ")" : ""}${comparable ? `; listed reference ${referenceTime(reference)}` : ""}. ${link(p.source, selected.kind === "buy" ? "Quote source" : "Pool source")}${comparable ? " · " + link(reference.priceSource, "Listed reference") : ""}${p.conversionSource ? " · " + link(p.conversionSource, "Share conversion") : ""}</p></details>` : ""}</div>`;
+    const loading = data.components
+      ? ["reference", "spot", "quote"].some(
+          (key) => data.components[key] === "loading",
+        )
+      : data.loading;
+    return `<div class="stock-spot"><span>Onchain premium</span><strong class="${comparable ? tone(p.value) : ""}">${comparable ? signed(p.value) : loading ? "Loading…" : "Unavailable"}</strong><p>${comparable ? `${selected.older ? "Older observation · " : ""}${p.referenceBasis === "last-close" ? "Versus listed last close" : "Versus listed reference"} · ${priceKind(selected)}` : loading ? "Checking price comparison…" : escape(premiumReason(data, context))}</p>${p ? `<details data-stock-detail="spot"><summary ${focusKey("spot-source")}>Price basis & sources</summary><p>${escape(p.basis || (selected.kind === "buy" ? "Size-specific indicative buy price before network costs; not an executable offer." : "One verified pool snapshot normalized to equivalent shares; not an executable buy quote."))} Observed ${selected.kind === "buy" ? "buy price" : "pool price"} ${usd(p.price)} per equivalent share${comparable ? ` versus listed ${usd(p.referencePrice)}` : ""}. ${Number.isFinite(p.sharesPerToken) ? number(p.sharesPerToken, 8) + " shares per token." : ""} Token observed ${stamp(selected.at)}${p.priceTimeBasis ? " (" + escape(p.priceTimeBasis) + ")" : ""}${comparable ? `; listed reference ${referenceTime(reference)}` : ""}. ${link(p.source, selected.kind === "buy" ? "Quote source" : "Pool source")}${comparable ? " · " + link(reference.priceSource, "Listed reference") : ""}${p.conversionSource ? " · " + link(p.conversionSource, "Share conversion") : ""}</p></details>` : ""}</div>`;
   }
   function fundamental(stock, data, field) {
     const metric = profileMetric(stock, data, field),
@@ -384,6 +400,7 @@ export function createStockPages({
         force ||
         !entry(id).checkedAt ||
         Date.now() - entry(id).checkedAt >= 60000 ||
+        needsCompanyDetails(entry(id)) ||
         (products && !entry(id).productsLoaded),
     );
     if (!wanted.length) {
@@ -398,6 +415,7 @@ export function createStockPages({
       (id) =>
         force ||
         !entry(id).detailsCheckedAt ||
+        needsCompanyDetails(entry(id)) ||
         Date.now() - entry(id).detailsCheckedAt >= 60000,
     );
     const tasks = [
@@ -437,10 +455,9 @@ export function createStockPages({
         (data) => {
           if (!Array.isArray(data?.rows))
             throw new Error("Invalid listed-security response.");
-          for (const id of detailIds) {
-            const row = data.rows.find((row) => row.id === id);
-            if (!row)
-              throw new Error("Asset missing from listed-security response.");
+          for (const row of data.rows) {
+            const id = row.id;
+            if (!detailIds.includes(id)) continue;
             const checkedAt = Date.now();
             cache.set(id, mergeProfileDetails(entry(id), row, checkedAt));
             onDetails(id, { ...row, checkedAt });
@@ -474,7 +491,14 @@ export function createStockPages({
     await Promise.allSettled(
       tasks.map(async ([kind, path, apply]) => {
         try {
-          const data = await request(path, { signal });
+          const data = await request(path, {
+            signal,
+            onRows: (rows) => {
+              if (signal.aborted || token !== generation || destroyed) return;
+              apply({ rows });
+              render();
+            },
+          });
           if (signal.aborted || token !== generation || destroyed) return;
           apply(data);
         } catch (error) {

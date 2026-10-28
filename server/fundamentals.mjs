@@ -56,42 +56,125 @@ function nameWords(value) {
 // IWM: https://www.ishares.com/us/products/239710/ishares-russell-2000-etf
 // VTI: https://investor.vanguard.com/investment-products/etfs/profile/vti
 const ETF_NAME_PAIRS = {
+  // Tradr issuer CUSIP 46152A668 corroborates ISIN US46152A6689 (2026-10-28).
+  // https://www.tradretfs.com/snxx
+  SNXX: [["SNDK 2x Long ETF", "Tradr 2X Long SNDK Daily ETF"]],
+  // Exact issuer underlying symbol/ISIN and Nasdaq ETF name checked 2026-10-28:
+  // https://api.xstocks.fi/api/v2/public/assets/KORUx
+  // https://api.nasdaq.com/api/quote/KORU/info?assetclass=etf
+  KORU: [["Korea 3x Long ETF", "Direxion Daily South Korea Bull 3X ETF"]],
   SOXS: [
     ["3x Short Semiconductor ETF", "Direxion Daily Semiconductor Bear 3X ETF"],
-    ["Direxion Daily Semi Bear 3X ETF", "Direxion Daily Semiconductor Bear 3X ETF"],
+    [
+      "Direxion Daily Semi Bear 3X ETF",
+      "Direxion Daily Semiconductor Bear 3X ETF",
+    ],
   ],
-  TMF: [["Direxion Daily 20 Year Treasury Bull 3X ETF", "Direxion Daily 20-Yr Treasury Bull 3x Shrs"]],
+  TMF: [
+    [
+      "Direxion Daily 20 Year Treasury Bull 3X ETF",
+      "Direxion Daily 20-Yr Treasury Bull 3x Shrs",
+    ],
+  ],
   EWJ: [["iShares MSCI Japan ETF", "iShares MSCI Japan Index Fund"]],
   SOXX: [
-    ["iShares Semiconductor", "iShares PHLX SOX Semiconductor Sector Index Fund"],
-    ["iShares Semiconductor ETF", "iShares PHLX SOX Semiconductor Sector Index Fund"],
+    [
+      "iShares Semiconductor",
+      "iShares PHLX SOX Semiconductor Sector Index Fund",
+    ],
+    [
+      "iShares Semiconductor ETF",
+      "iShares PHLX SOX Semiconductor Sector Index Fund",
+    ],
   ],
   IWM: [
     ["Russell 2000", "iShares Russell 2000 Index Fund"],
     ["iShares Russell 2000 ETF", "iShares Russell 2000 Index Fund"],
   ],
-  VTI: [["Vanguard Total Stock Market ETF", "Vanguard Morningstar Total Stock Market ETF"]],
+  VTI: [
+    [
+      "Vanguard Total Stock Market ETF",
+      "Vanguard Morningstar Total Stock Market ETF",
+    ],
+  ],
   GLD: [["Gold", "SPDR Gold Shares"]],
-  TSLL: [["Direxion Daily TSLA Bull 2X Shares","Direxion Daily TSLA Bull 2X ETF"],["Direxion Shares ETF Trust Direxion Daily TSLA Bull 2X ETF","Direxion Daily TSLA Bull 2X ETF"]],
-  AVL: [["Direxion Daily AVGO Bull 2X Shares","Direxion Daily AVGO Bull 2X ETF"]],
-  MUU: [["Direxion Daily MU Bull 2X Shares","Direxion Daily MU Bull 2X ETF"]],
-  LABD: [["Direxion Daily S&P Biotech Bear 3x Shares ETF","Direxion Daily S&P Biotech Bear 3X ETF"]],
-  LABU: [["Direxion Daily S&P Biotech Bull 3x Shares ETF","Direxion Daily S&P Biotech Bull 3X ETF"]],
-  TZA: [["Direxion Daily Small Cap Bear 3X Shares ETF","Direxion Small Cap Bear 3X ETF"]],
-  TNA: [["Direxion Daily Small Cap Bull 3x ETF","Direxion Small Cap Bull 3X ETF"]],
-  SIVR: [["abrdn Physical Silver ETF","abrdn Physical Silver Shares ETF"]],
-  ARKB: [["ARK 21 Bitcoin ETF","ARK 21Shares Bitcoin ETF "]],
-  PAVE: [["Global X US Infrastructure Development ETF","Global X Funds Global X U.S. Infrastructure Development ETF"]],
-  NVD: [["GraniteShares ETF Trust GraniteShares 2x Short NVDA Daily ETF","GraniteShares 2x Short NVDA Daily ETF"]],
-  PHO: [["Invesco Exchange-Traded Fund Trust Invesco Water Resources ETF","Invesco Water Resources ETF"]],
-  TSLQ: [["Investment Managers Series Trust II Tradr 2X Short TSLA Daily ETF","Tradr 2X Short TSLA Daily ETF"]],
-  IWF: [["iShares Russell 1000 Growth ETF","iShares Russell 1000 Growth Fund"]],
-  ITA: [["iShares US Aerospace and Defense ETF","iShares U.S. Aerospace & Defense ETF"]],
-  HLAL: [["Listed Funds Trust Wahed FTSE USA Shariah ETF","Wahed FTSE USA Shariah ETF"]],
-  UFO: [["Procure ETF Trust II Procure Space ETF","Procure Space ETF"]],
-  VGK: [["Vanguard FTSE Europe ETF","Vanguard FTSEEuropean ETF"]],
-  VUG: [["Vanguard Growth ETF","Vanguard Morningstar Growth ETF"]],
-  FEZ: [["SPDR EURO STOXX 50","State Street SPDR EURO STOXX 50 ETF"]],
+  TSLL: [
+    ["Direxion Daily TSLA Bull 2X Shares", "Direxion Daily TSLA Bull 2X ETF"],
+    [
+      "Direxion Shares ETF Trust Direxion Daily TSLA Bull 2X ETF",
+      "Direxion Daily TSLA Bull 2X ETF",
+    ],
+  ],
+  AVL: [
+    ["Direxion Daily AVGO Bull 2X Shares", "Direxion Daily AVGO Bull 2X ETF"],
+  ],
+  MUU: [["Direxion Daily MU Bull 2X Shares", "Direxion Daily MU Bull 2X ETF"]],
+  LABD: [
+    [
+      "Direxion Daily S&P Biotech Bear 3x Shares ETF",
+      "Direxion Daily S&P Biotech Bear 3X ETF",
+    ],
+  ],
+  LABU: [
+    [
+      "Direxion Daily S&P Biotech Bull 3x Shares ETF",
+      "Direxion Daily S&P Biotech Bull 3X ETF",
+    ],
+  ],
+  TZA: [
+    [
+      "Direxion Daily Small Cap Bear 3X Shares ETF",
+      "Direxion Small Cap Bear 3X ETF",
+    ],
+  ],
+  TNA: [
+    ["Direxion Daily Small Cap Bull 3x ETF", "Direxion Small Cap Bull 3X ETF"],
+  ],
+  SIVR: [["abrdn Physical Silver ETF", "abrdn Physical Silver Shares ETF"]],
+  ARKB: [["ARK 21 Bitcoin ETF", "ARK 21Shares Bitcoin ETF "]],
+  PAVE: [
+    [
+      "Global X US Infrastructure Development ETF",
+      "Global X Funds Global X U.S. Infrastructure Development ETF",
+    ],
+  ],
+  NVD: [
+    [
+      "GraniteShares ETF Trust GraniteShares 2x Short NVDA Daily ETF",
+      "GraniteShares 2x Short NVDA Daily ETF",
+    ],
+  ],
+  PHO: [
+    [
+      "Invesco Exchange-Traded Fund Trust Invesco Water Resources ETF",
+      "Invesco Water Resources ETF",
+    ],
+  ],
+  TSLQ: [
+    [
+      "Investment Managers Series Trust II Tradr 2X Short TSLA Daily ETF",
+      "Tradr 2X Short TSLA Daily ETF",
+    ],
+  ],
+  IWF: [
+    ["iShares Russell 1000 Growth ETF", "iShares Russell 1000 Growth Fund"],
+  ],
+  ITA: [
+    [
+      "iShares US Aerospace and Defense ETF",
+      "iShares U.S. Aerospace & Defense ETF",
+    ],
+  ],
+  HLAL: [
+    [
+      "Listed Funds Trust Wahed FTSE USA Shariah ETF",
+      "Wahed FTSE USA Shariah ETF",
+    ],
+  ],
+  UFO: [["Procure ETF Trust II Procure Space ETF", "Procure Space ETF"]],
+  VGK: [["Vanguard FTSE Europe ETF", "Vanguard FTSEEuropean ETF"]],
+  VUG: [["Vanguard Growth ETF", "Vanguard Morningstar Growth ETF"]],
+  FEZ: [["SPDR EURO STOXX 50", "State Street SPDR EURO STOXX 50 ETF"]],
 };
 function listedExchange(value) {
   const exchange = String(value || "").toUpperCase();
@@ -104,13 +187,24 @@ function corroboratesName(stock, companyName) {
   const target = nameWords(stock.name),
     actual = nameWords(companyName);
   if (!target || !actual) return false;
+  // The company's disclosed rename retains Nasdaq ticker BNC. Never apply
+  // this brand alias to another ticker or an unrelated security.
+  // https://www.bnbstandard.com/investors/announcements (2026-09-29)
+  if (
+    stock.ticker === "BNC" &&
+    stock.category === "Stock" &&
+    target === nameWords("CEA Industries") &&
+    actual === nameWords("BNB Standard Corporation Common Stock")
+  )
+    return true;
   if (
     stock.category === "ETF" &&
     ETF_NAME_PAIRS[stock.ticker]?.some(
       ([catalogName, listedName]) =>
         target === nameWords(catalogName) && actual === nameWords(listedName),
     )
-  ) return true;
+  )
+    return true;
   // Catalog / Nasdaq name pair observed 2026-10-21:
   // https://api.nasdaq.com/api/quote/SOXL/info?assetclass=etf
   // Keep this exact alias scoped to SOXL. Removing Daily or ETF from every fund
@@ -119,11 +213,12 @@ function corroboratesName(stock, companyName) {
     stock.category === "ETF" &&
     stock.ticker === "SOXL" &&
     target === "direxion semiconductor bull 3x"
-  ) return [
-    "direxion semiconductor bull 3x",
-    "direxion semiconductor bull 3x etf",
-    "direxion daily semiconductor bull 3x etf",
-  ].includes(actual);
+  )
+    return [
+      "direxion semiconductor bull 3x",
+      "direxion semiconductor bull 3x etf",
+      "direxion daily semiconductor bull 3x etf",
+    ].includes(actual);
   // Legal name changed on 2025-08-11; MSTR Class A and its CUSIP remained unchanged.
   // https://www.strategy.com/press/strategy-announces-legal-name-change-from-microstrategy-incorporated-to-strategy-inc_08-14-2025
   if (
@@ -219,8 +314,12 @@ function priceTime(value, marketStatus, isRealTime) {
   // during premarket. It is a dated price, with no evidence it is a close.
   if (
     marketStatus !== "Closed" &&
-    !(isRealTime === false && ["Pre-Market", "After-Hours"].includes(marketStatus))
-  ) return null;
+    !(
+      isRealTime === false &&
+      ["Pre-Market", "After-Hours"].includes(marketStatus)
+    )
+  )
+    return null;
   const match = String(value).match(/^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})$/);
   if (!match) return null;
   const [, month, day, year] = match;
@@ -247,18 +346,26 @@ export function parseFundamentals(
 ) {
   const d = info?.data,
     s = summary?.data;
-  const isEtf = stock.category === "ETF" ||
-    (stock.category === "Listed security" && d?.assetClass?.toUpperCase() === "ETF");
+  const isEtf =
+    stock.category === "ETF" ||
+    (stock.category === "Listed security" &&
+      d?.assetClass?.toUpperCase() === "ETF");
   if (
     !sameSymbol(d?.symbol, stock.ticker) ||
     !d.companyName ||
-    (d.assetClass && d.assetClass.toUpperCase() !== (isEtf ? "ETF" : "STOCKS")) ||
+    (d.assetClass &&
+      d.assetClass.toUpperCase() !== (isEtf ? "ETF" : "STOCKS")) ||
     (stock.exchange &&
       (!listedExchange(stock.exchange) ||
         listedExchange(stock.exchange) !== listedExchange(d.exchange)))
   )
     throw new Error("Listed-stock identity unavailable.");
-  if (!corroboratesName(isEtf ? { ...stock, category: "ETF" } : stock, d.companyName))
+  if (
+    !corroboratesName(
+      isEtf ? { ...stock, category: "ETF" } : stock,
+      d.companyName,
+    )
+  )
     throw new Error(
       "Listed-stock name does not corroborate the catalog identity.",
     );
@@ -266,10 +373,18 @@ export function parseFundamentals(
     secondary = d.secondaryData || {};
   const usePrimary =
     positive(primary.lastSalePrice) !== null &&
-    priceTime(primary.lastTradeTimestamp, d.marketStatus, primary.isRealTime) !== null;
+    priceTime(
+      primary.lastTradeTimestamp,
+      d.marketStatus,
+      primary.isRealTime,
+    ) !== null;
   const quote = usePrimary ? primary : secondary;
   const price = positive(quote.lastSalePrice),
-    time = priceTime(quote.lastTradeTimestamp, d.marketStatus, quote.isRealTime);
+    time = priceTime(
+      quote.lastTradeTimestamp,
+      d.marketStatus,
+      quote.isRealTime,
+    );
   const quoteValid = price !== null && time !== null;
   const root = `/quote/${encodeURIComponent(stock.ticker)}`;
   const query = "?assetclass=" + (isEtf ? "etf" : "stocks");
@@ -298,14 +413,18 @@ export function parseFundamentals(
     currency: quoteValid
       ? typeof quote.currency === "string" && /^[A-Z]{3}$/.test(quote.currency)
         ? quote.currency
-        : String(quote.lastSalePrice).startsWith("$") ? "USD" : null
+        : String(quote.lastSalePrice).startsWith("$")
+          ? "USD"
+          : null
       : null,
     changePct: quoteValid ? amount(quote.percentageChange) : null,
     marketStatus: d.marketStatus || null,
     priceSession: quoteValid
       ? /^Closed at /.test(quote.lastTradeTimestamp)
         ? "Closed"
-        : time.priceDate && d.marketStatus !== "Closed" ? null : d.marketStatus || null
+        : time.priceDate && d.marketStatus !== "Closed"
+          ? null
+          : d.marketStatus || null
       : null,
     isRealTime:
       quoteValid && typeof quote.isRealTime === "boolean"
@@ -365,6 +484,8 @@ export async function getFundamentals(
   stock,
   {
     getSource = nasdaq,
+    priceOnly = false,
+    onPrice = () => {},
     retention = getSource === nasdaq ? retainedPrices : null,
   } = {},
 ) {
@@ -394,11 +515,14 @@ export async function getFundamentals(
   try {
     const path = `/quote/${encodeURIComponent(stock.ticker)}`;
     const unclassified = stock.category === "Listed security";
-    let isEtf = stock.category === "ETF" ||
+    let isEtf =
+      stock.category === "ETF" ||
       (unclassified && /ETF|iShares|Vanguard|SPDR|\b[23]x\b/i.test(stock.name));
     let query = "?assetclass=" + (isEtf ? "etf" : "stocks");
     let info;
-    try { info = await getSource(path + "/info" + query, 60000); } catch (error) {
+    try {
+      info = await getSource(path + "/info" + query, 60000);
+    } catch (error) {
       if (!unclassified) throw error;
     }
     // The generic catalog category is not evidence of an equity. Try the
@@ -413,10 +537,18 @@ export async function getFundamentals(
     if (
       (unclassified && typeof assetClass !== "string") ||
       (assetClass && assetClass.toUpperCase() !== (isEtf ? "ETF" : "STOCKS"))
-    ) throw new Error("Listed-stock endpoint identity unavailable.");
+    )
+      throw new Error("Listed-stock endpoint identity unavailable.");
     // Validate before requesting optional company metrics. A source-confirmed
     // ETF has no company capitalization or equity analyst P/E.
-    parseFundamentals(info?.data, null, stock, info?.retrievedAt);
+    const price = {
+      ...parseFundamentals(info?.data, null, stock, info?.retrievedAt),
+      priceStale: info.stale === true,
+      stale: info.stale === true,
+    };
+    const listed = retention ? await retention.merge(price) : price;
+    onPrice(listed);
+    if (priceOnly) return listed;
     const [summary, ratios] = await Promise.allSettled([
       getSource(path + "/summary" + query, 900000),
       isEtf

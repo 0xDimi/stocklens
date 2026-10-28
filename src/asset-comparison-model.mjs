@@ -1,3 +1,4 @@
+import { mergeMarketDetails } from "./market-model.mjs";
 // Canonical asset IDs, rather than tickers, keep similarly named securities distinct.
 export function canonicalSelection(ids, stocks) {
   const known = new Set(stocks.map((stock) => stock.id));
@@ -18,12 +19,14 @@ export function mergeProfileDetails(
   if (
     !incoming ||
     (previous.detailsCheckedAt &&
+      !incoming.components &&
       (!Number.isFinite(checkedAt) || checkedAt <= previous.detailsCheckedAt))
   )
     return previous;
   const fields = [
     "reference",
     "referenceReason",
+    "components",
     "spotPremium",
     "spotPremiumReason",
     "premium",
@@ -35,6 +38,12 @@ export function mergeProfileDetails(
   const next = { ...previous, detailsCheckedAt: checkedAt || 0 };
   for (const field of fields)
     if (Object.hasOwn(incoming, field)) next[field] = incoming[field];
+  // Field-level price reuse also applies while streaming independent sources.
+  if (incoming.components) {
+    const merged = mergeMarketDetails(previous, incoming);
+    for (const field of fields)
+      if (Object.hasOwn(merged, field)) next[field] = merged[field];
+  }
   return next;
 }
 
@@ -151,13 +160,17 @@ export function profileMetric(stock, entry, field) {
             ? `As of ${r.marketCapAsOf}`
             : "Fundamental as-of date not disclosed",
     };
+  const loading = entry?.components
+    ? entry.components.company === "loading"
+    : entry?.loading;
   return {
     value: null,
-    label: entry?.loading ? "Loading…" : "Unavailable",
-    note:
-      r?.[field + "Reason"] ||
-      entry?.referenceReason ||
-      "The source has not supplied this field.",
+    label: loading ? "Loading…" : "Unavailable",
+    note: loading
+      ? "Checking company data…"
+      : r?.[field + "Reason"] ||
+        entry?.referenceReason ||
+        "The source has not supplied this field.",
   };
 }
 export function profileSpot(entry, now = Date.now()) {
@@ -246,4 +259,13 @@ export function createVenueLoader({
         }
     },
   };
+}
+
+// A cached price-only result is immediately useful, but does not satisfy the
+// company metrics requested by a stock overview or cross-stock comparison.
+export function needsCompanyDetails(detail) {
+  return (
+    !!detail?.components &&
+    !["ready", "unavailable"].includes(detail.components.company)
+  );
 }

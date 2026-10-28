@@ -1,6 +1,6 @@
 {
   "name": "stocklens",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +13,8 @@
     "integration:metrics": "node scripts/repair-integration.mjs",
     "smoke:production": "node scripts/production-smoke.mjs --require-ready",
     "integration:issuers": "node scripts/issuer-integration.mjs",
-    "integration:home": "node scripts/home-metrics-integration.mjs"
+    "integration:home": "node scripts/home-metrics-integration.mjs",
+    "integration:loading": "node scripts/market-loading-integration.mjs"
   },
   "engines": {
     "node": ">=22"

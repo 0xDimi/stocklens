@@ -109,6 +109,8 @@ export async function getSpotObservations(
     getUnits = getTokenUnits,
     now = Date.now,
     budgetMs = 8000,
+    onObservation = () => {},
+    onMissing = () => {},
   } = {},
 ) {
   const deadline = Date.now() + budgetMs;
@@ -202,6 +204,7 @@ export async function getSpotObservations(
       const id = observationKey(row);
       observations.set(id, normalized);
       resolvedStocks.add(row.id);
+      onObservation(normalized);
       // A slower concurrent refresh must not overwrite a newer snapshot.
       if (!saved.has(id) || saved.get(id).at <= normalized.at) {
         if (saved.size >= 1000 && !saved.has(id))
@@ -245,7 +248,9 @@ export async function getSpotObservations(
       });
     }
   };
+  const poolStocks = new Set();
   const enqueue = (row) => {
+    poolStocks.add(row.id);
     jobs.push(new Promise((resolve) => queued.push({ row, resolve })));
     pump();
   };
@@ -277,6 +282,11 @@ export async function getSpotObservations(
       /* Independent chain observations can still be usable. */
     }
   });
+  onMissing(
+    stocks.filter(
+      (stock) => !poolStocks.has(stock.id) && !resolvedStocks.has(stock.id),
+    ),
+  );
   try {
     await observeWithin(() => Promise.all(jobs), remaining());
   } catch {

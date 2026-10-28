@@ -37,7 +37,7 @@ function candidates(stock) {
         order.indexOf(a.deployment.chain) - order.indexOf(b.deployment.chain),
     );
 }
-async function observe(stock, quote, deadlineAt) {
+async function observe(stock, quote, deadlineAt, limit = 3) {
   const available = candidates(stock);
   // Reserve a candidate for another issuer instead of spending every lookup
   // on the same product's deployments. All three share one strict deadline.
@@ -55,7 +55,7 @@ async function observe(stock, quote, deadlineAt) {
   );
   const selected = [...new Set([first, alternate, distinctChain, ...available])]
     .filter(Boolean)
-    .slice(0, 3);
+    .slice(0, limit);
   const results = await Promise.allSettled(
     selected.map(async ({ product, deployment }) => {
       const remaining = deadlineAt - Date.now();
@@ -87,7 +87,11 @@ export async function marketDetailsView(
   params,
   {
     getCatalog = loadCatalog,
-    getReference = getFundamentals,
+    priceOnly = false,
+    getReference = (stock, options) =>
+      getFundamentals(stock, { priceOnly, ...options }),
+    onRow = null,
+    quotes = true,
     quote = getQuote,
     getSpots = getSpotObservations,
     getEnrichedStock = getCatalog === loadCatalog
@@ -95,21 +99,7 @@ export async function marketDetailsView(
       : null,
   } = {},
 ) {
-  const ids = [...new Set((params.get("ids") || "").split(","))];
-  if (
-    !ids.length ||
-    ids.length > 25 ||
-    ids.some((id) => !/^[A-Za-z0-9.:\-]{1,100}$/.test(id))
-  )
-    throw Object.assign(new Error("Choose 1–25 exact catalog asset IDs."), {
-      status: 400,
-    });
-  const catalog = await getCatalog();
-  const stocks = ids.map((id) => catalog.stocks.find((s) => s.id === id));
-  if (stocks.some((s) => !s))
-    throw Object.assign(new Error("Choose exact catalog assets."), {
-      status: 400,
-    });
+  const stocks = await resolveMarketDetailStocks(params, getCatalog);
   // Home's product lookup may still be loading native versions in parallel.
   // Join that cached lookup for a single asset rather than declaring no price
   // from an incomplete registry row. Never fan out native lookups for a page.
@@ -127,168 +117,324 @@ export async function marketDetailsView(
     }
   }
   const deadline = Date.now() + 26000;
-  const spots = observeWithin(() => getSpots(stocks), 10000).catch(
-    () => new Map(),
+  const state = new Map(
+    stocks.map((stock) => [
+      stock.id,
+      {
+        reference: null,
+        spot: null,
+        observation: null,
+        components: {
+          reference: "loading",
+          spot: "loading",
+          quote: quotes ? "loading" : "idle",
+          company: onRow && !priceOnly ? "loading" : "idle",
+        },
+      },
+    ]),
   );
-  const rows = await mapLimit(stocks, 5, async (stock) => {
-    const remaining = () => Math.max(1, deadline - Date.now());
-    const quoteDeadline = Math.min(deadline, Date.now() + 10000) - 50;
-    const [reference, observation, spotRows] = await Promise.all([
-      observeWithin(
-        () => getReference(stock),
-        Math.min(18000, remaining()),
-      ).catch(() => null),
-      observeWithin(
-        () =>
-          quote === getQuote
-            ? memo("market-premium:" + stock.id, 120000, async () => {
-                const result = await observe(stock, quote, quoteDeadline);
-                // Provider failures own their cooldowns; a missing route must
-                // not become a successful two-minute cached observation.
-                if (!result) throw new Error("No verified price observation.");
-                return result;
-              })
-            : observe(stock, quote, quoteDeadline),
-        Math.min(10000, remaining()),
-      ).catch(() => null),
-      spots,
-    ]);
-    const spot = spotRows?.get(stock.id) || null;
-    const spotValue = !(reference?.priceStale ?? reference?.stale)
-      ? premium({ ...spot, sharesPerToken: 1 }, reference)
-      : null;
-    const closedSpot = reference?.priceSession === "Closed";
-    const spotMetric =
-      spotValue == null
-        ? null
-        : {
-            value: spotValue,
-            deltaUsd: spot.price - reference.price,
-            price: spot.price,
-            referencePrice: reference.price,
-            rawPrice: spot.rawPrice,
-            symbol: spot.symbol,
-            issuer: spot.issuer,
-            chain: spot.chain,
-            address: spot.address,
-            venue: spot.venue,
-            liquidity: spot.liquidity,
-            priceAt: spot.at,
-            priceTimeBasis: spot.priceTimeBasis,
-            referenceAt: reference.at,
-            referenceDate: reference.priceDate || null,
-            retrievedAt: spot.retrievedAt,
-            source: spot.source,
-            referenceSource: reference.priceSource,
-            conversionSource: spot.conversionSource,
-            sharesPerToken: spot.sharesPerToken,
-            method: spot.method,
-            retained: spot.retained === true,
-            referenceBasis: closedSpot ? "last-close" : "contemporaneous",
-            basis:
-              spot.basis +
-              (closedSpot
-                ? " Compared with the dated listed-stock last close, not a live listed price."
-                : " Compared with the listed-stock observation."),
-            expiresAt:
-              Math.min(
-                spot.at,
-                closedSpot ? Date.parse(reference.retrievedAt) : reference.at,
-              ) + 300000,
-          };
-    const value = !(reference?.priceStale ?? reference?.stale)
-      ? premium(
-          {
-            price: observation?.effectivePrice,
-            sharesPerToken: 1,
-            conversionVerified: !!observation?.equivalentShares,
-            currency: "USD",
-            at: observation?.fetchedAt,
-          },
-          reference,
-        )
-      : null;
-    const lastClose = reference?.priceSession === "Closed";
-    // A verified onchain price does not depend on a listed-stock feed being up.
-    // Keep this size-specific observation separate from the pool-price snapshot.
-    const buyObservation = observation
-      ? {
-          price: observation.effectivePrice,
-          priceAt: observation.fetchedAt,
-          expiresAt: observation.fetchedAt + 300000,
+  const publish = (stock) => {
+    const current = state.get(stock.id);
+    const row = {
+      ...composeMarketDetails(
+        stock,
+        current.reference,
+        current.spot,
+        current.observation,
+      ),
+      components: { ...current.components },
+    };
+    onRow?.(row);
+    return row;
+  };
+  stocks.forEach(publish);
+  const receiveSpot = (spot) => {
+    const stock = stocks.find((stock) => stock.id === spot.id);
+    if (!stock) return;
+    const current = state.get(stock.id);
+    if (
+      !current.spot ||
+      spot.liquidity > current.spot.liquidity ||
+      spot.at > current.spot.at
+    ) {
+      current.spot = spot;
+      current.components.spot = "ready";
+      publish(stock);
+    }
+  };
+  const attempted = new Set();
+  let earlyFallback = Promise.resolve();
+  const fallback = async (stocks) =>
+    mapLimit(stocks, 2, async (stock) => {
+      if (attempted.has(stock.id)) return;
+      attempted.add(stock.id);
+      const current = state.get(stock.id);
+      const quoteDeadline = Math.min(deadline, Date.now() + 10000) - 50;
+      current.observation = await observe(stock, quote, quoteDeadline, 1).catch(
+        () => null,
+      );
+      current.components.quote = current.observation ? "ready" : "unavailable";
+      publish(stock);
+    });
+  const spots = observeWithin(
+    () =>
+      getSpots(stocks, {
+        onObservation: receiveSpot,
+        onMissing: (missing) => {
+          if (quotes === "missing") earlyFallback = fallback(missing);
+        },
+      }),
+    10000,
+  )
+    .catch(() => new Map())
+    .then(async (rows) => {
+      for (const stock of stocks) {
+        const current = state.get(stock.id);
+        current.spot = rows?.get(stock.id) || current.spot;
+        current.components.spot = current.spot ? "ready" : "unavailable";
+        if (quotes === "missing" && current.spot)
+          current.components.quote = "idle";
+        publish(stock);
+      }
+      if (quotes === "missing") {
+        await earlyFallback;
+        await fallback(stocks.filter((stock) => !state.get(stock.id).spot));
+      }
+    });
+  await Promise.all([
+    spots,
+    (async () => {
+      await mapLimit(stocks, 5, async (stock) => {
+        const current = state.get(stock.id);
+        const result = await observeWithin(
+          () =>
+            getReference(stock, {
+              ...(onRow ? { priceOnly: true } : {}),
+              onPrice: (reference) => {
+                current.reference = reference;
+                current.components.reference =
+                  reference?.price > 0 ? "ready" : "loading";
+                publish(stock);
+              },
+            }),
+          Math.max(1, Math.min(18000, deadline - Date.now())),
+        ).catch(() => null);
+        current.reference = result || current.reference;
+        current.components.reference =
+          current.reference?.price > 0 ? "ready" : "unavailable";
+        publish(stock);
+      });
+      // Listed prices have priority over optional company calls for the whole
+      // page, not merely the first few rows occupying the worker slots.
+      if (onRow && !priceOnly)
+        await mapLimit(stocks, 3, async (stock) => {
+          const current = state.get(stock.id);
+          let reference = null;
+          if (deadline > Date.now()) {
+            reference = await observeWithin(
+              () => getReference(stock),
+              Math.max(1, deadline - Date.now()),
+            ).catch(() => null);
+          }
+          if (reference) current.reference = reference;
+          else if (current.reference) {
+            current.reference = { ...current.reference };
+            for (const field of ["marketCap", "pe"]) {
+              current.reference[field + "Status"] =
+                stock.category === "ETF" ? "not-applicable" : "unavailable";
+              current.reference[field + "Reason"] =
+                "Company-data source did not complete this refresh.";
+            }
+          }
+          current.components.company = reference ? "ready" : "unavailable";
+          publish(stock);
+        });
+    })(),
+    ...(quotes === true
+      ? [
+          mapLimit(stocks, 5, async (stock) => {
+            const current = state.get(stock.id);
+            const quoteDeadline = Math.min(deadline, Date.now() + 10000) - 50;
+            current.observation = await observeWithin(
+              () =>
+                quote === getQuote
+                  ? memo("market-premium:" + stock.id, 120000, async () => {
+                      const result = await observe(stock, quote, quoteDeadline);
+                      if (!result)
+                        throw new Error("No verified price observation.");
+                      return result;
+                    })
+                  : observe(stock, quote, quoteDeadline),
+              Math.max(1, Math.min(10000, deadline - Date.now())),
+            ).catch(() => null);
+            current.components.quote = current.observation
+              ? "ready"
+              : "unavailable";
+            publish(stock);
+          }),
+        ]
+      : []),
+  ]);
+  const rows = stocks.map(publish);
+  return { rows, retrievedAt: new Date().toISOString(), basis: BASIS };
+}
+
+export function composeMarketDetails(stock, reference, spot, observation) {
+  const spotValue = !(reference?.priceStale ?? reference?.stale)
+    ? premium({ ...spot, sharesPerToken: 1 }, reference)
+    : null;
+  const closedSpot = reference?.priceSession === "Closed";
+  const spotMetric =
+    spotValue == null
+      ? null
+      : {
+          value: spotValue,
+          deltaUsd: spot.price - reference.price,
+          price: spot.price,
+          referencePrice: reference.price,
+          rawPrice: spot.rawPrice,
+          symbol: spot.symbol,
+          issuer: spot.issuer,
+          chain: spot.chain,
+          address: spot.address,
+          venue: spot.venue,
+          liquidity: spot.liquidity,
+          priceAt: spot.at,
+          priceTimeBasis: spot.priceTimeBasis,
+          referenceAt: reference.at,
+          referenceDate: reference.priceDate || null,
+          retrievedAt: spot.retrievedAt,
+          source: spot.source,
+          referenceSource: reference.priceSource,
+          conversionSource: spot.conversionSource,
+          sharesPerToken: spot.sharesPerToken,
+          method: spot.method,
+          retained: spot.retained === true,
+          referenceBasis: closedSpot ? "last-close" : "contemporaneous",
+          basis:
+            spot.basis +
+            (closedSpot
+              ? " Compared with the dated listed-stock last close, not a live listed price."
+              : " Compared with the listed-stock observation."),
+          expiresAt:
+            Math.min(
+              spot.at,
+              closedSpot ? Date.parse(reference.retrievedAt) : reference.at,
+            ) + 300000,
+        };
+  const value = !(reference?.priceStale ?? reference?.stale)
+    ? premium(
+        {
+          price: observation?.effectivePrice,
+          sharesPerToken: 1,
+          conversionVerified: !!observation?.equivalentShares,
+          currency: "USD",
+          at: observation?.fetchedAt,
+        },
+        reference,
+      )
+    : null;
+  const lastClose = reference?.priceSession === "Closed";
+  // A verified onchain price does not depend on a listed-stock feed being up.
+  // Keep this size-specific observation separate from the pool-price snapshot.
+  const buyObservation = observation
+    ? {
+        price: observation.effectivePrice,
+        priceAt: observation.fetchedAt,
+        expiresAt: observation.fetchedAt + 300000,
+        symbol: observation.symbol,
+        issuer: observation.issuer,
+        chain: observation.chain,
+        venue: observation.quoteProvider || observation.venue,
+        budget: 1000,
+        sharesPerToken: observation.sharesPerToken,
+        conversionVerified: true,
+        conversionSource: observation.conversionSource,
+        source: observation.quoteSource,
+        method: "indicative-buy",
+        basis: BASIS,
+      }
+    : null;
+  const referenceTime = lastClose
+    ? Date.parse(reference.retrievedAt)
+    : reference?.at;
+  const metric =
+    value == null
+      ? null
+      : {
+          value,
           symbol: observation.symbol,
           issuer: observation.issuer,
           chain: observation.chain,
-          venue: observation.quoteProvider || observation.venue,
+          venue: observation.venue,
           budget: 1000,
+          price: observation.effectivePrice,
+          referencePrice: reference.price,
+          referenceDate: reference.priceDate || null,
+          priceImpactPct: Number.isFinite(observation.priceImpactPct)
+            ? observation.priceImpactPct
+            : null,
           sharesPerToken: observation.sharesPerToken,
-          conversionVerified: true,
-          conversionSource: observation.conversionSource,
+          priceAt: observation.fetchedAt,
+          referenceAt: reference.at,
+          retrievedAt: new Date(observation.fetchedAt).toISOString(),
           source: observation.quoteSource,
-          method: "indicative-buy",
-          basis: BASIS,
-        }
-      : null;
-    const referenceTime = lastClose
-      ? Date.parse(reference.retrievedAt)
-      : reference?.at;
-    const metric =
-      value == null
-        ? null
-        : {
-            value,
-            symbol: observation.symbol,
-            issuer: observation.issuer,
-            chain: observation.chain,
-            venue: observation.venue,
-            budget: 1000,
-            price: observation.effectivePrice,
-            referencePrice: reference.price,
-            referenceDate: reference.priceDate || null,
-            priceImpactPct: Number.isFinite(observation.priceImpactPct)
-              ? observation.priceImpactPct
-              : null,
-            sharesPerToken: observation.sharesPerToken,
-            priceAt: observation.fetchedAt,
-            referenceAt: reference.at,
-            retrievedAt: new Date(observation.fetchedAt).toISOString(),
-            source: observation.quoteSource,
-            conversionSource: observation.conversionSource,
-            referenceBasis: lastClose ? "last-close" : "contemporaneous",
-            basis:
-              BASIS +
-              (lastClose
-                ? " Compared with the official Nasdaq last close, not a live listed-stock price."
-                : ""),
-            expiresAt: Math.min(observation.fetchedAt, referenceTime) + 300000,
-          };
-    return {
-      id: stock.id,
-      reference,
-      premium: metric,
-      buyObservation,
-      spot,
-      spotPremium: spotMetric,
-      spotPremiumReason: spotMetric
-        ? null
-        : !spot
-          ? "No fresh exact-contract pool snapshot with verified underlying-equivalent units is available."
-          : !reference?.price
-            ? "Listed-stock price unavailable."
-            : "Pool snapshot and listed-stock price are not fresh and time-aligned; no current spot premium is asserted.",
-      referenceReason: reference
-        ? reference.price == null
-          ? reference.priceReason
-          : null
-        : "No corroborated listed-security reference is currently available.",
-      premiumReason: metric
-        ? null
+          conversionSource: observation.conversionSource,
+          referenceBasis: lastClose ? "last-close" : "contemporaneous",
+          basis:
+            BASIS +
+            (lastClose
+              ? " Compared with the official Nasdaq last close, not a live listed-stock price."
+              : ""),
+          expiresAt: Math.min(observation.fetchedAt, referenceTime) + 300000,
+        };
+  return {
+    id: stock.id,
+    reference,
+    premium: metric,
+    buyObservation,
+    spot,
+    spotPremium: spotMetric,
+    spotPremiumReason: spotMetric
+      ? null
+      : !spot
+        ? "No fresh exact-contract pool snapshot with verified underlying-equivalent units is available."
         : !reference?.price
-          ? "Listed-stock reference unavailable."
-          : !observation
-            ? "No supported quote with verified share conversion for this asset."
-            : "Quote and listed-stock reference are not fresh and time-aligned; no current premium is asserted.",
-    };
-  });
-  return { rows, retrievedAt: new Date().toISOString(), basis: BASIS };
+          ? "Listed-stock price unavailable."
+          : "Pool snapshot and listed-stock price are not fresh and time-aligned; no current spot premium is asserted.",
+    referenceReason: reference
+      ? reference.price == null
+        ? reference.priceReason
+        : null
+      : "No corroborated listed-security reference is currently available.",
+    premiumReason: metric
+      ? null
+      : !reference?.price
+        ? "Listed-stock reference unavailable."
+        : !observation
+          ? "No supported quote with verified share conversion for this asset."
+          : "Quote and listed-stock reference are not fresh and time-aligned; no current premium is asserted.",
+  };
+}
+
+export async function resolveMarketDetailStocks(
+  params,
+  getCatalog = loadCatalog,
+) {
+  const ids = [...new Set((params.get("ids") || "").split(","))];
+  if (
+    !ids.length ||
+    ids.length > 25 ||
+    ids.some((id) => !/^[A-Za-z0-9.:\-]{1,100}$/.test(id))
+  )
+    throw Object.assign(new Error("Choose 1–25 exact catalog asset IDs."), {
+      status: 400,
+    });
+  const catalog = await getCatalog();
+  const stocks = ids.map((id) => catalog.stocks.find((s) => s.id === id));
+  if (stocks.some((s) => !s))
+    throw Object.assign(new Error("Choose exact catalog assets."), {
+      status: 400,
+    });
+  return stocks;
 }

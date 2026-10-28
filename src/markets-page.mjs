@@ -1,3 +1,4 @@
+import { readMarketDetails } from "./market-stream.mjs";
 import {
   selectMarketRows,
   createMarketDetailsLoader,
@@ -118,17 +119,14 @@ export function createMarketsPage({
     columns = [...DEFAULT_MARKET_COLUMNS];
   }
   const details = createMarketDetailsLoader({
-    fetchDetails: async (ids, signal) => {
-      const timeout = AbortSignal.timeout(40000);
-      const response = await fetch(
-        "/api/market-details?" + new URLSearchParams({ ids: ids.join(",") }),
-        { signal: AbortSignal.any([signal, timeout]) },
-      );
-      const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.error || "Market details source unavailable");
-      return data;
-    },
+    batchSize: 25,
+    maxActive: 1,
+    fetchDetails: (ids, signal, onRows) =>
+      readMarketDetails(ids, {
+        signal,
+        onRows,
+        company: columns.includes("companyCap") || columns.includes("pe"),
+      }),
     onChange: () => render(),
     onDetails,
   });
@@ -187,6 +185,8 @@ export function createMarketsPage({
       });
   }
   function setColumns(value) {
+    const previouslyCompany =
+      columns.includes("companyCap") || columns.includes("pe");
     columns = normalizeMarketColumns(value);
     try {
       localStorage.setItem(columnStorageKey, JSON.stringify(columns));
@@ -194,6 +194,11 @@ export function createMarketsPage({
       /* Session controls remain usable. */
     }
     applyColumns();
+    if (
+      !previouslyCompany &&
+      (columns.includes("companyCap") || columns.includes("pe"))
+    )
+      scheduleDetails({ immediate: true, force: true });
   }
   function setupControls() {
     const filters = $("#markets-page .markets-filters");
@@ -311,7 +316,7 @@ export function createMarketsPage({
       stale = observationIsStale(reference);
     if (Number.isFinite(reference?.price))
       return `<strong>${usd(reference.price)}</strong><small>${stale ? "Older · " : ""}${reference.priceSession === "Closed" ? "Close · " : ""}${escape(listedDate(reference))}</small>${disclosure(reference.exchange || "Listed source", stale ? reference.staleReason || "The previous dated price is retained." : "Listed-security observation; separate from tokenized prices.", sourceLink(reference.source, "Listed source", stock.id + ":listed:source"), stock.id + ":listed")}`;
-    return `—<small>${!entry || entry.status === "loading" ? "Loading…" : "Not supplied"}</small>`;
+    return `—<small>${!entry || entry.components?.reference === "loading" || (entry.status === "loading" && !entry.components?.reference) ? "Loading…" : "Temporarily unavailable"}</small>`;
   }
   function turnoverCell(stock) {
     const value = marketTurnover(stock.market),
@@ -472,6 +477,9 @@ export function createMarketsPage({
     $("#market-check-more").hidden =
       $("#market-conversion").value === "all" || !unchecked;
     $("#market-check-more").disabled = checking > 0 || state.screenBusy;
+    const prices = visible.filter(
+      (s) => details.get(s.id)?.reference?.price > 0,
+    ).length;
     const loading = visible.filter(
         (s) => details.get(s.id)?.status === "loading",
       ).length,
@@ -486,11 +494,11 @@ export function createMarketsPage({
       ? "Loading page data…"
       : "Refresh page data";
     $("#market-company-status").textContent = loading
-      ? `${loaded} of ${visible.length} rows loaded · ${loading} loading. Public sources may take up to 40 seconds per batch.`
+      ? `${prices} of ${visible.length} listed prices available · updating remaining observations…`
       : failed
         ? `${failed} row requests failed. Expand a cell for the reason; refresh to retry.`
         : loaded
-          ? `Page data loaded automatically. Expand a cell for source, time and missing-value reasons. P/E uses the stated fiscal year.`
+          ? `${prices} of ${visible.length} listed prices available. Expand a cell for its source and observation time.`
           : "Listed prices, company data and sourced conversion observations load for this page.";
     document
       .querySelectorAll("[data-market-sort]")

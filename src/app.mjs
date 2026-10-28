@@ -1,3 +1,5 @@
+import { mergeMarketDetails } from "./market-model.mjs";
+import { readMarketDetails } from "./market-stream.mjs";
 import { findStocks, validBudget, assetById } from "./model.mjs";
 import {
   escape,
@@ -796,29 +798,21 @@ desk = createTerminal({
   },
 });
 function sharedDetails(id) {
-  return [
+  const rows = [
     homeDetails.get(id),
     marketsPage?.getDetails(id),
     stockPages?.details(id),
-  ]
-    .filter(Boolean)
-    .sort((a, b) => (b.checkedAt || 0) - (a.checkedAt || 0))[0];
+  ].filter(Boolean);
+  return rows.length
+    ? rows
+        .sort((a, b) => (a.checkedAt || 0) - (b.checkedAt || 0))
+        .reduce((merged, row) => mergeMarketDetails(merged, row), {})
+    : undefined;
 }
 function retainDetails(id, row) {
-  const previous = homeDetails.get(id) || {};
-  const retained = { ...previous, ...row };
-  // A failed refresh must not erase a dated observation or make it current.
-  for (const key of [
-    "reference",
-    "spot",
-    "spotPremium",
-    "premium",
-    "buyObservation",
-  ])
-    if (Object.hasOwn(row, key) && !row[key] && previous[key])
-      retained[key] = { ...previous[key], stale: true };
+  const retained = mergeMarketDetails(sharedDetails(id), row);
   homeDetails.set(id, retained);
-  if (homeDetails.size > 25)
+  if (homeDetails.size > 100)
     homeDetails.delete(homeDetails.keys().next().value);
   marketsPage?.ingestDetails(id, retained);
   return retained;
@@ -826,39 +820,56 @@ function retainDetails(id, row) {
 async function loadHomeDetails(id, force = false) {
   if (!id || page !== "comparison") return;
   const cached = sharedDetails(id);
-  if (!force && cached && Date.now() - cached.checkedAt < 60000) {
-    desk.ingest("details", cached);
+  if (cached) desk.ingest("details", cached);
+  // Reuse visible data immediately, but an empty/partial view cannot suppress
+  // recovery or the selected asset's additional quote fallback.
+  if (
+    !force &&
+    cached?.homeCheckedAt &&
+    cached.reference?.price > 0 &&
+    (cached.spot?.price > 0 || cached.buyObservation?.price > 0) &&
+    Date.now() - cached.homeCheckedAt < 60000
+  )
     return;
-  }
   detailAbort?.abort();
   detailAbort = new AbortController();
-  const sequence = ++detailSequence;
+  const signal = detailAbort.signal,
+    sequence = ++detailSequence;
+  const apply = (rows) => {
+    if (signal.aborted || sequence !== detailSequence) return;
+    for (const row of rows) {
+      const result = retainDetails(id, row);
+      if (selected?.id === id && page === "comparison")
+        desk.ingest("details", result);
+      stockPages?.ingestDetails(id, result);
+    }
+  };
   try {
-    const response = await fetch(
-      "/api/market-details?" + new URLSearchParams({ ids: id }),
-      {
-        signal: AbortSignal.any([
-          detailAbort.signal,
-          AbortSignal.timeout(35000),
-        ]),
-      },
+    const data = await readMarketDetails([id], {
+      signal,
+      buy: true,
+      onRows: apply,
+    });
+    apply(
+      data.rows.map((row) => ({
+        ...row,
+        homeCheckedAt: Date.now(),
+        checkedAt: Date.now(),
+      })),
     );
-    const data = await response.json();
-    if (!response.ok)
-      throw new Error(data.error || "Listed price source unavailable");
-    const row = data.rows?.find((r) => r.id === id);
-    if (!row || sequence !== detailSequence) return;
-    const result = retainDetails(id, { ...row, checkedAt: Date.now() });
-    if (selected?.id === id && page === "comparison")
-      desk.ingest("details", result);
-    stockPages?.ingestDetails(id, result);
   } catch (error) {
-    if (
-      error.name !== "AbortError" &&
-      sequence === detailSequence &&
-      selected?.id === id
-    )
-      desk.ingest("details", {});
+    if (!signal.aborted && sequence === detailSequence && selected?.id === id) {
+      const result = retainDetails(id, {
+        status: "error",
+        error: error.message,
+        components: {
+          reference: "unavailable",
+          spot: "unavailable",
+          quote: "unavailable",
+        },
+      });
+      desk.ingest("details", result);
+    }
   }
 }
 function setPage(next, write = true) {

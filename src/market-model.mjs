@@ -289,12 +289,15 @@ export function observedPremiumState(observation, now = Date.now()) {
 // Shared row cache and bounded transport queue. Rendering never starts I/O.
 export function createMarketDetailsLoader({
   fetchDetails,
+  batchSize = 5,
+  maxActive = 2,
   onChange = () => {},
   onDetails = () => {},
   now = Date.now,
 }) {
   const cache = new Map(),
-    active = new Set();
+    active = new Set(),
+    refreshAfter = new Set();
   let wanted = new Set(),
     queue = [];
   const restore = (id) => {
@@ -307,8 +310,8 @@ export function createMarketDetailsLoader({
   const running = (id) =>
     [...active].some((r) => !r.controller.signal.aborted && r.ids.includes(id));
   const pump = () => {
-    while (active.size < 2 && queue.length) {
-      const ids = queue.splice(0, 5),
+    while (active.size < maxActive && queue.length) {
+      const ids = queue.splice(0, batchSize),
         controller = new AbortController();
       const request = { ids, controller };
       active.add(request);
@@ -316,7 +319,16 @@ export function createMarketDetailsLoader({
         .then(() => {
           if (controller.signal.aborted)
             throw new DOMException("Aborted", "AbortError");
-          return fetchDetails(ids, controller.signal);
+          return fetchDetails(ids, controller.signal, (rows) => {
+            if (controller.signal.aborted) return;
+            for (const row of rows) {
+              if (!ids.includes(row.id)) continue;
+              const entry = mergeMarketDetails(cache.get(row.id), row);
+              cache.set(row.id, { ...entry, status: "loading" });
+              onDetails(row.id, cache.get(row.id));
+            }
+            onChange();
+          });
         })
         .then((data) => {
           if (controller.signal.aborted) return;
@@ -334,11 +346,12 @@ export function createMarketDetailsLoader({
               continue;
             }
             const prior = cache.get(id);
+            const merged = mergeMarketDetails(prior, row);
             cache.set(id, {
               ...prior,
-              ...row,
+              ...merged,
               reference:
-                row.reference ??
+                (row.reference ? merged.reference : null) ??
                 (prior?.reference
                   ? {
                       ...prior.reference,
@@ -434,6 +447,11 @@ export function createMarketDetailsLoader({
         })
         .finally(() => {
           active.delete(request);
+          for (const id of ids)
+            if (refreshAfter.delete(id) && wanted.has(id)) {
+              cache.set(id, { ...cache.get(id), status: "loading" });
+              if (!queue.includes(id)) queue.push(id);
+            }
           pump();
           onChange();
         });
@@ -484,8 +502,7 @@ export function createMarketDetailsLoader({
               ? retrieved
               : 0,
         ) || undefined;
-      next.status =
-        prior?.status === "loading" ? "loading" : row.status || "ready";
+      next.status = running(id) ? "loading" : row.status || "ready";
       cache.set(id, next);
     },
     load(ids, { force = false } = {}) {
@@ -499,12 +516,16 @@ export function createMarketDetailsLoader({
         }
       }
       for (const id of wanted) {
-        if (running(id)) continue;
+        if (running(id)) {
+          if (force) refreshAfter.add(id);
+          continue;
+        }
         const entry = cache.get(id);
         if (
           !force &&
           entry?.checkedAt != null &&
-          now() - entry.checkedAt < 60000
+          now() - entry.checkedAt <
+            (entry.components && !entry.reference?.price ? 10000 : 60000)
         )
           continue;
         cache.set(id, { ...entry, status: "loading" });
@@ -520,11 +541,101 @@ export function companyMetricState(stock, entry, field) {
   if (stock.category === "ETF") return { value: null, state: "not-applicable" };
   const value = entry?.reference?.[field];
   if (Number.isFinite(value)) return { value, state: "available" };
-  if (!entry || entry.status === "loading")
+  if (
+    !entry ||
+    entry.components?.company === "loading" ||
+    (entry.status === "loading" && !entry.components?.company)
+  )
     return { value: null, state: "loading" };
   if (entry.status === "error") return { value: null, state: "error" };
   return {
     value: null,
     state: entry.reference?.[field + "Status"] || "unavailable",
   };
+}
+
+// Merge observations by their source time. A partial view or failed refresh
+// cannot erase a valid field held by a different page.
+export function mergeMarketDetails(previous = {}, incoming = {}) {
+  const next = { ...previous, ...incoming };
+  const time = (value) => {
+    const at = value?.at ?? value?.priceAt ?? value?.retrievedAt;
+    return typeof at === "number" ? at : Date.parse(at) || 0;
+  };
+  for (const key of [
+    "reference",
+    "spot",
+    "spotPremium",
+    "premium",
+    "buyObservation",
+  ]) {
+    const prior = previous[key],
+      value = incoming[key];
+    if (!prior) continue;
+    if (!value || time(prior) > time(value)) next[key] = prior;
+    // Price and company metrics have independent observation times.
+    if (key === "reference" && value) {
+      const reference = (next.reference = { ...value });
+      if (
+        prior.price > 0 &&
+        (!(value.price > 0) || time(prior) > time(value))
+      ) {
+        for (const field of [
+          "price",
+          "at",
+          "currency",
+          "timePrecisionMs",
+          "priceDate",
+          "priceTimestamp",
+          "priceTimeBasis",
+          "changePct",
+          "priceSession",
+          "isRealTime",
+          "priceSource",
+          "priceRetrievedAt",
+          "retrievedAt",
+          "priceStale",
+        ])
+          if (Object.hasOwn(prior, field)) reference[field] = prior[field];
+          else delete reference[field];
+        if (!(value.price > 0) && incoming.components?.reference !== "loading")
+          reference.priceStale = true;
+      }
+      for (const field of ["marketCap", "pe"]) {
+        if (prior[field] == null) continue;
+        const status = value[field + "Status"];
+        const completed = ["ready", "unavailable"].includes(
+          incoming.components?.company,
+        );
+        if (completed && ["not-reported", "not-applicable"].includes(status))
+          continue;
+        const older =
+          Date.parse(prior[field + "RetrievedAt"]) >
+          Date.parse(value[field + "RetrievedAt"]);
+        if (value[field] != null && !older) continue;
+        for (const suffix of [
+          "",
+          "RetrievedAt",
+          "Status",
+          "Reason",
+          "Stale",
+          "Period",
+          "AsOf",
+          "Basis",
+          "Source",
+        ])
+          if (Object.hasOwn(prior, field + suffix))
+            reference[field + suffix] = prior[field + suffix];
+        if (completed && status === "unavailable") {
+          reference[field + "Stale"] = true;
+          reference[field + "Reason"] =
+            value[field + "Reason"] ||
+            "The company-data refresh failed; the original dated observation is retained.";
+        }
+      }
+    }
+  }
+  next.checkedAt =
+    Math.max(previous.checkedAt || 0, incoming.checkedAt || 0) || undefined;
+  return next;
 }

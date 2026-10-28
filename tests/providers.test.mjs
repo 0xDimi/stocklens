@@ -238,3 +238,44 @@ test("spot normalization avoids decimal RPC calls for documented EVM adjusted-sh
     "Wrappers, unrelated issuers and Solana must still verify their own units",
   );
 });
+
+test("indicative observations publish a verified provider without waiting for slower alternatives", async () => {
+  const module = await import("../server/providers.mjs");
+  assert.equal(typeof module.getIndicativeQuote, "function");
+  let finish;
+  const pending = new Promise((resolve) => (finish = resolve));
+  const good = {
+    status: "quoted",
+    effectivePrice: 101,
+    equivalentShares: 1000 / 101,
+    fetchedAt: Date.now(),
+  };
+  let resolved = false;
+  const result = module
+    .getIndicativeQuote({}, {}, "1000", {
+      getOptions: async (p, d, a, { onQuote }) => {
+        onQuote({
+          status: "quoted",
+          effectivePrice: null,
+          equivalentShares: null,
+        });
+        onQuote({
+          status: "quoted",
+          effectivePrice: Infinity,
+          equivalentShares: Infinity,
+        });
+        onQuote(good);
+        await pending;
+        return [good];
+      },
+    })
+    .then((row) => {
+      resolved = true;
+      return row;
+    });
+  await new Promise(setImmediate);
+  const early = resolved;
+  finish();
+  assert.equal((await result).effectivePrice, 101);
+  assert.equal(early, true);
+});

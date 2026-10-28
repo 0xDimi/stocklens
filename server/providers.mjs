@@ -306,7 +306,7 @@ export async function getQuoteOptions(
   product,
   deployment,
   amount,
-  { deadlineAt = Date.now() + 20_000 } = {},
+  { deadlineAt = Date.now() + 20_000, onQuote = () => {} } = {},
 ) {
   const chain = CHAINS[deployment.chain];
   const id = `${product.issuer}:${deployment.chain}:${deployment.address}`;
@@ -475,7 +475,10 @@ export async function getQuoteOptions(
                   : null,
             };
           },
-        ),
+        ).then((row) => {
+          if (Date.now() <= deadlineAt) onQuote(row);
+          return row;
+        }),
     ),
     deadlineAt,
   );
@@ -524,4 +527,34 @@ export async function getQuote(product, deployment, amount, options) {
   return rankQuotes(
     await getQuoteOptions(product, deployment, amount, options),
   )[0];
+}
+
+// A representative market observation does not need the slowest venue to
+// finish. Full buy comparison still waits for and ranks every provider option.
+export function getIndicativeQuote(
+  product,
+  deployment,
+  amount,
+  { getOptions = getQuoteOptions, ...options } = {},
+) {
+  return new Promise((resolve, reject) => {
+    Promise.resolve()
+      .then(() =>
+        getOptions(product, deployment, amount, {
+          ...options,
+          onQuote: (row) => {
+            if (
+              row.status === "quoted" &&
+              Number.isFinite(row.effectivePrice) &&
+              Number.isFinite(row.equivalentShares) &&
+              row.effectivePrice > 0 &&
+              row.equivalentShares > 0
+            )
+              resolve(row);
+          },
+        }),
+      )
+      .then((rows) => resolve(rankQuotes(rows)[0]))
+      .catch(reject);
+  });
 }

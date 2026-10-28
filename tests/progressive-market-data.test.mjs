@@ -366,3 +366,47 @@ test("missing-pool fallback allows metadata and routing within the shared observ
   );
   assert.equal(result.rows[0].buyObservation?.price, 101);
 });
+
+test("selected-asset indicative prices publish while another chain is pending, then retain the better completed observation", async () => {
+  const slow = deferred(),
+    published = [];
+  const item = {
+    ...stock,
+    products: [
+      {
+        issuer: "xstocks",
+        name: "NVIDIA xStock",
+        symbol: "NVDAx",
+        deployments: [
+          { chain: "Solana", address: "mint" },
+          { chain: "Ethereum", address: "0x" + "1".repeat(40) },
+        ],
+      },
+    ],
+  };
+  const run = marketDetailsView(new URLSearchParams({ ids: item.id }), {
+    getCatalog: async () => ({ stocks: [item] }),
+    onRow: (row) => published.push(row),
+    priceOnly: true,
+    getSpots: async () => new Map(),
+    getReference: async () => ({ price: 100, at: Date.now(), currency: "USD" }),
+    quote: async (p, d) => {
+      if (d.chain === "Ethereum") await slow.promise;
+      return {
+        status: "quoted",
+        effectivePrice: d.chain === "Solana" ? 101 : 100,
+        equivalentShares: 10,
+        fetchedAt: Date.now(),
+      };
+    },
+  });
+  await new Promise(setImmediate);
+  const early = published.find((row) => row.buyObservation?.price === 101);
+  slow.resolve();
+  const result = await run;
+  assert.ok(
+    early,
+    "Completed normalized prices should not wait for a slower alternative",
+  );
+  assert.equal(result.rows[0].buyObservation.price, 100);
+});

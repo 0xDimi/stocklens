@@ -1,6 +1,10 @@
 import { loadCatalog, resolveStock } from "./catalog.mjs";
 import { getFundamentals } from "./fundamentals.mjs";
-import { getQuote, conversionIssuer } from "./providers.mjs";
+import {
+  getQuote,
+  getIndicativeQuote,
+  conversionIssuer,
+} from "./providers.mjs";
 import { memo, mapLimit, observeWithin } from "./http.mjs";
 import { premium } from "../src/market-model.mjs";
 import { getSpotObservations } from "./public-spot.mjs";
@@ -37,7 +41,13 @@ function candidates(stock) {
         order.indexOf(a.deployment.chain) - order.indexOf(b.deployment.chain),
     );
 }
-async function observe(stock, quote, deadlineAt, limit = 3) {
+async function observe(
+  stock,
+  quote,
+  deadlineAt,
+  limit = 3,
+  onObservation = () => {},
+) {
   const available = candidates(stock);
   // Reserve a candidate for another issuer instead of spending every lookup
   // on the same product's deployments. All three share one strict deadline.
@@ -71,6 +81,7 @@ async function observe(stock, quote, deadlineAt, limit = 3) {
         !(result.effectivePrice > 0)
       )
         throw new Error("No verified price observation.");
+      onObservation(result);
       return result;
     }),
   );
@@ -117,6 +128,7 @@ export async function marketDetailsView(
     }
   }
   const deadline = Date.now() + 26000;
+  const observeQuote = onRow && quote === getQuote ? getIndicativeQuote : quote;
   const state = new Map(
     stocks.map((stock) => [
       stock.id,
@@ -170,9 +182,12 @@ export async function marketDetailsView(
       attempted.add(stock.id);
       const current = state.get(stock.id);
       const quoteDeadline = Math.min(deadline, Date.now() + 18000) - 50;
-      current.observation = await observe(stock, quote, quoteDeadline, 1).catch(
-        () => null,
-      );
+      current.observation = await observe(
+        stock,
+        observeQuote,
+        quoteDeadline,
+        1,
+      ).catch(() => null);
       current.components.quote = current.observation ? "ready" : "unavailable";
       publish(stock);
     });
@@ -254,19 +269,46 @@ export async function marketDetailsView(
       ? [
           mapLimit(stocks, 5, async (stock) => {
             const current = state.get(stock.id);
-            const quoteDeadline = Math.min(deadline, Date.now() + 10000) - 50;
-            current.observation = await observeWithin(
+            const quoteDeadline =
+              Math.min(deadline, Date.now() + (onRow ? 18000 : 10000)) - 50;
+            const accept = (observation) => {
+              if (
+                !current.observation ||
+                observation.effectivePrice < current.observation.effectivePrice
+              ) {
+                current.observation = observation;
+                current.components.quote = "ready";
+                publish(stock);
+              }
+            };
+            const result = await observeWithin(
               () =>
                 quote === getQuote
-                  ? memo("market-premium:" + stock.id, 120000, async () => {
-                      const result = await observe(stock, quote, quoteDeadline);
-                      if (!result)
-                        throw new Error("No verified price observation.");
-                      return result;
-                    })
-                  : observe(stock, quote, quoteDeadline),
-              Math.max(1, Math.min(10000, deadline - Date.now())),
+                  ? memo(
+                      "market-premium:" +
+                        stock.id +
+                        (onRow ? ":first" : ":ranked"),
+                      120000,
+                      async () => {
+                        const result = await observe(
+                          stock,
+                          observeQuote,
+                          quoteDeadline,
+                          3,
+                          accept,
+                        );
+                        if (!result)
+                          throw new Error("No verified price observation.");
+                        return result;
+                      },
+                    )
+                  : observe(stock, observeQuote, quoteDeadline, 3, accept),
+              Math.max(
+                1,
+                Math.min(onRow ? 18000 : 10000, deadline - Date.now()),
+              ),
             ).catch(() => null);
+            current.observation = result || current.observation;
             current.components.quote = current.observation
               ? "ready"
               : "unavailable";

@@ -1,5 +1,5 @@
 import { sourceClient } from "./source-client.mjs";
-import { conversionIssuer, getTokenUnits } from "./providers.mjs";
+import { conversionIssuer, getSpotUnits } from "./providers.mjs";
 import { mapLimit, observeWithin } from "./http.mjs";
 import { validAddress } from "./config.mjs";
 
@@ -106,7 +106,7 @@ export async function getSpotObservations(
   stocks,
   {
     getSource = read,
-    getUnits = getTokenUnits,
+    getUnits = getSpotUnits,
     now = Date.now,
     budgetMs = 8000,
     onObservation = () => {},

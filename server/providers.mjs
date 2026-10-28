@@ -154,6 +154,22 @@ export function conversionIssuer(product) {
     return "ondo";
   return null;
 }
+// A pool USD price is already decimal-adjusted. EVM xStocks expose adjusted
+// share balances, so spot normalization needs the documented 1:1 unit, not a
+// second decimals() RPC. Order quotes still verify mint/contract decimals.
+export async function getSpotUnits(
+  product,
+  deployment,
+  { getUnits = getTokenUnits } = {},
+) {
+  if (
+    CHAINS[deployment.chain]?.evmId &&
+    !product.halted &&
+    conversionIssuer(product) === "xstocks"
+  )
+    return evmConversion("xstocks");
+  return getUnits(product, deployment);
+}
 export async function getTokenUnits(
   product,
   deployment,

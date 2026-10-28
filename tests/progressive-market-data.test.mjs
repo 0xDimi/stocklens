@@ -325,3 +325,44 @@ test("company loading text does not claim that a pending source omitted its metr
   );
   assert.equal(done.label, "Unavailable");
 });
+
+test("missing-pool fallback allows metadata and routing within the shared observation deadline", async () => {
+  const item = {
+    ...stock,
+    products: [
+      {
+        issuer: "xstocks",
+        name: "NVIDIA xStock",
+        symbol: "NVDAx",
+        deployments: [{ chain: "Solana", address: "mint" }],
+      },
+    ],
+  };
+  const result = await marketDetailsView(
+    new URLSearchParams({ ids: item.id }),
+    {
+      getCatalog: async () => ({ stocks: [item] }),
+      quotes: "missing",
+      priceOnly: true,
+      getReference: async () => ({
+        price: 100,
+        at: Date.now(),
+        currency: "USD",
+      }),
+      getSpots: async () => new Map(),
+      quote: async (product, deployment, amount, { deadlineAt }) => {
+        assert.ok(
+          deadlineAt - Date.now() >= 17000,
+          "Do not time out a valid metadata-plus-route lookup at ten seconds",
+        );
+        return {
+          status: "quoted",
+          effectivePrice: 101,
+          equivalentShares: 1000 / 101,
+          fetchedAt: Date.now(),
+        };
+      },
+    },
+  );
+  assert.equal(result.rows[0].buyObservation?.price, 101);
+});

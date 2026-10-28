@@ -169,7 +169,7 @@ export async function marketDetailsView(
       if (attempted.has(stock.id)) return;
       attempted.add(stock.id);
       const current = state.get(stock.id);
-      const quoteDeadline = Math.min(deadline, Date.now() + 10000) - 50;
+      const quoteDeadline = Math.min(deadline, Date.now() + 18000) - 50;
       current.observation = await observe(stock, quote, quoteDeadline, 1).catch(
         () => null,
       );

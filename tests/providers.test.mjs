@@ -207,3 +207,34 @@ test("Kyber handoffs use the chain and token path rather than legacy query redir
     assert.equal(url.search, "");
   }
 });
+
+test("spot normalization avoids decimal RPC calls for documented EVM adjusted-share units", async () => {
+  const module = await import("../server/providers.mjs");
+  assert.equal(typeof module.getSpotUnits, "function");
+  let reads = 0;
+  const getUnits = async () => {
+    reads++;
+    return { sharesPerToken: null };
+  };
+  const product = { issuer: "xstocks", name: "NVIDIA xStock", symbol: "NVDAx" };
+  const deployment = { chain: "Ethereum", address: "0x" + "1".repeat(40) };
+  const units = await module.getSpotUnits(product, deployment, { getUnits });
+  assert.equal(units.sharesPerToken, 1);
+  assert.equal(reads, 0);
+  await module.getSpotUnits({ ...product, wrapped: true }, deployment, {
+    getUnits,
+  });
+  await module.getSpotUnits({ ...product, issuer: "unknown" }, deployment, {
+    getUnits,
+  });
+  await module.getSpotUnits(
+    product,
+    { chain: "Solana", address: "mint" },
+    { getUnits },
+  );
+  assert.equal(
+    reads,
+    3,
+    "Wrappers, unrelated issuers and Solana must still verify their own units",
+  );
+});

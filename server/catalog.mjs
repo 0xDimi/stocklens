@@ -820,7 +820,15 @@ export function createCachedCatalogLoader(options = {}) {
 }
 const defaultCatalogLoader = createCachedCatalogLoader();
 export async function loadCatalog() {
-  return defaultCatalogLoader();
+  const catalog = await defaultCatalogLoader();
+  return {
+    ...catalog,
+    stocks: catalog.stocks.map((stock) =>
+      /\(pre[- ]ipo\)\s*$/i.test(stock.name) && stock.id.startsWith("cg:")
+        ? { ...stock, category: "Pre-IPO" }
+        : stock,
+    ),
+  };
 }
 
 export async function resolveStock(

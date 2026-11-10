@@ -94,6 +94,6 @@ These scripts contact actual public sources and retain provenance manifests. The
 
 ## Portfolio status and operating limits
 
-The public app requires no account or wallet connection to browse, compare, or open a venue. Stocklens never submits transactions. See [PORTFOLIO_REVIEW.md](PORTFOLIO_REVIEW.md) for the dated code review, fixes, actual integration checks and scope.
+The public app requires no account or wallet connection to browse, compare, or open a venue. Stocklens never submits transactions. See [portfolio review](docs/maintenance/portfolio-review.md) for the dated code review, fixes, actual integration checks and scope.
 
 The CoinGecko Demo plan is a limited data budget. Its [published allowance](https://www.coingecko.com/en/api/pricing) is 10,000 calls per month as checked October 19, 2026. Under continuous demand, refreshing five market pages every ten minutes alone would require 21,600 calls in 30 days, before other data requests. Low-traffic portfolio use is the intended deployment scope; uninterrupted market-wide freshness under sustained traffic requires a separate quota/batching decision. Existing caches, coalescing, provider cooldowns and a public browser feed reduce repeated requests but do not remove upstream quotas. No paid data upgrade or scheduled monitoring is enabled.

@@ -489,7 +489,8 @@ export async function getFundamentals(
     retention = getSource === nasdaq ? retainedPrices : null,
   } = {},
 ) {
-  if (!/^[A-Z0-9.\-]{1,12}$/.test(stock.ticker)) return null;
+  if (stock.category === "Pre-IPO" || !/^[A-Z0-9.\-]{1,12}$/.test(stock.ticker))
+    return null;
   const retainUnavailable = async () => {
     if (!retention) return null;
     const retained = await retention.merge({

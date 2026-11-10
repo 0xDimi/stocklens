@@ -32,6 +32,11 @@ const sources = {
     "https://learn.backpack.exchange/blog/introducing-backpack-securities",
   backpackDividends:
     "https://learn.backpack.exchange/blog/tokenized-spacex-spcx",
+  eqx: "https://docs.eqxlabs.io/trust-and-legal/token-terms",
+  eqxDividends: "https://docs.eqxlabs.io/how-eqx-works/corporate-actions",
+  eqxVoting: "https://docs.eqxlabs.io/how-eqx-works/voting",
+  eqxRedemption:
+    "https://docs.eqxlabs.io/how-eqx-works/creation-and-redemption",
   anchored: "https://docs.anchored.finance/",
   anchoredAccess: "https://docs.anchored.finance/getting-started/eligibility",
   anchoredDividends:
@@ -123,6 +128,19 @@ const reviewed = {
       "Deposit through Backpack Securities",
       sources.backpack,
       "Backpack describes converting tokenized securities into brokerage security entitlements through deposits. Brokerage account access and the applicable product terms are required.",
+    ],
+  },
+  eqx: {
+    claim: ["Share-backed debt of EQX SPC Ltd.", sources.eqx],
+    dividends: ["Reinvested after taxes and costs", sources.eqxDividends],
+    voting: ["Holders can submit voting instructions", sources.eqxVoting],
+    access: [
+      "Business verification for authorized participants",
+      sources.eqxRedemption,
+    ],
+    redemption: [
+      "Shares only · authorized participants",
+      sources.eqxRedemption,
     ],
   },
   anchored: {

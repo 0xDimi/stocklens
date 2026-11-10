@@ -1,6 +1,5 @@
 export const issuerLink = (id = "") =>
-  "/?" +
-  new URLSearchParams({ page: "issuers", ...(id ? { issuer: id } : {}) });
+  id ? "/issuer/" + encodeURIComponent(id) : "/?page=issuers";
 
 export function selectIssuers(
   rows,

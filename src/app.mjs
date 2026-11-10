@@ -36,6 +36,8 @@ import {
   observeLogoErrors,
 } from "./brands.mjs";
 import { createTerminal } from "./terminal.mjs";
+import { pageParams, stockPath, findRouteStock } from "./page-routes.mjs";
+import { issuerLink } from "./issuer-model.mjs";
 import { createDiscover, routePage } from "./discover.mjs";
 import { createIssuersPage } from "./issuers-page.mjs";
 let desk = null,
@@ -47,7 +49,7 @@ let desk = null,
 const quoteSnapshots = new Map();
 observeLogoErrors();
 const $ = (selector) => document.querySelector(selector);
-const params = new URLSearchParams(location.search);
+const params = pageParams(location);
 const comparisonStore = comparisonStorage();
 let page = routePage(params);
 let issuerSelection = page === "issuers" ? params.get("issuer") || "" : "";
@@ -90,15 +92,13 @@ if (validBudget(params.get("amount")))
   $("#budget").value = params.get("amount");
 function updateUrl(mode = "replace") {
   if (page === "issuers") {
-    const query = new URLSearchParams({ page: "issuers" });
-    if (issuerSelection) query.set("issuer", issuerSelection);
-    const url = "/?" + query;
-    if (location.search !== "?" + query)
+    const url = issuerLink(issuerSelection);
+    if (location.pathname + location.search !== url)
       history[mode === "push" ? "pushState" : "replaceState"](null, "", url);
     return;
   }
   if (page === "discover") {
-    if (location.search)
+    if (location.pathname !== "/" || location.search)
       history[mode === "push" ? "pushState" : "replaceState"](null, "", "/");
     return;
   }
@@ -117,9 +117,18 @@ function updateUrl(mode = "replace") {
   if ($("#include-wrappers").checked) query.set("wrappers", "1");
   if (token && view === "markets") query.set("token", token);
   query.set("page", page);
-  query.set("stocks", assetCompareIds.join(","));
-  const url = "/?" + query;
-  if (mode === "push" && location.search !== "?" + query)
+  if (assetCompareIds.length || page === "compare")
+    query.set("stocks", assetCompareIds.join(","));
+  let url = "/?" + query;
+  if (page === "stock" || page === "comparison") {
+    query.delete("stock");
+    query.delete("page");
+    if (page === "stock") query.delete("view");
+    if (query.get("chain") === "all") query.delete("chain");
+    if (query.get("amount") === "1000") query.delete("amount");
+    url = stockPath(selected, stocks) + (query.size ? "?" + query : "");
+  }
+  if (mode === "push" && location.pathname + location.search !== url)
     history.pushState(null, "", url);
   else history.replaceState(null, "", url);
 }
@@ -141,12 +150,14 @@ function renderStocks() {
 }
 function renderHeading() {
   if (!selected) return;
+  if (page === "comparison")
+    document.title = `Compare ${selected.ticker} — Stocklens`;
   const focusTitle = document.activeElement?.id === "stock-title";
   const chainCount = new Set(
     selected.products.flatMap((p) => p.deployments.map((d) => d.chain)),
   ).size;
   $("#stock-heading").innerHTML =
-    `<div class="company">${stockLogo(selected, desk?.getMarkets().get(selected.id)?.image)}<div><div class="company-name"><h1 id="stock-title" tabindex="-1">${escape(selected.name)}</h1><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p><b>${escape(selected.ticker)}</b> · ${escape(selected.category)} · ${selected.products.filter((p) => !p.wrapped).length} issuer versions${selected.products.some((p) => p.wrapped) ? ` + ${selected.products.filter((p) => p.wrapped).length} wrapped` : ""} · ${new Set(selected.products.map((p) => p.issuer)).size} ${new Set(selected.products.map((p) => p.issuer)).size === 1 ? "issuer" : "issuers"} · ${chainCount} networks</p></div></div><div class="stock-heading-actions"><a class="text-button" href="/?page=stock&amp;stock=${encodeURIComponent(selected.id)}" data-open-stock-page="${escape(selected.id)}">Overview →</a><button class="primary-button" data-action="quotes" ${view === "quotes" ? "hidden" : ""}>Compare buy quotes <span aria-hidden="true">→</span></button></div>`;
+    `<div class="company">${stockLogo(selected, desk?.getMarkets().get(selected.id)?.image)}<div><div class="company-name"><h1 id="stock-title" tabindex="-1">${escape(selected.name)}</h1><button id="favorite" class="favorite-button" aria-label="${saved.has(selected.id) ? "Unsave" : "Save"} ${escape(selected.name)}" aria-pressed="${saved.has(selected.id)}">${saved.has(selected.id) ? "★" : "☆"}</button></div><p><b>${escape(selected.ticker)}</b> · ${escape(selected.category)} · ${selected.products.filter((p) => !p.wrapped).length} issuer versions${selected.products.some((p) => p.wrapped) ? ` + ${selected.products.filter((p) => p.wrapped).length} wrapped` : ""} · ${new Set(selected.products.map((p) => p.issuer)).size} ${new Set(selected.products.map((p) => p.issuer)).size === 1 ? "issuer" : "issuers"} · ${chainCount} networks</p></div></div><div class="stock-heading-actions"><a class="text-button" href="${escape(stockPath(selected, stocks))}" data-open-stock-page="${escape(selected.id)}">Overview →</a><button class="primary-button" data-action="quotes" ${view === "quotes" ? "hidden" : ""}>Compare buy quotes <span aria-hidden="true">→</span></button></div>`;
   if (focusTitle) $("#stock-title").focus({ preventScroll: true });
   const wrappers = selected.products.filter((p) => p.wrapped).length;
   $("#wrapper-control").hidden =
@@ -384,7 +395,12 @@ function renderResults() {
         ? "Source-linked summaries"
         : "No market observation";
   $("#decision-summary").innerHTML =
-    view === "quotes" ? purchaseSummary(visibleRows) : "";
+    view === "quotes"
+      ? purchaseSummary(
+          visibleRows,
+          snapshot.reference || sharedDetails(selected.id)?.reference,
+        )
+      : "";
   sourceDetails(snapshot);
   desk?.ingest(view, snapshot);
   if (snapshot.reference)
@@ -505,7 +521,10 @@ async function loadView(enrich = false) {
 }
 function tick() {
   if (view !== "quotes" || !snapshot) return;
-  $("#decision-summary").innerHTML = purchaseSummary(visibleRows);
+  $("#decision-summary").innerHTML = purchaseSummary(
+    visibleRows,
+    snapshot.reference || sharedDetails(selected.id)?.reference,
+  );
   const coverage = $(".quote-coverage");
   if (coverage) coverage.innerHTML = quoteCoverageMarkup(visibleRows);
   $("#comparison-status").textContent =
@@ -539,11 +558,17 @@ function tick() {
 function loadChart(poolId) {
   desk.loadPool(poolId, snapshot?.rows || []);
 }
+function countUsage(event, value) {
+  if (navigator.globalPrivacyControl || navigator.doNotTrack === "1") return;
+  const query = new URLSearchParams({ event, value });
+  navigator.sendBeacon?.("/api/usage?" + query);
+}
 function selectStock(id, issuerId = "all", includeWrapped = false) {
   const stock = assetById(stocks, id);
   if (!stock) return;
   selected = stock;
   homeAssetId = stock.id;
+  countUsage("stock-selected", stock.id);
   setPage("comparison");
   token = "";
   $("#include-wrappers").checked = includeWrapped;
@@ -578,6 +603,7 @@ async function initialize() {
     discover.render(data);
     selected =
       assetById(stocks, params.get("stock")) ||
+      findRouteStock(stocks, params.get("stock") || "") ||
       stocks.find((s) => s.ticker === params.get("ticker")) ||
       stocks.find((s) => s.ticker === "NVDA") ||
       stocks[0];
@@ -724,7 +750,56 @@ $("#enrich").addEventListener("click", () => {
   setView("products", false);
   loadView(true);
 });
+async function loadBuyDepth(button) {
+  const output = button.nextElementSibling;
+  const query = new URLSearchParams({
+    stock: selected.id,
+    chain: button.dataset.depthChain,
+    token: button.dataset.depthToken,
+  });
+  button.disabled = true;
+  output.textContent = "Checking four order sizes…";
+  try {
+    const response = await fetch("/api/buy-depth?" + query, {
+      signal: AbortSignal.timeout(36000),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+    const detail = document.createElement("div");
+    detail.textContent = data.largestTested
+      ? `Up to ${number(data.largestTested, 0)} USDC tested within 1% of the 100 USDC buy quote. Snapshot before gas.`
+      : "Depth unavailable without a current 100 USDC reference quote.";
+    const list = document.createElement("ul");
+    for (const row of data.rows) {
+      const item = document.createElement("li");
+      const difference =
+        row.changePct == null
+          ? ""
+          : ` (${row.changePct > 0 ? "+" : ""}${number(row.changePct)}%)`;
+      item.textContent = `${number(row.amount, 0)} USDC · ${row.price ? number(row.price) + " per equivalent share" + difference + " · " + (row.provider || "Provider quote") : row.reason}`;
+      list.append(item);
+    }
+    output.replaceChildren(detail, list);
+    if (data.expiresAt) {
+      const expiry = document.createElement("small");
+      expiry.textContent = "Quotes expire " + stamp(data.expiresAt) + ".";
+      output.append(expiry);
+    }
+  } catch (error) {
+    output.textContent =
+      error.message || "Depth unavailable. Try again shortly.";
+  } finally {
+    button.disabled = false;
+  }
+}
 $("#results").addEventListener("click", (e) => {
+  if (e.target.closest(".quote-link[href]"))
+    countUsage("venue-opened", "quote");
+  const depth = e.target.closest("[data-depth-token]");
+  if (depth) {
+    loadBuyDepth(depth);
+    return;
+  }
   if (e.target.closest(".retry-quotes")) return loadView();
   if (e.target.closest("#clear-token")) {
     token = "";
@@ -784,6 +859,7 @@ desk = createTerminal({
   },
   onUniverseUpdate: renderStocks,
   onMarketsUpdate: () => {
+    discover.renderCoverage(desk.marketState().priced);
     if (page === "markets") {
       marketsPage?.show();
       if (desk?.marketState().screenNext)
@@ -939,11 +1015,13 @@ function setPage(next, write = true) {
       : page === "compare"
         ? "Compare stocks — Stocklens"
         : page === "issuers"
-          ? "Issuers — Stocklens"
+          ? issuerSelection
+            ? `${provider({ issuer: issuerSelection }).name} — Stocklens`
+            : "Issuers — Stocklens"
           : page === "markets"
             ? "Markets — Stocklens"
             : page === "comparison"
-              ? "Compare — Stocklens"
+              ? `${selected?.ticker ? "Compare " + selected.ticker : "Compare stocks"} — Stocklens`
               : "Stocklens — Compare tokenized stocks";
   if (page === "markets") {
     marketsPage?.show();
@@ -988,10 +1066,13 @@ function openHomeComparison(
   $("#comparison").scrollIntoView({ block: "start" });
 }
 window.addEventListener("popstate", () => {
-  const route = new URLSearchParams(location.search);
+  const route = pageParams(location);
   if (routePage(route) === "issuers")
     issuerSelection = route.get("issuer") || "";
-  selected = assetById(stocks, route.get("stock")) || selected;
+  selected =
+    assetById(stocks, route.get("stock")) ||
+    findRouteStock(stocks, route.get("stock") || "") ||
+    selected;
   assetCompareIds = restoreComparison(route, assetCompareIds, stocks);
   saveComparison(comparisonStore, assetCompareIds);
   view = ["products", "quotes", "terms", "markets", "venues"].includes(
@@ -1003,8 +1084,9 @@ window.addEventListener("popstate", () => {
   $("#chain").value = chains.some((c) => c.id === route.get("chain"))
     ? route.get("chain")
     : "all";
-  if (validBudget(route.get("amount")))
-    $("#budget").value = route.get("amount");
+  $("#budget").value = validBudget(route.get("amount"))
+    ? route.get("amount")
+    : "1000";
   setPage(routePage(route), false);
   if (page === "comparison" && selected) {
     homeAssetId = selected.id;

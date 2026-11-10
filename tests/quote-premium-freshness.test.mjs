@@ -154,3 +154,24 @@ test("reported price impact still warns when the listed comparison is unavailabl
   assert.match(html, /Large price difference/);
   assert.match(html, /<dt>Price impact<\/dt><dd>6\.00%/);
 });
+
+test("routes with outsized premiums or price impact stay in a collapsed group", async () => {
+  const { quoteComparison } = await import("../src/comparison-ui.mjs");
+  const { purchaseSummary } = await import("../src/views.mjs");
+  const { row, reference } = fixture();
+  const extreme = { ...row, symbol: "ThinRoute", effectivePrice: 14718 };
+  const normal = {
+    ...row,
+    id: "normal",
+    symbol: "NormalRoute",
+    effectivePrice: 101,
+  };
+  const html = quoteComparison([extreme, normal], { reference });
+  const [main, thin] = html.split(
+    '<details class="quote-route-group quote-thin">',
+  );
+  assert.match(main, /NormalRoute/);
+  assert.doesNotMatch(main, /ThinRoute/);
+  assert.match(thin, /Thin liquidity or large price gaps.*ThinRoute/s);
+  assert.doesNotMatch(purchaseSummary([extreme], reference), /ThinRoute/);
+});

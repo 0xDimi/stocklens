@@ -1,4 +1,7 @@
 import { createServer } from "node:http";
+import { join } from "node:path";
+import { createMarketArchive } from "./server/market-archive.mjs";
+import { createUsageCounts } from "./server/usage-counts.mjs";
 import { gzip } from "node:zlib";
 import { readdirSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -17,6 +20,14 @@ import { resolveMarketDetailStocks } from "./server/market-details.mjs";
 import { marketDetailsView } from "./server/market-details.mjs";
 import { issuersView, issuerAssetsView } from "./server/issuers.mjs";
 import { loadCatalog } from "./server/catalog.mjs";
+import { pagePath } from "./src/page-routes.mjs";
+import {
+  addPageMetadata,
+  publicPage,
+  siteOrigin,
+  sitemap,
+} from "./server/public-pages.mjs";
+import { buyDepth } from "./server/buy-depth.mjs";
 import { compareStock, validateComparison } from "./server/quotes.mjs";
 import { readRuntime, clientIdentity } from "./server/runtime.mjs";
 const { version: appVersion } = JSON.parse(
@@ -24,8 +35,10 @@ const { version: appVersion } = JSON.parse(
 );
 const files = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
+  ["/favicon.ico", ["assets/favicon.ico", "image/x-icon"]],
   ...[
     "app.mjs",
+    "page-routes.mjs",
     "theme.mjs",
     "theme.css",
     "discover.mjs",
@@ -132,6 +145,31 @@ export function createApp({
 } = {}) {
   const config = { ...readRuntime(), ...runtime };
   const traffic = new Map();
+  const origin = siteOrigin(process.env.STOCKLENS_PUBLIC_URL);
+  const { record: archive, flush: flushArchive } = createMarketArchive(
+    process.env.STOCKLENS_ARCHIVE_DIR ||
+      join(config.cacheDir, "market-archive"),
+  );
+  const archiveDetail = (row) => {
+    for (const [series, metric] of [
+      ["spot", row.spotPremium],
+      ["indicative-buy", row.premium],
+    ]) {
+      if (!metric || metric.stale || !Number.isFinite(metric.value)) continue;
+      archive(series, row.id, metric.priceAt, {
+        token: metric.symbol,
+        chain: metric.chain,
+        price: metric.price,
+        listedPrice: metric.referencePrice,
+        referenceAt: metric.referenceAt,
+        referenceBasis: metric.referenceBasis,
+        gapPct: metric.value,
+        source: metric.source,
+      });
+    }
+  };
+  let recordUsage;
+  let observedCatalog = null;
   let readyWork,
     readyUntil = 0,
     readyValue;
@@ -213,7 +251,10 @@ export function createApp({
         } else finish(body);
       };
       try {
-        if (!["GET", "HEAD"].includes(request.method)) {
+        const usage =
+          request.method === "POST" &&
+          /^\/api\/usage(?:\?|$)/.test(request.url || "");
+        if (!usage && !["GET", "HEAD"].includes(request.method)) {
           send(405, { error: "Use GET to read this endpoint." }, undefined, {
             Allow: "GET, HEAD",
           });
@@ -266,8 +307,28 @@ export function createApp({
             return;
           }
           try {
+            if (url.pathname === "/api/usage") {
+              const event = url.searchParams.get("event");
+              const value = url.searchParams.get("value");
+              if (
+                !usage ||
+                request.headers["sec-fetch-site"] !== "same-origin" ||
+                request.headers["sec-gpc"] === "1" ||
+                request.headers.dnt === "1"
+              ) {
+                send(204, "");
+                return;
+              }
+              if (event === "stock-selected" && observedCatalog?.has(value))
+                recordUsage(event, value);
+              if (event === "venue-opened") recordUsage(event, "quote");
+              send(204, "");
+              return;
+            }
             if (url.pathname === "/api/catalog") {
-              send(200, await deadline(getCatalog, 35000));
+              const catalog = await deadline(getCatalog, 35000);
+              observedCatalog = new Set(catalog.stocks.map((s) => s.id));
+              send(200, catalog);
               return;
             }
             if (url.pathname === "/api/market-stream") {
@@ -289,9 +350,10 @@ export function createApp({
               try {
                 await deadline(
                   () =>
-                    streamMarketDetails(url.searchParams, (row) =>
-                      write({ type: "row", row }),
-                    ),
+                    streamMarketDetails(url.searchParams, (row) => {
+                      archiveDetail(row);
+                      write({ type: "row", row });
+                    }),
                   35000,
                 );
                 write({ type: "done" });
@@ -305,13 +367,12 @@ export function createApp({
               return;
             }
             if (url.pathname === "/api/market-details") {
-              send(
-                200,
-                await deadline(
-                  () => marketDetailsView(url.searchParams),
-                  35000,
-                ),
+              const data = await deadline(
+                () => marketDetailsView(url.searchParams),
+                35000,
               );
+              data.rows.forEach(archiveDetail);
+              send(200, data);
               return;
             }
             if (url.pathname === "/api/fundamentals") {
@@ -334,10 +395,17 @@ export function createApp({
             ) {
               const issuerView =
                 url.pathname === "/api/issuers" ? issuers : issuerAssets;
-              send(
-                200,
-                await deadline(() => issuerView(url.searchParams), 35000),
+              const data = await deadline(
+                () => issuerView(url.searchParams),
+                35000,
               );
+              for (const issuer of data.issuers || []) {
+                if (Number.isFinite(issuer.market?.marketCap))
+                  archive("issuer-cap", issuer.id, issuer.market.sourceAt, {
+                    marketCap: issuer.market.marketCap,
+                  });
+              }
+              send(200, data);
               return;
             }
             const views = {
@@ -361,6 +429,19 @@ export function createApp({
                   35000,
                 ),
               );
+              return;
+            }
+            if (url.pathname === "/api/buy-depth") {
+              const depth = await deadline(
+                () => buyDepth(url.searchParams),
+                35000,
+              );
+              if (depth.largestTested !== null)
+                archive("buy-depth", depth.id, depth.observedAt, {
+                  largestTested: depth.largestTested,
+                  rows: depth.rows,
+                });
+              send(200, depth);
               return;
             }
             if (url.pathname === "/api/compare") {
@@ -388,6 +469,78 @@ export function createApp({
             return;
           }
         }
+        if (url.pathname === "/robots.txt") {
+          send(
+            200,
+            "User-agent: *\nDisallow: /api/\nSitemap: " +
+              origin +
+              "/sitemap.xml\n",
+            "text/plain; charset=utf-8",
+          );
+          return;
+        }
+        const cleanRoute = pagePath(url.pathname);
+        const needsCatalog =
+          cleanRoute ||
+          ["stock", "ticker", "issuer"].some((key) =>
+            url.searchParams.has(key),
+          );
+        if (
+          url.pathname === "/sitemap.xml" ||
+          cleanRoute ||
+          url.pathname === "/"
+        ) {
+          let stocks = [];
+          if (needsCatalog || url.pathname === "/sitemap.xml") {
+            try {
+              stocks = (await deadline(getCatalog, 15000)).stocks;
+            } catch {
+              if (url.pathname === "/sitemap.xml") {
+                send(
+                  503,
+                  "Catalog temporarily unavailable",
+                  "text/plain; charset=utf-8",
+                );
+                return;
+              }
+              if (cleanRoute) {
+                const shell = await readFile(
+                  new URL("./index.html", import.meta.url),
+                );
+                send(
+                  503,
+                  versionAsset(shell, "text/html"),
+                  "text/html; charset=utf-8",
+                  { "Retry-After": "15" },
+                );
+                return;
+              }
+            }
+          }
+          if (url.pathname === "/sitemap.xml") {
+            send(
+              200,
+              sitemap(stocks, origin),
+              "application/xml; charset=utf-8",
+            );
+            return;
+          }
+          const page = publicPage(url, stocks, origin);
+          if (!page) {
+            send(404, "Page not found", "text/plain; charset=utf-8");
+            return;
+          }
+          const html = await readFile(
+            new URL("./index.html", import.meta.url),
+            "utf8",
+          );
+          send(
+            200,
+            versionAsset(addPageMetadata(html, page), "text/html"),
+            "text/html; charset=utf-8",
+          );
+          return;
+        }
         const file = files.get(url.pathname);
         if (!file) {
           send(404, "Not found", "text/plain; charset=utf-8");
@@ -408,6 +561,8 @@ export function createApp({
       }
     },
   );
+  recordUsage = createUsageCounts(server);
+  server.flushArchive = flushArchive;
   return server;
 }
 if (
@@ -435,8 +590,10 @@ if (
       }, config.shutdownMs);
       timer.unref();
       server.close(() => {
-        clearTimeout(timer);
-        process.exit(0);
+        server.flushArchive().finally(() => {
+          clearTimeout(timer);
+          process.exit(0);
+        });
       });
       server.closeIdleConnections();
     });

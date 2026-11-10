@@ -5,7 +5,7 @@ export const MARKET_COLUMNS = [
   ["listed", "Listed price"],
   ["token", "Tokenized price"],
   ["change", "24h change"],
-  ["premium", "Onchain premium"],
+  ["premium", "Onchain vs listed"],
   ["turnover", "24h turnover"],
   ["tokenCap", "Tokenized cap"],
   ["volume", "24h volume"],

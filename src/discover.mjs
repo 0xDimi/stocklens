@@ -153,6 +153,15 @@ export function createDiscover({ root, getStocks, onSelect, onRetry }) {
   });
   return {
     close,
+    renderCoverage(priced) {
+      const headline = root.querySelector("#discover-priced");
+      if (headline) {
+        headline.textContent = priced
+          ? priced.toLocaleString() + " assets with prices loaded"
+          : "";
+        headline.hidden = !priced;
+      }
+    },
     loading() {
       failed = false;
       root.querySelector("#discover-retry").hidden = true;
@@ -196,7 +205,7 @@ export function createDiscover({ root, getStocks, onSelect, onRetry }) {
         ),
       ).size;
       root.querySelector("#discover-coverage").innerHTML =
-        `<span><b>${stocks.length.toLocaleString()}</b> assets</span><span><b>${issuers}</b> issuers</span><span><b>${networks}</b> networks</span>`;
+        `<span id="discover-priced" hidden></span><span><b>${stocks.length.toLocaleString()}</b> mapped assets</span><span><b>${issuers}</b> issuers</span><span><b>${networks}</b> networks</span>`;
       root.querySelector("#discover-date").textContent = data.fetchedAt
         ? `Catalog · ${stamp(data.fetchedAt)}`
         : "Source-mapped catalog";

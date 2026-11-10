@@ -1,4 +1,11 @@
-import { escape, quoteTable, bestQuote, provider, external } from "./views.mjs";
+import {
+  escape,
+  quoteTable,
+  bestQuote,
+  flaggedQuote,
+  provider,
+  external,
+} from "./views.mjs";
 import { chainLogo } from "./brands.mjs";
 const deploymentKey = (row) =>
   `${row.issuer}:${row.chain}:${row.chain === "Solana" ? row.address : String(row.address || "").toLowerCase()}`;
@@ -23,9 +30,13 @@ export function quoteCoverageMarkup(rows, now = Date.now()) {
   return `<strong>${c.fresh} current ${c.fresh === 1 ? "quote" : "quotes"}</strong><span>${c.normalized} share-normalized · ${c.quotedDeployments} of ${c.deployments} token/network combinations quoted</span>`;
 }
 export function quoteComparison(rows, options = {}) {
-  options = { ...options, bestId: bestQuote(rows)?.id || null };
-  const available = rows.filter((r) => r.status === "quoted"),
+  const now = Date.now();
+  const thin = rows.filter((r) => flaggedQuote(r, options.reference, now));
+  const available = rows.filter(
+      (r) => r.status === "quoted" && !thin.includes(r),
+    ),
     missing = rows.filter((r) => r.status !== "quoted");
+  options = { ...options, bestId: bestQuote(available, now)?.id || null };
   const verified = available
     .filter(
       (r) => r.rankable && r.equivalentShares > 0 && r.expiresAt > Date.now(),
@@ -59,5 +70,5 @@ export function quoteComparison(rows, options = {}) {
     values.length
       ? `<details class="quote-route-group ${className}"><summary>${title} <span>${values.length} ${values.length === 1 ? "route" : "routes"}</span></summary>${quoteTable(values, options)}</details>`
       : "";
-  return `<div class="quote-coverage">${quoteCoverageMarkup(rows)}</div>${result}${disclosure("Alternative providers", alternatives, "quote-alternatives")}${disclosure("Token quotes · share conversion unverified", raw, "quote-unverified")}${disclosure("Expired quotes · refresh to trade", expired, "quote-expired")}${missing.length ? `<details class="quote-gaps"${!available.length ? " open" : ""}><summary>Other versions &amp; networks <span>${groups.size} ${groups.size === 1 ? "product" : "products"}</span></summary><p>No supported quote returned for these deployments. Their market links remain available.</p>${[...groups.values()].map((group) => `<article class="quote-gap"><h3>${escape(group[0].symbol)} <small>${escape(provider(group[0]).name)}</small></h3>${group.map((row) => `<div><span class="named-network">${chainLogo(row.chain, row.chainLabel)}${escape(row.chainLabel || row.chain)}</span><p>${escape(row.reason || "No supported route returned a quote.")}${row.quoteFailures?.length ? `<br>${row.quoteFailures.map((f) => `${escape(f.provider)}: ${escape(f.reason)}`).join("<br>")}` : ""}</p><button class="text-button" data-markets-token="${escape(row.address)}" data-chain="${escape(row.chain)}">Explore liquidity →</button></div>`).join("")}${group[0].source ? external(group[0].source, "Product source") : ""}</article>`).join("")}</details>` : ""}`;
+  return `<div class="quote-coverage">${quoteCoverageMarkup(rows)}</div>${result}${disclosure("Thin liquidity or large price gaps", thin, "quote-thin")}${disclosure("Alternative providers", alternatives, "quote-alternatives")}${disclosure("Token quotes · share conversion unverified", raw, "quote-unverified")}${disclosure("Expired quotes · refresh to trade", expired, "quote-expired")}${missing.length ? `<details class="quote-gaps"${!available.length ? " open" : ""}><summary>Other versions &amp; networks <span>${groups.size} ${groups.size === 1 ? "product" : "products"}</span></summary><p>No supported quote returned for these deployments. Their market links remain available.</p>${[...groups.values()].map((group) => `<article class="quote-gap"><h3>${escape(group[0].symbol)} <small>${escape(provider(group[0]).name)}</small></h3>${group.map((row) => `<div><span class="named-network">${chainLogo(row.chain, row.chainLabel)}${escape(row.chainLabel || row.chain)}</span><p>${escape(row.reason || "No supported route returned a quote.")}${row.quoteFailures?.length ? `<br>${row.quoteFailures.map((f) => `${escape(f.provider)}: ${escape(f.reason)}`).join("<br>")}` : ""}</p><button class="text-button" data-markets-token="${escape(row.address)}" data-chain="${escape(row.chain)}">Explore liquidity →</button></div>`).join("")}${group[0].source ? external(group[0].source, "Product source") : ""}</article>`).join("")}</details>` : ""}`;
 }

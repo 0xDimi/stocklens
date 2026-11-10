@@ -4,10 +4,16 @@ import { gunzipSync } from "node:zlib";
 import { randomUUID } from "node:crypto";
 
 // Public provider observations only. Original source times survive restarts.
-export function observationStore(file, seed, maxAge = 3 * 86400000) {
+export function observationStore(
+  file,
+  seed,
+  maxAge = 3 * 86400000,
+  now = Date.now,
+) {
   let writing = Promise.resolve();
   async function load() {
     const records = new Map();
+    const currentTime = now();
     for (const path of [seed, file].filter(Boolean)) {
       try {
         const bytes = await readFile(path);
@@ -22,8 +28,8 @@ export function observationStore(file, seed, maxAge = 3 * 86400000) {
             !key.startsWith("/") ||
             !value?.data ||
             !Number.isFinite(at) ||
-            at > Date.now() ||
-            Date.now() - at > maxAge
+            at > currentTime ||
+            currentTime - at > maxAge
           )
             continue;
           if (at > Date.parse(records.get(key)?.retrievedAt || "1970-01-01"))

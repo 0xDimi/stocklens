@@ -1,5 +1,5 @@
 import { quoteFeeView } from "./quote-support.mjs";
-import { renderProductTerms } from "./product-terms.mjs";
+import { renderProductTerms, productTerms } from "./product-terms.mjs";
 import { issuerLogo, chainLogo, venueLogo } from "./brands.mjs";
 import { issuers } from "./data.mjs";
 import { premium as comparablePremium } from "./market-model.mjs";
@@ -70,6 +70,38 @@ const mark = (p) => issuerLogo(p);
 export function termsDetails(p) {
   return renderProductTerms(p);
 }
+function jurisdictionRules(product) {
+  if (product.wrapped) return null;
+  if (product.issuer === "eqx")
+    return "https://docs.eqxlabs.io/trust-and-legal/eligibility";
+  if (product.issuer === "ondo")
+    return "https://docs.ondo.finance/ondo-stocks/eligibility";
+  if (product.issuer === "anchored")
+    return "https://docs.anchored.finance/getting-started/eligibility";
+  return null;
+}
+
+function termsAtAGlance(product) {
+  const labels = {
+    dividends: "Dividends",
+    redemption: "Redemption",
+    voting: "Voting",
+    access: "Issuer access / KYC",
+  };
+  const fields = productTerms(product).filter((term) =>
+    Object.hasOwn(labels, term.key),
+  );
+  const jurisdictionSource = jurisdictionRules(product);
+  return `<span class="product-terms-glance">${fields
+    .map(
+      (term) =>
+        `<span title="${escape(term.detail || term.value)}"><small>${labels[term.key]}</small><span>${escape(term.value)}</span></span>`,
+    )
+    .join(
+      "",
+    )}<span><small>Jurisdictions</small><span>${jurisdictionSource ? "Issuer country rules available" : "Check issuer or venue rules"}</span></span></span>`;
+}
+
 export function productsTable(rows, chains, chain) {
   return (
     `<div class="product-table-head"><span>Token / issuer</span><span>Price per token</span><span>24h volume</span><span>Structure</span><span>Networks / compare</span></div>` +
@@ -83,7 +115,7 @@ export function productsTable(rows, chains, chain) {
         const networks = p.deployments.filter(
           (d) => chain === "all" || d.chain === chain,
         );
-        return `<details class="product-row"><summary><span class="token-cell">${mark(p)}<span><strong>${escape(p.symbol)}</strong><small>${escape(info.name)}</small><small class="identity-proof" title="Identity mapping is separate from backing, rights, eligibility and investment quality.">${p.wrapped ? "Wrapped version" : p.source?.startsWith("https://api.xstocks.fi/") || p.source === "https://docs.ondo.finance/addresses#ondo-stocks" || p.source === "https://api.realityfinance.xyz/api/v1/rwa/assets/tickers" ? "Issuer contract" : p.mapping === "CoinGecko RWA grouping" ? "Verified asset grouping" : "Source-mapped identity"}</small></span></span><span data-label="Price per token"><strong>${usd(m?.price)}</strong><small>${m?.priceType === "indicative-buy" ? "$1,000 buy estimate" : m?.priceType === "pool-snapshot" ? "Pool observation" : stale ? "Older observation" : change(m?.change24h)}</small></span><span data-label="24h volume">${compact(m?.volume24h)}</span><span class="structure-cell" data-label="Structure">${escape(info.structure)}</span><span class="deployment-count"><span class="network-badges" title="${escape(networks.map((d) => chains.find((c) => c.id === d.chain)?.label || d.chain).join(", "))}">${networks
+        return `<details class="product-row"><summary><span class="token-cell">${mark(p)}<span><strong>${escape(p.symbol)}</strong><small>${escape(info.name)}</small><small class="identity-proof" title="Identity mapping is separate from backing, rights, eligibility and investment quality.">${p.wrapped ? "Wrapped version" : p.source?.startsWith("https://api.xstocks.fi/") || p.source === "https://docs.ondo.finance/addresses#ondo-stocks" || p.source === "https://api.realityfinance.xyz/api/v1/rwa/assets/tickers" ? "Issuer-listed contract" : p.mapping === "CoinGecko RWA grouping" ? "Matched by CoinGecko" : "Matched to stock"}</small></span></span><span data-label="Price per token"><strong>${usd(m?.price)}</strong><small>${m?.priceType === "indicative-buy" ? "$1,000 buy estimate" : m?.priceType === "pool-snapshot" ? "Pool observation" : stale ? "Older observation" : change(m?.change24h)}</small></span><span data-label="24h volume">${compact(m?.volume24h)}</span><span class="structure-cell" data-label="Structure">${escape(info.structure)}</span><span class="deployment-count"><span class="network-badges" title="${escape(networks.map((d) => chains.find((c) => c.id === d.chain)?.label || d.chain).join(", "))}">${networks
           .slice(0, 2)
           .map(
             (d) =>
@@ -91,11 +123,47 @@ export function productsTable(rows, chains, chain) {
           )
           .join(
             "",
-          )}${networks.length > 2 ? `<small>+${networks.length - 2} more</small>` : ""}</span><button class="compare-toggle" data-compare="${escape(p.coinId || `${p.issuer}:${p.symbol}`)}" aria-label="Select ${escape(p.symbol)} for terms comparison" aria-pressed="false">Select for terms</button><i aria-hidden="true">⌄</i></span></summary><div class="product-summary"><p>${escape(p.name || p.symbol)} · ${escape(p.mapping || "Issuer security identifier")}<br>Price observed ${stamp(m?.updatedAt)} · Token market cap ${compact(m?.marketCap)}${m?.basis ? "<br>" + escape(m.basis) : ""}</p><div>${external(p.marketSource || p.source, "Product source")}</div></div>${termsDetails(p)}<div class="deployments"><h4>Contracts & markets</h4>${networks.map((d) => `<div class="deployment"><strong class="named-network">${chainLogo(d.chain)}${escape(chains.find((c) => c.id === d.chain)?.label || d.chain)}</strong>${external(chains.find((c) => c.id === d.chain)?.explorer + d.address, d.address, "contract-address")}<button data-markets-token="${escape(d.address)}" data-chain="${d.chain}">View liquidity ↗</button>${chains.find((c) => c.id === d.chain)?.quotable ? `<button data-quote-issuer="${escape(p.issuer)}" data-chain="${d.chain}">Compare quote →</button>` : `<span class="adapter-unavailable">Quotes not connected</span>`}</div>`).join("")}</div></details>`;
+          )}${networks.length > 2 ? `<small>+${networks.length - 2} more</small>` : ""}</span><button class="compare-toggle" data-compare="${escape(p.coinId || `${p.issuer}:${p.symbol}`)}" aria-label="Select ${escape(p.symbol)} for terms comparison" aria-pressed="false">Select for terms</button><i aria-hidden="true">⌄</i></span>${termsAtAGlance(p)}</summary><div class="product-summary"><p>${escape(p.name || p.symbol)} · ${escape(p.mapping || "Issuer security identifier")}<br>Price observed ${stamp(m?.updatedAt)} · Token market cap ${compact(m?.marketCap)}${m?.basis ? "<br>" + escape(m.basis) : ""}</p><div>${external(p.marketSource || p.source, "Product source")}</div></div>${termsDetails(p)}${jurisdictionRules(p) ? external(jurisdictionRules(p), "Issuer country rules") : ""}<div class="deployments"><h4>Contracts & markets</h4>${networks.map((d) => `<div class="deployment"><strong class="named-network">${chainLogo(d.chain)}${escape(chains.find((c) => c.id === d.chain)?.label || d.chain)}</strong>${external(chains.find((c) => c.id === d.chain)?.explorer + d.address, d.address, "contract-address")}<button data-markets-token="${escape(d.address)}" data-chain="${d.chain}">View liquidity ↗</button>${chains.find((c) => c.id === d.chain)?.quotable ? `<button data-quote-issuer="${escape(p.issuer)}" data-chain="${d.chain}">Compare quote →</button><button data-depth-chain="${escape(d.chain)}" data-depth-token="${escape(d.address)}">Check buy depth</button><div class="buy-depth-result" role="status"></div>` : `<span class="adapter-unavailable">Quotes not connected</span>`}</div>`).join("")}</div></details>`;
       })
       .join("")
   );
 }
+function quoteReferenceGap(row, reference, now) {
+  if (
+    row.status !== "quoted" ||
+    !(row.expiresAt > now) ||
+    !row.rankable ||
+    reference?.stale ||
+    reference?.priceStale
+  )
+    return null;
+  return comparablePremium(
+    {
+      price: row.effectivePrice,
+      sharesPerToken: 1,
+      conversionVerified:
+        row.conversionVerified !== false &&
+        Number.isFinite(row.equivalentShares) &&
+        row.equivalentShares > 0,
+      currency: "USD",
+      at: row.fetchedAt,
+    },
+    reference,
+    now,
+  );
+}
+
+export function flaggedQuote(row, reference, now = Date.now()) {
+  const gap = quoteReferenceGap(row, reference, now);
+  return (
+    row.status === "quoted" &&
+    row.expiresAt > now &&
+    (row.priceImpactPct > 5 ||
+      (gap !== null &&
+        Math.abs(gap) > (reference?.priceSession === "Closed" ? 25 : 5)))
+  );
+}
+
 export function bestQuote(rows, now = Date.now()) {
   return rows
     .filter(
@@ -111,8 +179,8 @@ export function bestQuote(rows, now = Date.now()) {
       null,
     );
 }
-export function purchaseSummary(rows) {
-  const best = bestQuote(rows);
+export function purchaseSummary(rows, reference) {
+  const best = bestQuote(rows.filter((row) => !flaggedQuote(row, reference)));
   if (!best)
     return `<div class="purchase-empty"><strong>No fresh share-normalized quote available.</strong><span>Refresh quotes. Routes with unverified share conversions stay unranked.</span></div>`;
   return `<div class="purchase-summary"><div class="purchase-choice"><span>Best quoted share exposure</span><strong>${escape(best.symbol)} <small>by ${escape(provider(best).name)}</small></strong><p>${escape(best.chainLabel)} · ${escape(best.venue || "")}</p></div><div><span>You receive</span><strong>${number(best.equivalentShares, 4)}</strong><small>equivalent shares for ${number(best.inputQuantity)} USDC</small></div><div><span>Cost per equivalent share</span><strong>${number(best.effectivePrice)} <small>USDC</small></strong><small>before network costs</small></div></div>`;
@@ -129,29 +197,8 @@ export function quoteTable(rows, { reference, bestId } = {}) {
       .map((r) => {
         const quoted = r.status === "quoted",
           expired = !(r.expiresAt > now),
-          premium =
-            quoted &&
-            !expired &&
-            r.rankable &&
-            !reference?.stale &&
-            !reference?.priceStale
-              ? comparablePremium(
-                  {
-                    price: r.effectivePrice,
-                    // effectivePrice is already per equivalent share.
-                    sharesPerToken: 1,
-                    conversionVerified:
-                      r.conversionVerified !== false &&
-                      Number.isFinite(r.equivalentShares) &&
-                      r.equivalentShares > 0,
-                    currency: "USD",
-                    at: r.fetchedAt,
-                  },
-                  reference,
-                  now,
-                )
-              : null,
-          adverse = premium > 5 || r.priceImpactPct > 5,
+          premium = quoteReferenceGap(r, reference, now),
+          adverse = flaggedQuote(r, reference, now),
           normalized = Number.isFinite(r.equivalentShares),
           quoteProvider = r.quoteProvider || r.venue || "Quote provider",
           fees = quoteFeeView(r),

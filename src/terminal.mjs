@@ -645,6 +645,9 @@ export function createTerminal({
       screenBusy,
       screenNext,
       observed: markets.size,
+      priced: [...markets.values()].filter(
+        (market) => Number.isFinite(market.price) && market.price > 0,
+      ).length,
     }),
     refreshMarkets: (next = false) => screener(next),
   };

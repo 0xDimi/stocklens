@@ -1,3 +1,4 @@
+import { stockPath } from "./page-routes.mjs";
 import { readMarketDetails } from "./market-stream.mjs";
 import {
   selectMarketRows,
@@ -289,7 +290,7 @@ export function createMarketsPage({
       const spot = selected.kind === "pool",
         label = [
           observed.stale ? "Last observed" : spot ? "Pool snapshot" : "$1K buy",
-          p.referenceBasis === "last-close" ? "vs close" : "",
+          p.referenceBasis === "last-close" ? "Gap vs listed close" : "",
         ]
           .filter(Boolean)
           .join(" · ");
@@ -449,7 +450,7 @@ export function createMarketsPage({
       `${stocks.length.toLocaleString()} assets · ${new Set(stocks.flatMap((s) => s.products.map((p) => p.issuer))).size} issuers · ${new Set(stocks.flatMap((s) => s.products.flatMap((p) => p.deployments.map((d) => d.chain)))).size} networks`;
     $("#market-feed-note").textContent = state.screenBusy
       ? "Updating reference prices…"
-      : `${state.observed.toLocaleString()} assets with observations${state.screenAt ? " · " + stamp(state.screenAt) : ""}`;
+      : `${(state.priced ?? state.observed).toLocaleString()} assets with prices loaded${state.screenAt ? " · " + stamp(state.screenAt) : ""}`;
     $("#market-data-warning").textContent = state.screenWarning || "";
     $("#market-data-warning").hidden = !state.screenWarning;
     $("#market-next-data").hidden = !state.screenNext;
@@ -523,7 +524,7 @@ export function createMarketsPage({
             issuers = [
               ...new Map(s.products.map((p) => [p.issuer, p])).values(),
             ];
-          return `<tr><td><div class="market-asset"><button class="market-compare-toggle" data-market-focus="${escape(s.id)}:compare" data-stock-compare="${escape(s.id)}" aria-label="${compared.includes(s.id) ? "Remove" : "Add"} ${escape(s.name)} ${compared.includes(s.id) ? "from" : "to"} stock comparison" aria-pressed="${compared.includes(s.id)}">${compared.includes(s.id) ? "✓" : "+"}</button><button class="market-save" data-market-focus="${escape(s.id)}:save" data-market-save="${escape(s.id)}" aria-label="${saved.has(s.id) ? "Unsave" : "Save"} ${escape(s.name)}" aria-pressed="${saved.has(s.id)}">${saved.has(s.id) ? "★" : "☆"}</button><a data-market-focus="${escape(s.id)}:asset" href="/?page=stock&amp;stock=${encodeURIComponent(s.id)}" data-open-stock="${escape(s.id)}">${stockLogo(s, m?.image)}<span><strong>${escape(s.ticker)}</strong><small>${escape(s.name)}</small></span></a></div></td><td>${listedPriceCell(s)}</td><td><strong>${usd(m?.price)}</strong><small>${m?.updatedAt ? (observationIsStale(m) ? "Older · " : "") + stamp(m.updatedAt) : "Not observed"}</small></td><td><span class="market-change ${m?.change24h < 0 ? "negative" : m?.change24h > 0 ? "positive" : ""}">${signed(m?.change24h)}</span></td><td>${premiumCell(s)}</td><td>${turnoverCell(s)}</td><td>${compact(m?.marketCap)}</td><td>${compact(m?.volume24h)}</td><td><span class="logo-stack" title="${escape(networks.map((id) => chains.find((c) => c.id === id)?.label || id).join(", "))}">${networks
+          return `<tr><td><div class="market-asset"><button class="market-compare-toggle" data-market-focus="${escape(s.id)}:compare" data-stock-compare="${escape(s.id)}" aria-label="${compared.includes(s.id) ? "Remove" : "Add"} ${escape(s.name)} ${compared.includes(s.id) ? "from" : "to"} stock comparison" aria-pressed="${compared.includes(s.id)}">${compared.includes(s.id) ? "✓" : "+"}</button><button class="market-save" data-market-focus="${escape(s.id)}:save" data-market-save="${escape(s.id)}" aria-label="${saved.has(s.id) ? "Unsave" : "Save"} ${escape(s.name)}" aria-pressed="${saved.has(s.id)}">${saved.has(s.id) ? "★" : "☆"}</button><a data-market-focus="${escape(s.id)}:asset" href="${escape(stockPath(s, getState().stocks))}" data-open-stock="${escape(s.id)}">${stockLogo(s, m?.image)}<span><strong>${escape(s.ticker)}</strong><small>${escape(s.name)}</small></span></a></div></td><td>${listedPriceCell(s)}</td><td><strong>${usd(m?.price)}</strong><small>${m?.updatedAt ? (observationIsStale(m) ? "Older · " : "") + stamp(m.updatedAt) : "Not observed"}</small></td><td><span class="market-change ${m?.change24h < 0 ? "negative" : m?.change24h > 0 ? "positive" : ""}">${signed(m?.change24h)}</span></td><td>${premiumCell(s)}</td><td>${turnoverCell(s)}</td><td>${compact(m?.marketCap)}</td><td>${compact(m?.volume24h)}</td><td><span class="logo-stack" title="${escape(networks.map((id) => chains.find((c) => c.id === id)?.label || id).join(", "))}">${networks
             .slice(0, 3)
             .map((id) => chainLogo(id))
             .join(

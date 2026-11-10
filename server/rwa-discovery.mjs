@@ -77,6 +77,8 @@ export function createRwaDiscovery({
         seedPath
           ? new URL("./data/coingecko-observations.json.gz", import.meta.url)
           : null,
+        undefined,
+        now,
       ).load();
       for (const [path, value] of observed) {
         const id = path.match(/^\/rwas\/([a-z0-9-]+)\?/u)?.[1];

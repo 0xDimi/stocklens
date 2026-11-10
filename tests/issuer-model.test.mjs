@@ -6,6 +6,7 @@ import {
   issuerPercent,
   issuerExportColumns,
 } from "../src/issuer-model.mjs";
+import { pageParams } from "../src/page-routes.mjs";
 import { routePage } from "../src/discover.mjs";
 import { csvText } from "../src/views.mjs";
 import { issuerLogo } from "../src/brands.mjs";
@@ -21,8 +22,9 @@ test("unconfirmed issuer records use readable marks without requesting a nonexis
 
 test("issuer routes are distinct, canonical and preserve exact issuer identity", () => {
   const url = new URL(issuerLink("xstocks"), "https://stocklens.example");
-  assert.equal(routePage(url.searchParams), "issuers");
-  assert.equal(url.searchParams.get("issuer"), "xstocks");
+  assert.equal(url.pathname, "/issuer/xstocks");
+  assert.equal(routePage(pageParams(url)), "issuers");
+  assert.equal(pageParams(url).get("issuer"), "xstocks");
   assert.equal(issuerLink(), "/?page=issuers");
 });
 test("issuer filters do not recalculate market shares and unknown metrics sort last", () => {

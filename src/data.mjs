@@ -110,10 +110,24 @@ export const issuers = {
     eligibilityLabel: "Tokenized vs brokerage holdings",
     reviewStatus: "partial",
   },
+  eqx: {
+    name: "EQX",
+    short: "EQ",
+    structure: "Share-backed issuer debt",
+    rights:
+      "EQX SPC Ltd. issues debt instruments backed by shares held for each segregated portfolio.",
+    dividends:
+      "Cash dividends are reinvested in the underlying shares after withholding and broker costs, increasing the shares represented by each token.",
+    exit: "Authorized participants can redeem for shares. Other holders can sell through the supported market.",
+    url: "https://www.eqxlabs.io/",
+    eligibility: "https://docs.eqxlabs.io/trust-and-legal/eligibility",
+    reviewStatus: "reviewed",
+    reviewedAt: "2026-11-10",
+  },
   anchored: {
     name: "Anchored",
     short: "A",
-    structure: "Asset-backed token · terms partial",
+    structure: "Asset-backed token",
     rights:
       "Anchored describes full backing through regulated custody. The reviewed public overview does not establish the precise holder claim or insolvency priority; review the offering terms.",
     dividends:

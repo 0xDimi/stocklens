@@ -326,7 +326,10 @@ export function createIssuerDesk({
             !Array.isArray(value.data.tokens) ||
             !canReplace(value, observations.get(id))
           )
-            throw new Error("Issuer source returned an invalid observation.");
+            throw Object.assign(
+              new Error("Issuer source returned an invalid observation."),
+              { status: 422 },
+            );
           observations.set(id, value);
           issues.delete(id);
           lastError = null;
@@ -335,8 +338,10 @@ export function createIssuerDesk({
             continue;
           issues.add(id);
           lastError =
-            "Issuer market refresh is delayed; dated reports remain available.";
-          if (![403, 404].includes(error.status)) {
+            error.status === 429
+              ? "CoinGecko rate limit reached. Showing the latest available issuer reports."
+              : "Some issuer reports could not refresh. Showing the latest available reports.";
+          if (![403, 404, 422].includes(error.status)) {
             retryAt = now() + HOUR;
             break;
           }

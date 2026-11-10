@@ -1,5 +1,5 @@
 # Live comparison progress
-Plan: docs/superpowers/plans/2026-10-18-live-comparison.md
+Plan: docs/maintenance/superpowers/plans/2026-10-18-live-comparison.md
 
 - Baseline saved in local git repository on work/live-comparison.
 - Public xStocks catalog, Raydium quote, and KyberSwap quote endpoints responded successfully in feasibility probes.
@@ -29,7 +29,7 @@ Plan: docs/superpowers/plans/2026-10-18-live-comparison.md
 Public deployment, transaction execution, more issuers/venues, exchange reference prices, eligibility screening, and exhaustive coverage are outside this delivered comparison MVP. No fabricated substitute fills gaps.
 
 ## October 19: complete comparison expansion
-- Plan: docs/superpowers/plans/2026-10-19-full-comparison.md; base f6a93b8.
+- Plan: docs/maintenance/superpowers/plans/2026-10-19-full-comparison.md; base f6a93b8.
 - User instructed autonomous completion and specifically requested CoinGecko/GeckoTerminal.
 - Source probes: public coins/list, tokenized-stock markets, RWA list and GT exact-token pools returned actual data. Native RWA detail returned 429; source must cool down and show fallback provenance.
 - Decision: use recognized CoinGecko families with corroborating underlying names/IDs and symbols for discovery when native grouping is unavailable. Preserve issuer mappings and do not promote market discovery to legal verification.

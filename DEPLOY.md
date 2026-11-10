@@ -63,3 +63,8 @@ CoinGecko issuer/native enrichment shares the existing server-side API key and p
 Issuer and native observations refresh after 24 hours and expire after 72 hours. Worker reads await actual refreshed source observations without delaying visitor requests. An unavailable individual issuer can be skipped; provider-wide failures back off for an hour. Previously successful observations keep their original times. Reality's public stock/ETF catalog refreshes independently, using active records, validated security identifiers and exact supported contracts.
 
 `node scripts/catalog-expansion-integration.mjs` checks the real application API for expanded canonical coverage, new-stock product pages, exact-contract pools and existing executable quotes. Set `STOCKLENS_URL` for the public deployment. Provider outages fail required live checks explicitly.
+
+
+For a custom domain, set `STOCKLENS_PUBLIC_URL` to its HTTPS origin after connecting the domain in Render. Canonical links, share metadata and the sitemap use that origin.
+
+The market journal writes dated JSONL files under `CACHE_DIR/market-archive`. Set `STOCKLENS_ARCHIVE_DIR` to a directory on a persistent volume to retain it across deployments. The journal is sampled from actual market, issuer and depth requests. Schedule exports or backups and monitor disk usage before relying on long-term coverage. Aggregate usage counts appear under `Stocklens usage` in the service logs.

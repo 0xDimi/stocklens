@@ -69,6 +69,7 @@ let stocks = [],
     ? params.get("view")
     : "products";
 let snapshot = null,
+  displayedQuoteReference = null,
   visibleRows = [],
   catalogSources = [],
   catalogWarnings = [],
@@ -344,13 +345,13 @@ function renderResults() {
     $("#results").innerHTML = visibleRows.length
       ? productsTable(visibleRows, chains, $("#chain").value)
       : '<p class="empty-results">No products match these filters.</p>';
-  if (view === "quotes")
+  if (view === "quotes") {
+    displayedQuoteReference =
+      snapshot.reference || sharedDetails(selected.id)?.reference;
     $("#results").innerHTML = visibleRows.length
-      ? quoteComparison(visibleRows, {
-          reference:
-            snapshot.reference || sharedDetails(selected.id)?.reference,
-        })
+      ? quoteComparison(visibleRows, { reference: displayedQuoteReference })
       : '<p class="empty-results">No quoted-chain deployments match these filters. Try All chains or explore Markets.</p>';
+  }
   if (view === "markets")
     $("#results").innerHTML = visibleRows.length
       ? marketsTable(visibleRows)
@@ -396,10 +397,7 @@ function renderResults() {
         : "No market observation";
   $("#decision-summary").innerHTML =
     view === "quotes"
-      ? purchaseSummary(
-          visibleRows,
-          snapshot.reference || sharedDetails(selected.id)?.reference,
-        )
+      ? purchaseSummary(visibleRows, displayedQuoteReference)
       : "";
   sourceDetails(snapshot);
   desk?.ingest(view, snapshot);
@@ -523,7 +521,7 @@ function tick() {
   if (view !== "quotes" || !snapshot) return;
   $("#decision-summary").innerHTML = purchaseSummary(
     visibleRows,
-    snapshot.reference || sharedDetails(selected.id)?.reference,
+    displayedQuoteReference,
   );
   const coverage = $(".quote-coverage");
   if (coverage) coverage.innerHTML = quoteCoverageMarkup(visibleRows);

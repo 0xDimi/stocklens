@@ -2470,6 +2470,9 @@ dialog p {
 .entity-logo > span {
   line-height: 1;
 }
+.entity-logo:has(> img) > span {
+  visibility: hidden;
+}
 .entity-logo img {
   position: absolute;
   inset: 0;
